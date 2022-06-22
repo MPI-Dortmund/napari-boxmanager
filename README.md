@@ -23,6 +23,11 @@ https://napari.org/plugins/index.html
 
 ## Installation
 
+**!!!** The installation of the napari-boxmanager requires at least napari version `0.4.16.rc8`! **!!!**
+If the version is not yet available use:
+
+    pip install git+https://github.com/napari/napari
+
 You can install `napari-boxmanager` via [pip]:
 
     pip install napari-boxmanager

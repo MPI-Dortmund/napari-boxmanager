@@ -1,0 +1,48 @@
+name: boxmanager
+display_name: Box Manager
+contributions:
+  commands:
+    - id: boxmanager.get_reader
+      python_name: box_manager._reader:napari_get_reader
+      title: Open data with Box Manager
+    - id: boxmanager.write_multiple
+      python_name: box_manager._writer:write_multiple
+      title: Save multi-layer data with Box Manager
+    - id: boxmanager.write_single_image
+      python_name: box_manager._writer:write_single_image
+      title: Save image data with Box Manager
+    - id: boxmanager.make_sample_data
+      python_name: box_manager._sample_data:make_sample_data
+      title: Load sample data from Box Manager
+    - id: boxmanager.make_qwidget
+      python_name: box_manager._widget:ExampleQWidget
+      title: Make example QWidget
+    - id: boxmanager.make_magic_widget
+      python_name: box_manager._widget:example_magic_widget
+      title: Make example magic widget
+    - id: boxmanager.make_func_widget
+      python_name: box_manager._widget:example_function_widget
+      title: Make example function widget
+  readers:
+    - command: boxmanager.get_reader
+      accepts_directories: false
+      filename_patterns: ['*.npy']
+  writers:
+    - command: boxmanager.write_multiple
+      layer_types: ['image*','labels*']
+      filename_extensions: []
+    - command: boxmanager.write_single_image
+      layer_types: ['image']
+      filename_extensions: ['.npy']
+  sample_data:
+    - command: boxmanager.make_sample_data
+      display_name: Box Manager
+      key: unique_id.1
+  widgets:
+    - command: boxmanager.make_qwidget
+      display_name: Example QWidget
+    - command: boxmanager.make_magic_widget
+      display_name: Example Magic Widget
+    - command: boxmanager.make_func_widget
+      autogenerate: true
+      display_name: Example Function Widget

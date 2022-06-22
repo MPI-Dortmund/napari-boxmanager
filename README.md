@@ -1,11 +1,11 @@
-# boxmanager
+# napari-boxmanager
 
-[![License Mozilla Public License 2.0](https://img.shields.io/pypi/l/boxmanager.svg?color=green)](https://github.com/mstabrin/boxmanager/raw/main/LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/boxmanager.svg?color=green)](https://pypi.org/project/boxmanager)
-[![Python Version](https://img.shields.io/pypi/pyversions/boxmanager.svg?color=green)](https://python.org)
-[![tests](https://github.com/mstabrin/boxmanager/workflows/tests/badge.svg)](https://github.com/mstabrin/boxmanager/actions)
-[![codecov](https://codecov.io/gh/mstabrin/boxmanager/branch/main/graph/badge.svg)](https://codecov.io/gh/mstabrin/boxmanager)
-[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/boxmanager)](https://napari-hub.org/plugins/boxmanager)
+[![License Mozilla Public License 2.0](https://img.shields.io/pypi/l/napari-boxmanager.svg?color=green)](https://github.com/mstabrin/napari-boxmanager/raw/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/napari-boxmanager.svg?color=green)](https://pypi.org/project/napari-boxmanager)
+[![Python Version](https://img.shields.io/pypi/pyversions/napari-boxmanager.svg?color=green)](https://python.org)
+[![tests](https://github.com/mstabrin/napari-boxmanager/workflows/tests/badge.svg)](https://github.com/mstabrin/napari-boxmanager/actions)
+[![codecov](https://codecov.io/gh/mstabrin/napari-boxmanager/branch/main/graph/badge.svg)](https://codecov.io/gh/mstabrin/napari-boxmanager)
+[![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-boxmanager)](https://napari-hub.org/plugins/napari-boxmanager)
 
 Particle selection tool for cryo-em
 
@@ -23,9 +23,9 @@ https://napari.org/plugins/index.html
 
 ## Installation
 
-You can install `boxmanager` via [pip]:
+You can install `napari-boxmanager` via [pip]:
 
-    pip install boxmanager
+    pip install napari-boxmanager
 
 
 
@@ -38,7 +38,7 @@ the coverage at least stays the same before you submit a pull request.
 ## License
 
 Distributed under the terms of the [Mozilla Public License 2.0] license,
-"boxmanager" is free and open source software
+"napari-boxmanager" is free and open source software
 
 ## Issues
 

@@ -2,16 +2,22 @@
 
 import os
 
+import pandas as pd
 import pytest
 
 import box_manager._reader as br
+from box_manager.readers import tepkl, tlpkl, tmpkl
+
+VALID_PKL = [".tlpkl", ".tepkl", ".tmpkl"]
+VALID_PKL_FUNC = [tlpkl.read, tepkl.read, tmpkl.read]
+VALID_BOX = [".cbox", ".box", ".star"]
+VALID_BOX_FUNC = [br.cbox.read, br.box.read, br.star.read]
+VALID_FILE_ENDINGS = VALID_PKL + VALID_BOX + [".pkl"]
+INVALID_FILE_ENDINGS = [".pkl2", ".tlpkl2", ".tepkl2"]
 
 
 # tmp_path is a pytest fixture
-@pytest.mark.parametrize(
-    "file_ending",
-    [".pkl", ".tlpkl", ".tepkl", ".tmpkl", ".cbox", ".box", ".star"],
-)
+@pytest.mark.parametrize("file_ending", VALID_FILE_ENDINGS)
 def test_read_valid_files_return_func(tmp_path, file_ending):
     file_path = os.path.join(tmp_path, f"tmp{file_ending}")
     with open(file_path, "w"):
@@ -20,15 +26,107 @@ def test_read_valid_files_return_func(tmp_path, file_ending):
     assert br.napari_get_reader(file_path) == br.reader_function
 
 
-@pytest.mark.parametrize(
-    "file_ending", [".invalid", ".tlpkl2", ".tpkl", ".ok"]
-)
+@pytest.mark.parametrize("file_ending", INVALID_FILE_ENDINGS)
 def test_read_invalid_files_returns_none(tmp_path, file_ending):
     file_path = os.path.join(tmp_path, f"tmp{file_ending}")
     with open(file_path, "w"):
         pass
 
     assert br.napari_get_reader(file_path) is None
+
+
+@pytest.mark.parametrize("file_ending", VALID_FILE_ENDINGS)
+def test_readclass_read_str_valid_files_return_func(file_ending):
+    file_path = f"tmp{file_ending}"
+    reader_class = br.ReaderClass(file_path)
+    assert reader_class.paths == [file_path]
+
+
+@pytest.mark.parametrize("file_ending", VALID_FILE_ENDINGS)
+def test_readclass_read_list_valid_files_return_func(file_ending):
+    file_path = f"tmp{file_ending}"
+    reader_class = br.ReaderClass([file_path])
+    assert reader_class.paths == [file_path]
+
+
+@pytest.mark.parametrize("file_ending", VALID_FILE_ENDINGS)
+def test_readclass_is_valid_true(file_ending):
+    file_path = f"tmp{file_ending}"
+    reader_class = br.ReaderClass(file_path)
+    assert reader_class.is_valid() == [True]
+
+
+@pytest.mark.parametrize("file_ending", INVALID_FILE_ENDINGS)
+def test_readclass_is_valid_false(file_ending):
+    file_path = f"tmp{file_ending}"
+    reader_class = br.ReaderClass(file_path)
+    assert reader_class.is_valid() == [False]
+
+
+@pytest.mark.parametrize("file_ending", VALID_FILE_ENDINGS)
+def test_readclass_is_valid_list_true(file_ending):
+    file_path = f"tmp{file_ending}"
+    reader_class = br.ReaderClass([file_path, file_path])
+    assert reader_class.is_valid() == [True, True]
+
+
+@pytest.mark.parametrize("file_ending", INVALID_FILE_ENDINGS)
+def test_readclass_is_valid_list_false(file_ending):
+    file_path = f"tmp{file_ending}"
+    reader_class = br.ReaderClass([file_path, file_path])
+    assert reader_class.is_valid() == [False, False]
+
+
+@pytest.mark.parametrize("file_ending", VALID_FILE_ENDINGS)
+def test_readclass_is_all_valid_list_true(file_ending):
+    file_path = f"tmp{file_ending}"
+    reader_class = br.ReaderClass([file_path, file_path])
+    assert reader_class.is_all_valid()
+
+
+@pytest.mark.parametrize("file_ending", INVALID_FILE_ENDINGS)
+def test_readclass_is_all_valid_list_false(file_ending):
+    file_path = f"tmp{file_ending}"
+    reader_class = br.ReaderClass([file_path, file_path])
+    assert not reader_class.is_all_valid()
+
+
+@pytest.mark.parametrize("params", zip(VALID_PKL, VALID_PKL_FUNC))
+def test_readclass_load_pkl_ending_returns_correct_functions(params):
+    file_ending, return_func = params
+    file_path = f"tmp{file_ending}"
+    assert br.ReaderClass.load_pkl(file_path) == return_func
+
+
+@pytest.mark.parametrize("params", zip(VALID_PKL, VALID_PKL_FUNC))
+def test_readclass_load_pkl_attrs_returns_correct_functions(tmp_path, params):
+    file_ending, return_func = params
+    file_path = os.path.join(tmp_path, "tmp.pkl")
+    test_data = pd.DataFrame()
+    test_data.attrs["boxread_identifier"] = file_ending
+    test_data.to_pickle(file_path)
+    assert br.ReaderClass.load_pkl(file_path) == return_func
+
+
+@pytest.mark.parametrize("params", zip(VALID_PKL, VALID_PKL_FUNC))
+def test_readclass_load_functions_attrs_returns_correct_functions(
+    tmp_path, params
+):
+    file_ending, return_func = params
+    file_path = os.path.join(tmp_path, "tmp.pkl")
+    test_data = pd.DataFrame()
+    test_data.attrs["boxread_identifier"] = file_ending
+    test_data.to_pickle(file_path)
+    assert br.ReaderClass(file_path).load_functions() == [return_func]
+
+
+@pytest.mark.parametrize(
+    "params", zip(VALID_PKL + VALID_BOX, VALID_PKL_FUNC + VALID_BOX_FUNC)
+)
+def test_readclass_load_functions_ending_returns_correct_functions(params):
+    file_ending, return_func = params
+    file_path = f"tmp{file_ending}"
+    assert br.ReaderClass(file_path).load_functions() == [return_func]
 
 
 # tmp_path is a pytest fixture

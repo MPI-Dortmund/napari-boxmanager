@@ -1,6 +1,34 @@
 # import numpy as np
 
-# from box_manager import napari_get_reader
+import os
+
+import pytest
+
+import box_manager._reader as br
+
+
+# tmp_path is a pytest fixture
+@pytest.mark.parametrize(
+    "file_ending",
+    [".pkl", ".tlpkl", ".tepkl", ".tmpkl", ".cbox", ".box", ".star"],
+)
+def test_read_valid_files_return_func(tmp_path, file_ending):
+    file_path = os.path.join(tmp_path, f"tmp{file_ending}")
+    with open(file_path, "w"):
+        pass
+
+    assert br.napari_get_reader(file_path) == br.reader_function
+
+
+@pytest.mark.parametrize(
+    "file_ending", [".invalid", ".tlpkl2", ".tpkl", ".ok"]
+)
+def test_read_invalid_files_returns_none(tmp_path, file_ending):
+    file_path = os.path.join(tmp_path, f"tmp{file_ending}")
+    with open(file_path, "w"):
+        pass
+
+    assert br.napari_get_reader(file_path) is None
 
 
 # tmp_path is a pytest fixture

@@ -29,7 +29,16 @@ def napari_get_reader(path):
         path = path[0]
 
     # if we know we cannot read the file, we immediately return None.
-    if not path.endswith(".npy"):
+    valid_file_endings = [
+        ".pkl",
+        ".tlpkl",
+        ".tepkl",
+        ".tmpkl",
+        ".cbox",
+        ".box",
+        ".star",
+    ]
+    if not [entry for entry in valid_file_endings if path.endswith(entry)]:
         return None
 
     # otherwise we return the *function* that can read ``path``.

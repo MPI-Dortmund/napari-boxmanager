@@ -6,15 +6,15 @@ import pandas as pd
 import pytest
 
 import box_manager._reader as br
-from box_manager.readers import tepkl, tlpkl, tmpkl
+from box_manager.readers import box, cbox, star, tepkl, tlpkl, tmpkl
 
 HERE = os.path.dirname(__file__)
 
 VALID_PKL = [".tlpkl", ".tepkl", ".tmpkl"]
 VALID_PKL_FUNC = [tlpkl.to_napari, tepkl.to_napari, tmpkl.to_napari]
 VALID_BOX = [".cbox", ".box", ".star"]
-VALID_BOX_FUNC = [br.cbox.to_napari, br.box.to_napari, br.star.to_napari]
-VALID_FILE_ENDINGS = VALID_PKL + VALID_BOX + [".pkl"]
+VALID_BOX_FUNC = [cbox.to_napari, box.to_napari, star.to_napari]
+VALID_FILE_ENDINGS = VALID_PKL + VALID_BOX
 INVALID_FILE_ENDINGS = [".pkl2", ".tlpkl2", ".tepkl2"]
 INVALID_FILE_FUNC = [None, None, None]
 
@@ -31,16 +31,9 @@ def test_read_valid_files_return_func(file_ending):
     assert br.napari_get_reader(file_path) == br.reader_function
 
 
-def test_read_first_valid_is_None():
+def test_read_invalid_is_none():
     assert (
-        br.napari_get_reader(VALID_FILE_ENDINGS + INVALID_FILE_ENDINGS)
-        == br.reader_function
-    )
-
-
-def test_read_first_invalid_is_None():
-    assert (
-        br.napari_get_reader(INVALID_FILE_ENDINGS + VALID_FILE_ENDINGS) is None
+        br.napari_get_reader(VALID_FILE_ENDINGS + INVALID_FILE_ENDINGS) is None
     )
 
 
@@ -64,67 +57,6 @@ def test_readclass_read_list_valid_files_return_func(file_ending):
     assert reader_class.paths == [file_path]
 
 
-@pytest.mark.parametrize("file_path", VALID_FILES)
-def test_readclass_read_file_is_valid_true(file_path):
-    reader_class = br.ReaderClass(file_path)
-    assert reader_class.is_valid() == [True]
-
-
-@pytest.mark.parametrize("file_path", VALID_FILES)
-def test_readclass_read_file_list_is_valid_true(file_path):
-    reader_class = br.ReaderClass([file_path])
-    assert reader_class.is_valid() == [True]
-
-
-@pytest.mark.parametrize("file_ending", VALID_FILE_ENDINGS)
-def test_readclass_is_valid_true(file_ending):
-    file_path = f"tmp{file_ending}"
-    reader_class = br.ReaderClass(file_path)
-    assert reader_class.is_valid() == [True]
-
-
-@pytest.mark.parametrize("file_ending", INVALID_FILE_ENDINGS)
-def test_readclass_is_valid_false(file_ending):
-    file_path = f"tmp{file_ending}"
-    reader_class = br.ReaderClass(file_path)
-    assert reader_class.is_valid() == [False]
-
-
-@pytest.mark.parametrize("file_ending", VALID_FILE_ENDINGS)
-def test_readclass_is_valid_list_true(file_ending):
-    file_path = f"tmp{file_ending}"
-    reader_class = br.ReaderClass([file_path, file_path])
-    assert reader_class.is_valid() == [True, True]
-
-
-@pytest.mark.parametrize("file_ending", INVALID_FILE_ENDINGS)
-def test_readclass_is_valid_list_false(file_ending):
-    file_path = f"tmp{file_ending}"
-    reader_class = br.ReaderClass([file_path, file_path])
-    assert reader_class.is_valid() == [False, False]
-
-
-@pytest.mark.parametrize("file_ending", VALID_FILE_ENDINGS)
-def test_readclass_is_all_valid_list_true(file_ending):
-    file_path = f"tmp{file_ending}"
-    reader_class = br.ReaderClass([file_path, file_path])
-    assert reader_class.is_all_valid()
-
-
-@pytest.mark.parametrize("file_ending", INVALID_FILE_ENDINGS)
-def test_readclass_is_all_valid_list_false(file_ending):
-    file_path = f"tmp{file_ending}"
-    reader_class = br.ReaderClass([file_path, file_path])
-    assert not reader_class.is_all_valid()
-
-
-@pytest.mark.parametrize("params", zip(VALID_PKL, VALID_PKL_FUNC))
-def test_readclass_load_pkl_ending_returns_correct_functions(params):
-    file_ending, return_func = params
-    file_path = f"tmp{file_ending}"
-    assert br.ReaderClass.load_pkl(file_path) == return_func
-
-
 @pytest.mark.parametrize("params", zip(VALID_PKL, VALID_PKL_FUNC))
 def test_readclass_load_pkl_attrs_returns_correct_functions(tmp_path, params):
     file_ending, return_func = params
@@ -132,79 +64,35 @@ def test_readclass_load_pkl_attrs_returns_correct_functions(tmp_path, params):
     test_data = pd.DataFrame()
     test_data.attrs["boxread_identifier"] = file_ending
     test_data.to_pickle(file_path)
-    assert br.ReaderClass.load_pkl(file_path) == return_func
-
-
-@pytest.mark.parametrize("file_ending", INVALID_FILE_ENDINGS)
-def test_readclass_load_pkl_invalid_raises_assert(file_ending):
-    file_path = f"tmp{file_ending}"
-    with pytest.raises(AssertionError):
-        br.ReaderClass.load_pkl(file_path)
+    assert br.ReaderClass(file_path).readers == [return_func]
 
 
 @pytest.mark.parametrize("params", zip(VALID_PKL, VALID_PKL_FUNC))
-def test_readclass_load_functions_attrs_returns_correct_functions(
-    tmp_path, params
-):
+def test_readclass_load_pkl_missing_attrs_raises_KeyError(tmp_path, params):
     file_ending, return_func = params
     file_path = os.path.join(tmp_path, "tmp.pkl")
     test_data = pd.DataFrame()
-    test_data.attrs["boxread_identifier"] = file_ending
     test_data.to_pickle(file_path)
-    assert br.ReaderClass(file_path).load_functions() == [return_func]
+    with pytest.raises(KeyError):
+        br.ReaderClass(file_path)
 
 
-@pytest.mark.parametrize(
-    "params", zip(VALID_PKL + VALID_BOX, VALID_PKL_FUNC + VALID_BOX_FUNC)
-)
-def test_readclass_load_functions_ending_returns_correct_functions(params):
-    file_ending, return_func = params
-    file_path = f"tmp{file_ending}"
-    assert br.ReaderClass(file_path).load_functions() == [return_func]
-
-
-@pytest.mark.parametrize(
-    "params",
-    zip(
-        VALID_PKL + VALID_BOX + INVALID_FILE_ENDINGS,
-        VALID_PKL_FUNC + VALID_BOX_FUNC + INVALID_FILE_FUNC,
-    ),
-)
-def test_readclass_load_mixed_functions_ending_returns_correct_functions(
-    params,
-):
-    file_ending, return_func = params
-    file_path = f"tmp{file_ending}"
-    assert br.ReaderClass(file_path).load_functions() == [return_func]
-
-
-def test_readclass_load_functions_ending_returns_correct_functions_list():
-    files = [
-        f"tmp{entry}" for entry in VALID_PKL + VALID_BOX + INVALID_FILE_ENDINGS
-    ]
-    assert (
-        br.ReaderClass(files).load_functions()
-        == VALID_PKL_FUNC + VALID_BOX_FUNC + INVALID_FILE_FUNC
-    )
-
-
-def test_valid_but_not_specified_raises_assertion():
-    new_valid_ending = ".asfasdfaw34r23sdfasfa34w5w3rsfd"
-    file_path = f"tmp{new_valid_ending}"
-    reader = br.ReaderClass(file_path)
-    reader.valid_file_endings = (new_valid_ending,)
-    with pytest.raises(AssertionError):
-        reader.load_functions()
+def test_readclass_valid_returns_correct_items():
+    files = [f"tmp{entry}" for entry in VALID_PKL]
+    reader = br.ReaderClass(files)
+    assert list(reader.items()) == list(zip(files, VALID_PKL_FUNC))
 
 
 @pytest.mark.parametrize("file_path", INVALID_FILE_ENDINGS)
-def test_reader_function_invalid_string_returns_empty_list(file_path):
-    assert br.reader_function(file_path) == []
+def test_reader_function_invalid_string_returns_raises_KeyError(file_path):
+    with pytest.raises(KeyError):
+        br.reader_function(file_path)
 
 
 @pytest.mark.parametrize("file_path", INVALID_FILE_ENDINGS)
-def test_reader_function_invalid_list_returns_empty_list(file_path):
-    assert br.reader_function([file_path]) == []
+def test_reader_function_invalid_list_returns_raises_KeyError(file_path):
+    with pytest.raises(KeyError):
+        br.reader_function([file_path])
 
 
 @pytest.mark.parametrize("file_path", VALID_FILES)

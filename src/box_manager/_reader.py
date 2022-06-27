@@ -1,76 +1,25 @@
 import os
 import pathlib
-from collections.abc import Callable
 
 import pandas as pd
 
-from .readers import box, cbox, star, tepkl, tlpkl, tmpkl
+from . import readers as bm_readers
 
 
 class ReaderClass:
-    valid_file_endings = (
-        ".pkl",
-        ".tlpkl",
-        ".tepkl",
-        ".tmpkl",
-        ".cbox",
-        ".box",
-        ".star",
-    )
-
     def __init__(self, paths: list[str] | str):
         self.paths: list[str] = paths if isinstance(paths, list) else [paths]
+        self.readers: list[bm_readers.interface.ReaderInterface] = []
 
-    def is_valid(self) -> list[bool]:
-        return [
-            bool(
-                [
-                    ending
-                    for ending in self.valid_file_endings
-                    if path.endswith(ending)
-                ]
-            )
-            for path in self.paths
-        ]
-
-    def is_all_valid(self) -> bool:
-        return all(self.is_valid())
-
-    def load_functions(
-        self,
-    ) -> list[Callable[[pathlib.Path], pd.DataFrame] | None]:
-        data_list = []
-        for is_valid, path in zip(self.is_valid(), self.paths):
-            if not is_valid:
-                list_val = None
-            elif path.endswith("pkl"):
-                list_val = self.load_pkl(path)
-            elif path.endswith(".box"):
-                list_val = box.to_napari
-            elif path.endswith(".cbox"):
-                list_val = cbox.to_napari
-            elif path.endswith(".star"):
-                list_val = star.to_napari
+        for path in self.paths:
+            if path.endswith(".pkl"):
+                load_type = pd.read_pickle(path).attrs["boxread_identifier"]
             else:
-                assert False, path
-            data_list.append(list_val)
-        return data_list
+                load_type = os.path.splitext(path)[-1]
+            self.readers.append(bm_readers.valid_readers[load_type])
 
-    @staticmethod
-    def load_pkl(path: str) -> Callable[[pathlib.Path], pd.DataFrame]:
-        if path.endswith(".pkl"):
-            identifier = pd.read_pickle(path).attrs["boxread_identifier"]
-        else:
-            identifier = os.path.splitext(path)[-1]
-
-        if identifier == ".tlpkl":
-            return tlpkl.to_napari
-        elif identifier == ".tmpkl":
-            return tmpkl.to_napari
-        elif identifier == ".tepkl":
-            return tepkl.to_napari
-        else:
-            assert False, identifier
+    def items(self):
+        yield from zip(self.paths, self.readers)
 
 
 def napari_get_reader(input_path: str | list[str]):
@@ -96,7 +45,9 @@ def napari_get_reader(input_path: str | list[str]):
     else:
         path = input_path
 
-    if not ReaderClass(path).is_all_valid():
+    try:
+        ReaderClass(path)
+    except KeyError:
         # if we know we cannot read the file, we immediately return None.
         return None
 
@@ -129,13 +80,8 @@ def reader_function(input_path: list | str):
 
     reader_class = ReaderClass(input_path)
 
-    layer_type = "points"
-    add_kwargs = {}
     output_data = []
-    for path, func in zip(reader_class.paths, reader_class.load_functions()):
-        if func is None:
-            continue
-
-        output_data.append((func(pathlib.Path(path)), add_kwargs, layer_type))
+    for path, func in reader_class.items():
+        output_data.append(func(pathlib.Path(path)))
 
     return output_data

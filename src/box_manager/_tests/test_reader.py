@@ -19,20 +19,27 @@ INVALID_FILE_FUNC = [None, None, None]
 
 # tmp_path is a pytest fixture
 @pytest.mark.parametrize("file_ending", VALID_FILE_ENDINGS)
-def test_read_valid_files_return_func(tmp_path, file_ending):
-    file_path = os.path.join(tmp_path, f"tmp{file_ending}")
-    with open(file_path, "w"):
-        pass
-
+def test_read_valid_files_return_func(file_ending):
+    file_path = f"tmp{file_ending}"
     assert br.napari_get_reader(file_path) == br.reader_function
 
 
-@pytest.mark.parametrize("file_ending", INVALID_FILE_ENDINGS)
-def test_read_invalid_files_returns_none(tmp_path, file_ending):
-    file_path = os.path.join(tmp_path, f"tmp{file_ending}")
-    with open(file_path, "w"):
-        pass
+def test_read_first_valid_is_None():
+    assert (
+        br.napari_get_reader(VALID_FILE_ENDINGS + INVALID_FILE_ENDINGS)
+        == br.reader_function
+    )
 
+
+def test_read_first_invalid_is_None():
+    assert (
+        br.napari_get_reader(INVALID_FILE_ENDINGS + VALID_FILE_ENDINGS) is None
+    )
+
+
+@pytest.mark.parametrize("file_ending", INVALID_FILE_ENDINGS)
+def test_read_invalid_files_returns_none(file_ending):
+    file_path = f"tmp{file_ending}"
     assert br.napari_get_reader(file_path) is None
 
 
@@ -107,6 +114,13 @@ def test_readclass_load_pkl_attrs_returns_correct_functions(tmp_path, params):
     test_data.attrs["boxread_identifier"] = file_ending
     test_data.to_pickle(file_path)
     assert br.ReaderClass.load_pkl(file_path) == return_func
+
+
+@pytest.mark.parametrize("file_ending", INVALID_FILE_ENDINGS)
+def test_readclass_load_pkl_invalid_raises_assert(file_ending):
+    file_path = f"tmp{file_ending}"
+    with pytest.raises(AssertionError):
+        br.ReaderClass.load_pkl(file_path)
 
 
 @pytest.mark.parametrize("params", zip(VALID_PKL, VALID_PKL_FUNC))

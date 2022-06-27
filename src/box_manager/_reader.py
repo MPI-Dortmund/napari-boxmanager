@@ -1,15 +1,22 @@
 import os
 import pathlib
+import typing
+from collections.abc import Callable
 
 import pandas as pd
 
 from . import readers as bm_readers
 
+if typing.TYPE_CHECKING:
+    import numpy as np
+
 
 class ReaderClass:
     def __init__(self, paths: list[str] | str):
         self.paths: list[str] = paths if isinstance(paths, list) else [paths]
-        self.readers: list[bm_readers.interface.ReaderInterface] = []
+        self.readers: "list[Callable[[pathlib.Path], tuple[np.ndarray, dict[str, typing.Any], str]]]" = (
+            []
+        )
 
         for path in self.paths:
             if path.endswith(".pkl"):
@@ -18,8 +25,10 @@ class ReaderClass:
                 load_type = os.path.splitext(path)[-1]
             self.readers.append(bm_readers.valid_readers[load_type])
 
-    def items(self):
-        yield from zip(self.paths, self.readers)
+    def items(
+        self,
+    ) -> "list[tuple[str, Callable[[pathlib.Path], tuple[np.ndarray, dict[str, typing.Any], str]]]]":
+        return list(zip(self.paths, self.readers))
 
 
 def napari_get_reader(input_path: str | list[str]):

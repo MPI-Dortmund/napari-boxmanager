@@ -14,6 +14,7 @@ VALID_BOX = [".cbox", ".box", ".star"]
 VALID_BOX_FUNC = [br.cbox.read, br.box.read, br.star.read]
 VALID_FILE_ENDINGS = VALID_PKL + VALID_BOX + [".pkl"]
 INVALID_FILE_ENDINGS = [".pkl2", ".tlpkl2", ".tepkl2"]
+INVALID_FILE_FUNC = [None, None, None]
 
 
 # tmp_path is a pytest fixture
@@ -127,6 +128,39 @@ def test_readclass_load_functions_ending_returns_correct_functions(params):
     file_ending, return_func = params
     file_path = f"tmp{file_ending}"
     assert br.ReaderClass(file_path).load_functions() == [return_func]
+
+
+@pytest.mark.parametrize(
+    "params",
+    zip(
+        VALID_PKL + VALID_BOX + INVALID_FILE_ENDINGS,
+        VALID_PKL_FUNC + VALID_BOX_FUNC + INVALID_FILE_FUNC,
+    ),
+)
+def test_readclass_load_mixed_functions_ending_returns_correct_functions(
+    params,
+):
+    file_ending, return_func = params
+    file_path = f"tmp{file_ending}"
+    assert br.ReaderClass(file_path).load_functions() == [return_func]
+
+
+def test_readclass_load_functions_ending_returns_correct_functions_list():
+    files = [
+        f"tmp{entry}" for entry in VALID_PKL + VALID_BOX + INVALID_FILE_ENDINGS
+    ]
+    assert (
+        br.ReaderClass(files).load_functions()
+        == VALID_PKL_FUNC + VALID_BOX_FUNC + INVALID_FILE_FUNC
+    )
+
+
+def test_valid_but_not_specified_raises_assertion():
+    new_valid_ending = ".asfasdfaw34r23sdfasfa34w5w3rsfd"
+    br.ReaderClass.valid_file_endings = (new_valid_ending,)
+    file_path = f"tmp{new_valid_ending}"
+    with pytest.raises(AssertionError):
+        br.ReaderClass(file_path).load_functions()
 
 
 # tmp_path is a pytest fixture

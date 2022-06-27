@@ -1,11 +1,3 @@
-"""
-This module is an example of a barebones numpy reader plugin for napari.
-
-It implements the Reader specification, but your plugin may choose to
-implement multiple readers or even other plugin contributions. see:
-https://napari.org/plugins/guides.html?#readers
-"""
-
 import os
 import pathlib
 from collections.abc import Callable
@@ -47,8 +39,10 @@ class ReaderClass:
 
     def load_functions(self) -> list[pd.DataFrame]:
         data_list = []
-        for path in self.paths:
-            if path.endswith("pkl"):
+        for is_valid, path in zip(self.is_valid(), self.paths):
+            if not is_valid:
+                list_val = None
+            elif path.endswith("pkl"):
                 list_val = self.load_pkl(path)
             elif path.endswith(".box"):
                 list_val = box.read

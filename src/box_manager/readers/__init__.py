@@ -1,9 +1,16 @@
 import glob
 import importlib
 import os
+import typing
 import warnings
+from collections.abc import Callable
 
 from . import interface
+
+if typing.TYPE_CHECKING:
+    import pathlib
+
+    import numpy as np
 
 
 class ReaderMissingToNapariFunction(Warning):
@@ -12,13 +19,18 @@ class ReaderMissingToNapariFunction(Warning):
 
 _ignore_list = ["interface.py", os.path.basename(__file__)]
 
-valid_readers: dict[str, interface.ReaderInterface] = {}
+valid_readers: dict[
+    str,
+    "list[Callable[[pathlib.Path], tuple[np.ndarray, dict[str, typing.Any], str]]]",
+] = {}
 for module in glob.iglob(f"{os.path.dirname(__file__)}/*.py"):
     if os.path.basename(module) in _ignore_list:
         continue
 
-    _name = f".{os.path.basename(os.path.splitext(module)[0])}"
-    _package = importlib.import_module(f"box_manager.readers{_name}")
+    _name: str = f".{os.path.basename(os.path.splitext(module)[0])}"
+    _package: interface.ReaderInterface = importlib.import_module(
+        f"box_manager.readers{_name}"
+    )
 
     _function_name: str = "to_napari"
     try:

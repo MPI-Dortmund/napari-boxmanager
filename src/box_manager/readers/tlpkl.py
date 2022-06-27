@@ -6,6 +6,8 @@ import pandas as pd
 if typing.TYPE_CHECKING:
     import pathlib
 
+    import numpy as np
+
 
 class DimZMissingWarning(Warning):
     pass
@@ -41,3 +43,9 @@ def read(path: "pathlib.Path") -> pd.DataFrame:
     return pandas_data[
         ["x", "y", "z", "metric_best", "size", "box_x", "box_y", "box_z"]
     ]
+
+
+def to_napari(
+    path: "pathlib.Path",
+) -> "tuple[np.ndarray, dict[str, typing.Any], dict[str, typing.Any], str]":
+    return read(path), {}, {}, "points"

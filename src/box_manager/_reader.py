@@ -46,11 +46,11 @@ class ReaderClass:
             elif path.endswith("pkl"):
                 list_val = self.load_pkl(path)
             elif path.endswith(".box"):
-                list_val = box.read
+                list_val = box.to_napari
             elif path.endswith(".cbox"):
-                list_val = cbox.read
+                list_val = cbox.to_napari
             elif path.endswith(".star"):
-                list_val = star.read
+                list_val = star.to_napari
             else:
                 assert False, path
             data_list.append(list_val)
@@ -64,11 +64,11 @@ class ReaderClass:
             identifier = os.path.splitext(path)[-1]
 
         if identifier == ".tlpkl":
-            return tlpkl.read
+            return tlpkl.to_napari
         elif identifier == ".tmpkl":
-            return tmpkl.read
+            return tmpkl.to_napari
         elif identifier == ".tepkl":
-            return tepkl.read
+            return tepkl.to_napari
         else:
             assert False, identifier
 
@@ -132,10 +132,6 @@ def reader_function(input_path: list | str):
     layer_type = "points"
     add_kwargs = {}
     output_data = []
-    print("")
-    print(reader_class.paths)
-    print(reader_class.is_valid())
-    print(reader_class.load_functions())
     for path, func in zip(reader_class.paths, reader_class.load_functions()):
         if func is None:
             continue

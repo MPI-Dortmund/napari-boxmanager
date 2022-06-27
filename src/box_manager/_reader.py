@@ -2,7 +2,6 @@ import os
 import pathlib
 from collections.abc import Callable
 
-import numpy as np
 import pandas as pd
 
 from .readers import box, cbox, star, tepkl, tlpkl, tmpkl
@@ -37,7 +36,9 @@ class ReaderClass:
     def is_all_valid(self) -> bool:
         return all(self.is_valid())
 
-    def load_functions(self) -> list[pd.DataFrame]:
+    def load_functions(
+        self,
+    ) -> list[Callable[[pathlib.Path], pd.DataFrame] | None]:
         data_list = []
         for is_valid, path in zip(self.is_valid(), self.paths):
             if not is_valid:
@@ -72,7 +73,7 @@ class ReaderClass:
             assert False, identifier
 
 
-def napari_get_reader(path):
+def napari_get_reader(input_path: str | list[str]):
     """A basic implementation of a Reader contribution.
 
     Parameters
@@ -86,11 +87,14 @@ def napari_get_reader(path):
         If the path is a recognized format, return a function that accepts the
         same path or list of paths, and returns a list of layer data tuples.
     """
-    if isinstance(path, list):
+    path: str
+    if isinstance(input_path, list):
         # reader plugins may be handed single path, or a list of paths.
         # if it is a list, it is assumed to be an image stack...
         # so we are only going to look at the first file.
-        path = path[0]
+        path = input_path[0]
+    else:
+        path = input_path
 
     if not ReaderClass(path).is_all_valid():
         # if we know we cannot read the file, we immediately return None.
@@ -100,7 +104,7 @@ def napari_get_reader(path):
     return reader_function
 
 
-def reader_function(path: list | str):
+def reader_function(input_path: list | str):
     """Take a path or list of paths and return a list of LayerData tuples.
 
     Readers are expected to return data as a list of tuples, where each tuple
@@ -122,16 +126,20 @@ def reader_function(path: list | str):
         layer. Both "meta", and "layer_type" are optional. napari will
         default to layer_type=="image" if not provided
     """
-    # handle both a string and a list of strings
-    paths = [path] if isinstance(path, str) else path
 
-    # load all files into array
-    arrays = [np.load(_path) for _path in paths]
-    # stack arrays into single array
-    data = np.squeeze(np.stack(arrays))
+    reader_class = ReaderClass(input_path)
 
-    # optional kwargs for the corresponding viewer.add_* method
+    layer_type = "points"
     add_kwargs = {}
+    output_data = []
+    print("")
+    print(reader_class.paths)
+    print(reader_class.is_valid())
+    print(reader_class.load_functions())
+    for path, func in zip(reader_class.paths, reader_class.load_functions()):
+        if func is None:
+            continue
 
-    layer_type = "image"  # optional, default is "image"
-    return [(data, add_kwargs, layer_type)]
+        output_data.append((func(pathlib.Path(path)), add_kwargs, layer_type))
+
+    return output_data

@@ -8,6 +8,8 @@ import pytest
 import box_manager._reader as br
 from box_manager.readers import tepkl, tlpkl, tmpkl
 
+HERE = os.path.dirname(__file__)
+
 VALID_PKL = [".tlpkl", ".tepkl", ".tmpkl"]
 VALID_PKL_FUNC = [tlpkl.read, tepkl.read, tmpkl.read]
 VALID_BOX = [".cbox", ".box", ".star"]
@@ -15,6 +17,11 @@ VALID_BOX_FUNC = [br.cbox.read, br.box.read, br.star.read]
 VALID_FILE_ENDINGS = VALID_PKL + VALID_BOX + [".pkl"]
 INVALID_FILE_ENDINGS = [".pkl2", ".tlpkl2", ".tepkl2"]
 INVALID_FILE_FUNC = [None, None, None]
+
+VALID_FILES = [
+    f"{HERE}/test_data/2d_left.box",
+    f"{HERE}/test_data/valid.tlpkl",
+]
 
 
 # tmp_path is a pytest fixture
@@ -55,6 +62,18 @@ def test_readclass_read_list_valid_files_return_func(file_ending):
     file_path = f"tmp{file_ending}"
     reader_class = br.ReaderClass([file_path])
     assert reader_class.paths == [file_path]
+
+
+@pytest.mark.parametrize("file_path", VALID_FILES)
+def test_readclass_read_file_is_valid_true(file_path):
+    reader_class = br.ReaderClass(file_path)
+    assert reader_class.is_valid() == [True]
+
+
+@pytest.mark.parametrize("file_path", VALID_FILES)
+def test_readclass_read_file_list_is_valid_true(file_path):
+    reader_class = br.ReaderClass([file_path])
+    assert reader_class.is_valid() == [True]
 
 
 @pytest.mark.parametrize("file_ending", VALID_FILE_ENDINGS)
@@ -171,10 +190,31 @@ def test_readclass_load_functions_ending_returns_correct_functions_list():
 
 def test_valid_but_not_specified_raises_assertion():
     new_valid_ending = ".asfasdfaw34r23sdfasfa34w5w3rsfd"
-    br.ReaderClass.valid_file_endings = (new_valid_ending,)
     file_path = f"tmp{new_valid_ending}"
+    reader = br.ReaderClass(file_path)
+    reader.valid_file_endings = (new_valid_ending,)
     with pytest.raises(AssertionError):
-        br.ReaderClass(file_path).load_functions()
+        reader.load_functions()
+
+
+@pytest.mark.parametrize("file_path", INVALID_FILE_ENDINGS)
+def test_reader_function_invalid_string_returns_empty_list(file_path):
+    assert br.reader_function(file_path) == []
+
+
+@pytest.mark.parametrize("file_path", INVALID_FILE_ENDINGS)
+def test_reader_function_invalid_list_returns_empty_list(file_path):
+    assert br.reader_function([file_path]) == []
+
+
+@pytest.mark.parametrize("file_path", VALID_FILES)
+def test_reader_function_valid_list_returns_empty_list(file_path):
+    assert len(br.reader_function([file_path])) == 1
+
+
+@pytest.mark.parametrize("file_path", VALID_FILES)
+def test_reader_function_valid_string_returns_empty_list(file_path):
+    assert len(br.reader_function(file_path)) == 1
 
 
 # tmp_path is a pytest fixture

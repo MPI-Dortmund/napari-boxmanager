@@ -32,7 +32,7 @@ TEST_DATA = pathlib.Path(os.path.dirname(__file__), "test_data")
             ],
         ],
         [
-            0,
+            1,
             [
                 26,
                 2,
@@ -84,7 +84,7 @@ def test_read_tlpkl_is_valid_z():
             10,
         ]
     ]
-    numpy.testing.assert_array_equal(test_data.iloc[:, 1], z_values)
+    numpy.testing.assert_array_equal(test_data.iloc[:, 0], z_values)
 
 
 def test_read_tlp_is_valid_size():
@@ -162,10 +162,10 @@ def test_read_tlpkl_missing_dim_z_attr_yields_normal_z():
         28,
         10,
     ]
-    numpy.testing.assert_array_equal(test_data.iloc[:, 1], z_values)
+    numpy.testing.assert_array_equal(test_data.iloc[:, 0], z_values)
 
 
-@pytest.mark.parametrize("params", [[5, 40], [6, 50], [7, 37]])
+@pytest.mark.parametrize("params", [[6, 40], [5, 50], [7, 37]])
 def test_read_tlp_is_correct_boxsize(params):
     idx, box_size = params
     tlpkl_file = pathlib.Path(TEST_DATA, "valid.tlpkl")

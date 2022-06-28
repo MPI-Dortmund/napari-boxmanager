@@ -31,11 +31,11 @@ def read(path: "pathlib.Path") -> pd.DataFrame:
     pandas_data.rename(
         columns={
             "X": "z",
-            "Y": "x",
-            "Z": "y",
+            "Y": "y",
+            "Z": "x",
             "width": "box_z",
-            "height": "box_x",
-            "depth": "box_y",
+            "height": "box_y",
+            "depth": "box_x",
         },
         inplace=True,
     )

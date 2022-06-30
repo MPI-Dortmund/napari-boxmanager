@@ -8,7 +8,7 @@ contributions:
   readers:
     - command: napari-boxmanager.get_reader
       accepts_directories: false
-      filename_patterns: ['*.pkl', '*.tlpkl', '*.tepkl', '*.tmpkl', '*.cbox', '*.box', '*.star']
+      filename_patterns: ['*']
   writers: []
   sample_data: []
   widgets: []

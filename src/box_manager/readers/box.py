@@ -35,5 +35,5 @@ def read(path: "pathlib.Path") -> pd.DataFrame:
 
 def to_napari(
     path: "pathlib.Path",
-) -> "tuple[np.ndarray, dict[str, typing.Any], dict[str, typing.Any], str]":
-    return read(path), {}, {}, "points"
+) -> "tuple[np.ndarray, dict[str, typing.Any], str]":
+    return [(read(path), {}, "points")]

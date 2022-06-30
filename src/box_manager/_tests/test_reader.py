@@ -22,6 +22,7 @@ VALID_FILES = [
     f"{HERE}/test_data/2d_left.box",
     f"{HERE}/test_data/valid.tlpkl",
 ]
+VALID_FILES_LAYERS = [1, 2]
 
 
 # tmp_path is a pytest fixture
@@ -95,14 +96,16 @@ def test_reader_function_invalid_list_returns_raises_KeyError(file_path):
         br.reader_function([file_path])
 
 
-@pytest.mark.parametrize("file_path", VALID_FILES)
-def test_reader_function_valid_list_returns_empty_list(file_path):
-    assert len(br.reader_function([file_path])) == 1
+@pytest.mark.parametrize("params", list(zip(VALID_FILES, VALID_FILES_LAYERS)))
+def test_reader_function_valid_list_returns_empty_list(params):
+    file_path, expected = params
+    assert len(br.reader_function([file_path])) == expected
 
 
-@pytest.mark.parametrize("file_path", VALID_FILES)
-def test_reader_function_valid_string_returns_empty_list(file_path):
-    assert len(br.reader_function(file_path)) == 1
+@pytest.mark.parametrize("params", list(zip(VALID_FILES, VALID_FILES_LAYERS)))
+def test_reader_function_valid_string_returns_empty_list(params):
+    file_path, expected = params
+    assert len(br.reader_function(file_path)) == expected
 
 
 # tmp_path is a pytest fixture

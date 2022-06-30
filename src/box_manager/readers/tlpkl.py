@@ -75,7 +75,7 @@ def to_napari(
     :return: Data to create a point, i.e., coords, point_kwargs, and type
     :rtype: list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]
     """
-    if isinstance(input_data, os.PathLike):
+    if isinstance(input_data, (os.PathLike, str)):
         input_data = read(input_data)
     data, coords_idx, metadata_idx = _prepare_napari(input_data)
 

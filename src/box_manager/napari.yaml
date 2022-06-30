@@ -1,7 +1,10 @@
 name: napari-boxmanager
 display_name: Box Manager
 contributions:
-  commands: []
+  commands:
+    - id: napari-boxmanager.get_reader
+      python_name: box_manager._reader:napari_get_reader
+      title: Open data with Box Manager
   readers:
     - command: napari-boxmanager.get_reader
       accepts_directories: false

@@ -8,9 +8,7 @@ from collections.abc import Callable
 from . import interface
 
 if typing.TYPE_CHECKING:
-    import pathlib
-
-    import numpy as np
+    import numpy.typing as npt
 
 
 class ReaderMissingToNapariFunction(Warning):
@@ -21,7 +19,7 @@ _ignore_list = ["interface.py", os.path.basename(__file__)]
 
 valid_readers: dict[
     str,
-    "list[Callable[[pathlib.Path], tuple[np.ndarray, dict[str, typing.Any], str]]]",
+    "list[Callable[[os.PathLike], tuple[npt.ArrayLike, dict[str, typing.Any], str]]]",
 ] = {}
 for module in glob.iglob(f"{os.path.dirname(__file__)}/*.py"):
     if os.path.basename(module) in _ignore_list:

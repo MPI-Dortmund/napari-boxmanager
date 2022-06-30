@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 
 if typing.TYPE_CHECKING:
-
     import numpy.typing as npt
 
 
@@ -48,9 +47,7 @@ def _prepare_napari(
     output_data: pd.DataFrame | None = input_data.rename(
         columns=rename_columns
     )
-
-    if output_data is None:
-        assert False, "Inplace option cannot be enabled"
+    assert output_data is not None, "Inplace option to rename cannot be given"
 
     if "dim_z" not in output_data.attrs:
         warnings.warn(

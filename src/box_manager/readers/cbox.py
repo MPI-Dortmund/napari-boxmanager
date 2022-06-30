@@ -12,7 +12,7 @@ def read(path: "pathlib.Path") -> pd.DataFrame:
     raise NotImplementedError
 
 
-def to_napari(
+def prepare_napari(
     path: "pathlib.Path",
 ) -> "tuple[np.ndarray, dict[str, typing.Any], dict[str, typing.Any], str]":
     raise NotImplementedError

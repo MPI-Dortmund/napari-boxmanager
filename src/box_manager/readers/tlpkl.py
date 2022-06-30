@@ -1,12 +1,10 @@
 import os
 import typing
 
-import matplotlib.cm as mcm
-import numpy as np
 import pandas as pd
 
 if typing.TYPE_CHECKING:
-    import numpy.typing as npt
+    pass
 
 
 class DimZMissingWarning(Warning):
@@ -33,80 +31,25 @@ def read(path: "os.PathLike") -> pd.DataFrame:
     return pandas_data
 
 
-def _prepare_napari(
-    input_data: pd.DataFrame,
+def prepare_napari(
+    input_df: pd.DataFrame,
 ) -> tuple[pd.DataFrame, list[str], list[str]]:
-    rename_columns = {
-        "X": "z",
-        "Y": "y",
-        "Z": "x",
-        "width": "boxsize",
-        "metric_best": "metric",
-    }
-    output_data: pd.DataFrame | None = input_data.rename(
-        columns=rename_columns
-    )
-    assert output_data is not None, "Inplace option to rename cannot be given"
-
-    output_data["boxsize"] = (
-        output_data[["height", "boxsize", "depth"]].mean().mean()
+    coords_idx = ["x", "y", "z"]
+    metric_idx = ["metric", "size", "boxsize"]
+    util_idx = ["sort_idx", "grp_idx"]
+    output_data: pd.DataFrame = pd.DataFrame(
+        columns=coords_idx + metric_idx + util_idx
     )
 
-    return output_data, ["x", "y", "z"], ["metric", "size", "boxsize"]
+    output_data["x"] = input_df["Z"]
+    output_data["y"] = input_df["Y"]
+    output_data["z"] = input_df["X"]
+    output_data["metric"] = input_df["metric_best"]
+    output_data["size"] = input_df["size"]
+    output_data["boxsize"] = input_df[["height", "width", "depth"]].mean(
+        axis=1
+    )
+    output_data["sort_idx"] = input_df["predicted_class"]
+    output_data["grp_idx"] = input_df["predicted_class_name"]
 
-
-def to_napari(
-    input_data: "os.PathLike | pd.DataFrame",
-) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
-    """
-    Read a tlpkl conform file into memory to use within napari.
-
-    :param path: Path of the file to read information from.
-    :type path: pathlib.Path or str
-
-    :return: Data to create a point, i.e., coords, point_kwargs, and type
-    :rtype: list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]
-    """
-    if isinstance(input_data, (os.PathLike, str)):
-        input_data = read(input_data)
-    data, coords_idx, metadata_idx = _prepare_napari(input_data)
-
-    group_name = "predicted_class_name"
-    colors = mcm.get_cmap("gist_rainbow")
-    n_classes = np.unique(input_data[group_name]).size
-
-    output_list: "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]" = []
-    for idx, (cluster_name, cluster_df) in enumerate(
-        data.sort_values(by=["predicted_class", "metric"]).groupby(
-            group_name, sort=False
-        )
-    ):
-        color = colors(idx / (n_classes - 1))
-        metadata = {
-            f"{entry}_{func.__name__}": func(cluster_df[entry])
-            for func in [min, max]
-            for entry in metadata_idx
-        }
-        metadata["id"] = cluster_df["predicted_class"].iloc[0]
-
-        # to_numpy currently needed. Should be fixed in 0.4.16rc8
-        features = {
-            entry: cluster_df[entry].to_numpy() for entry in metadata_idx
-        }
-
-        point_kwargs = {
-            "edge_color": [color],
-            "face_color": "transparent",
-            "symbol": "disc",
-            "edge_width": 2,
-            "edge_width_is_relative": False,
-            "size": cluster_df["boxsize"],
-            "out_of_slice_display": True,
-            "opacity": 0.5,
-            "name": cluster_name,
-            "metadata": metadata,
-            "features": features,
-        }
-        output_list.append((cluster_df[coords_idx], point_kwargs, "points"))
-
-    return output_list
+    return output_data, coords_idx, metric_idx

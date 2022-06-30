@@ -1,14 +1,16 @@
 import glob
 import importlib
+import inspect
 import os
 import typing
-import warnings
-from collections.abc import Callable
 
 from . import interface
+from .interface import to_napari
+
+__all__ = ["to_napari"]
 
 if typing.TYPE_CHECKING:
-    import numpy.typing as npt
+    pass
 
 
 class ReaderMissingToNapariFunction(Warning):
@@ -19,7 +21,7 @@ _ignore_list = ["interface.py", os.path.basename(__file__)]
 
 valid_readers: dict[
     str,
-    "list[Callable[[os.PathLike], tuple[npt.ArrayLike, dict[str, typing.Any], str]]]",
+    "list[interface.ReaderInterface]",
 ] = {}
 for module in glob.iglob(f"{os.path.dirname(__file__)}/*.py"):
     if os.path.basename(module) in _ignore_list:
@@ -30,12 +32,13 @@ for module in glob.iglob(f"{os.path.dirname(__file__)}/*.py"):
         f"box_manager.readers{_name}"
     )
 
-    _function_name: str = "to_napari"
-    try:
-        valid_readers[_name] = getattr(_package, _function_name)
-    except AttributeError:
-        warnings.warn(
-            ReaderMissingToNapariFunction(
-                f"Reader {_name} does not have a function {_function_name}."
+    if all(
+        [
+            hasattr(_package, name)
+            for name, _ in inspect.getmembers(
+                interface.ReaderInterface, predicate=inspect.isfunction
             )
-        )
+            if not name.startswith("__")
+        ]
+    ):
+        valid_readers[_name] = _package

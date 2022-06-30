@@ -9,15 +9,15 @@ from . import readers as bm_readers
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
+    from .readers import interface
+
 
 class ReaderClass:
     def __init__(self, paths: list[os.PathLike] | os.PathLike):
         self.paths: list[os.PathLike] = (
             paths if isinstance(paths, list) else [paths]
         )
-        self.readers: "list[Callable[[os.PathLike], tuple[npt.ArrayLike, dict[str, typing.Any], str]]]" = (
-            []
-        )
+        self.readers: "list[interface.ReaderInterface]" = []
 
         load_type: str
         for path in self.paths:
@@ -89,7 +89,7 @@ def reader_function(path: list[os.PathLike] | os.PathLike):
     reader_class = ReaderClass(path)
 
     output_data = []
-    for cur_path, func in reader_class.items():
-        output_data.extend(func(cur_path))
+    for cur_path, module in reader_class.items():
+        output_data.extend(bm_readers.to_napari(cur_path, module))
 
     return output_data

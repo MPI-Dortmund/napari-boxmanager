@@ -11,9 +11,9 @@ from box_manager.readers import box, cbox, star, tepkl, tlpkl, tmpkl
 HERE = os.path.dirname(__file__)
 
 VALID_PKL = [".tlpkl", ".tepkl", ".tmpkl"]
-VALID_PKL_FUNC = [tlpkl.to_napari, tepkl.to_napari, tmpkl.to_napari]
+VALID_PKL_FUNC = [tlpkl, tepkl, tmpkl]
 VALID_BOX = [".cbox", ".box", ".star"]
-VALID_BOX_FUNC = [cbox.to_napari, box.to_napari, star.to_napari]
+VALID_BOX_FUNC = [cbox, box, star]
 VALID_FILE_ENDINGS = VALID_PKL + VALID_BOX
 INVALID_FILE_ENDINGS = [".pkl2", ".tlpkl2", ".tepkl2"]
 INVALID_FILE_FUNC = [None, None, None]

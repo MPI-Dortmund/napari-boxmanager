@@ -3,7 +3,6 @@ import pathlib
 
 import numpy
 import pandas
-import pytest
 
 import box_manager.readers.tlpkl as nrt
 
@@ -59,7 +58,7 @@ def test_correct_read():
     pandas.testing.assert_frame_equal(test_data[expected.columns], expected)
 
 
-def test_correct_prepare_napari_dimz():
+def test_correct_prepare_napari():
     x = [86, 88, 6]
     y = [26, 2, 94]
     z = [98, 44, 92]
@@ -87,50 +86,6 @@ def test_correct_prepare_napari_dimz():
         {
             "z": x,
             "y": y,
-            "x": [100 - entry for entry in z],
-            "size": size,
-            "metric": metric_best,
-            "boxsize": numpy.mean(numpy.array([width, height, depth])),
-        }
-    )
-    test_df, test_coords, test_metadata = nrt._prepare_napari(input_df)
-    assert test_coords == ["x", "y", "z"]
-    assert test_metadata == ["metric", "size", "boxsize"]
-    pandas.testing.assert_frame_equal(
-        test_df[expected.columns.values], expected
-    )
-
-
-@pytest.mark.filterwarnings(
-    "ignore::box_manager.readers.tlpkl.DimZMissingWarning"
-)
-def test_correct_prepare_napari_no_dimz():
-    x = [86, 88, 6]
-    y = [26, 2, 94]
-    z = [98, 44, 92]
-    size = [18, 40, 90]
-    metric_best = numpy.array(
-        [0.639648, 0.945801, 0.947754], dtype=numpy.float32
-    )
-    width = [37] * len(x)
-    height = [40] * len(x)
-    depth = [50] * len(x)
-    input_df = pandas.DataFrame(
-        {
-            "Z": z,
-            "Y": y,
-            "X": x,
-            "size": size,
-            "metric_best": metric_best,
-            "width": width,
-            "height": height,
-            "depth": depth,
-        }
-    )
-    expected = pandas.DataFrame(
-        {
-            "z": x,
-            "y": y,
             "x": z,
             "size": size,
             "metric": metric_best,
@@ -145,33 +100,6 @@ def test_correct_prepare_napari_no_dimz():
     )
 
 
-def test_read_tlpkl_missing_dim_z_leads_to_warning():
-    x = [86, 88, 6]
-    y = [26, 2, 94]
-    z = [98, 44, 92]
-    size = [18, 40, 90]
-    metric_best = numpy.array(
-        [0.639648, 0.945801, 0.947754], dtype=numpy.float32
-    )
-    width = [37] * len(x)
-    height = [40] * len(x)
-    depth = [50] * len(x)
-    input_df = pandas.DataFrame(
-        {
-            "Z": z,
-            "Y": y,
-            "X": x,
-            "size": size,
-            "metric_best": metric_best,
-            "width": width,
-            "height": height,
-            "depth": depth,
-        }
-    )
-    with pytest.warns(nrt.DimZMissingWarning):
-        nrt._prepare_napari(input_df)
-
-
 def test_to_napari_file_correct_returns():
     tlpkl_file = pathlib.Path(TEST_DATA, "valid.tlpkl")
 
@@ -183,7 +111,7 @@ def test_to_napari_file_correct_returns():
     z = [98, 44, 92, 50, 48, 72, 64, 44, 92, 58, 48, 18, 28, 10]
     points = pandas.DataFrame(
         {
-            "x": [100 - entry for entry in z],
+            "x": z,
             "y": y,
             "z": x,
         }

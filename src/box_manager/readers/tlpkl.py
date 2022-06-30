@@ -1,6 +1,5 @@
 import os
 import typing
-import warnings
 
 import matplotlib.cm as mcm
 import numpy as np
@@ -49,13 +48,6 @@ def _prepare_napari(
     )
     assert output_data is not None, "Inplace option to rename cannot be given"
 
-    if "dim_z" not in output_data.attrs:
-        warnings.warn(
-            "dim_z attribute missing in pkl file! Please invert your x dimension values manually!",  # noqa: E501
-            DimZMissingWarning,
-        )
-    else:
-        output_data["x"] = output_data.attrs["dim_z"] - output_data["x"]
     output_data["boxsize"] = (
         output_data[["height", "boxsize", "depth"]].mean().mean()
     )

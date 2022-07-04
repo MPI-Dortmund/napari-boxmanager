@@ -1,7 +1,6 @@
 import os
 import pathlib
 
-import numpy
 import pandas
 import pytest
 
@@ -66,8 +65,12 @@ def test_read_box_file_corrupt_string_expect_error():
         brb.read(box_file)
 
 
-@pytest.mark.parametrize("box_size", [[0, 0, 0], [30, 35, 40]])
-def test_prepare_napari_box_file_center_correct_coord_values(box_size):
+@pytest.mark.parametrize(
+    "params", [[[10, 10, 10], [0, 0, 0]], [[30, 35, 40]] * 2]
+)
+def test_prepare_napari_box_file_center_correct_coord_values(params):
+    expected_size, box_size = params
+    print
     input_df = pandas.DataFrame(
         {
             "x": [
@@ -89,7 +92,7 @@ def test_prepare_napari_box_file_center_correct_coord_values(box_size):
         {
             "x": [40, 62, 51],
             "y": [24, 36, 78],
-            "boxsize": numpy.minimum(box_size, 10),
+            "boxsize": expected_size,
             "sort_idx": "test",
             "grp_idx": "test",
         }

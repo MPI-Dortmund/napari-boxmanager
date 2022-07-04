@@ -44,7 +44,7 @@ def prepare_napari(
 
     output_data["x"] = input_df["y"] + input_df["box_y"] // 2
     output_data["y"] = input_df["x"] + input_df["box_x"] // 2
-    output_data["boxsize"] = np.minimum(
+    output_data["boxsize"] = np.maximum(
         input_df[["box_x", "box_y"]].mean(axis=1), 10
     ).astype(int)
     output_data["sort_idx"] = input_df["filename"]

@@ -21,7 +21,7 @@ def read(path: "os.PathLike") -> pd.DataFrame:
         dtype=float,
         names=["x", "y", "box_x", "box_y"],
         usecols=range(4),
-    )
+    )  # type: ignore
     try:
         box_data = box_data.astype(int)
     except pd.errors.IntCastingNaNError:

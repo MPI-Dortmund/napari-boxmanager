@@ -9,28 +9,23 @@ from . import readers as bm_readers
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
-    from .readers import interface
+
+def check_reader(path: os.PathLike) -> bool:
+    if path.endswith(".pkl"):  # type: ignore
+        load_type = pd.read_pickle(path).attrs["boxread_identifier"]
+    else:
+        load_type = os.path.splitext(path)[-1][1:]
+    return bm_readers.check_reader(load_type)
 
 
-class ReaderClass:
-    def __init__(self, paths: list[os.PathLike] | os.PathLike):
-        self.paths: list[os.PathLike] = (
-            paths if isinstance(paths, list) else [paths]
-        )
-        self.readers: "list[interface.ReaderInterface]" = []
-
-        load_type: str
-        for path in self.paths:
-            if path.endswith(".pkl"):
-                load_type = pd.read_pickle(path).attrs["boxread_identifier"]
-            else:
-                load_type = os.path.splitext(path)[-1]
-            self.readers.append(bm_readers.valid_readers[load_type])
-
-    def items(
-        self,
-    ) -> "list[tuple[os.PathLike, Callable[[os.PathLike], tuple[npt.ArrayLike, dict[str, typing.Any], str]]]]":
-        return list(zip(self.paths, self.readers))
+def get_reader(
+    path: os.PathLike,
+) -> "Callable[[list[os.PathLike] | pd.DataFrame], tuple[tuple[npt.ArrayLike, dict[str, typing.Any], str]]]":
+    if path.endswith(".pkl"):  # type: ignore
+        load_type = pd.read_pickle(path).attrs["boxread_identifier"]
+    else:
+        load_type = os.path.splitext(path)[-1][1:]
+    return bm_readers.get_reader(load_type)
 
 
 def napari_get_reader(path: os.PathLike | list[os.PathLike]):
@@ -53,14 +48,7 @@ def napari_get_reader(path: os.PathLike | list[os.PathLike]):
         # so we are only going to look at the first file.
         path = path[0]
 
-    try:
-        ReaderClass(path)
-    except KeyError:
-        # if we know we cannot read the file, we immediately return None.
-        return None
-
-    # otherwise we return the *function* that can read ``path``.
-    return reader_function
+    return reader_function if check_reader(path) else None
 
 
 def reader_function(path: list[os.PathLike] | os.PathLike):
@@ -86,10 +74,7 @@ def reader_function(path: list[os.PathLike] | os.PathLike):
         default to layer_type=="image" if not provided
     """
 
-    reader_class = ReaderClass(path)
-
-    output_data = []
-    for cur_path, module in reader_class.items():
-        output_data.extend(bm_readers.to_napari(cur_path, module))
-
-    return output_data
+    reader_func: "Callable[[list[os.PathLike] | pd.DataFrame], tuple[tuple[npt.ArrayLike, dict[str, typing.Any], str]]]" = get_reader(
+        path[0] if isinstance(path, list) else path
+    )
+    return reader_func(path if isinstance(path, list) else [path])

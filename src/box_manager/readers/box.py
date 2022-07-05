@@ -34,7 +34,7 @@ def read(path: "os.PathLike") -> pd.DataFrame:
 
 def prepare_napari(
     input_df: pd.DataFrame,
-) -> tuple[pd.DataFrame, list[str], list[str]]:
+) -> tuple[pd.DataFrame, list[str], list[str], dict[str, typing.Any]]:
     coords_idx = ["x", "y"]
     metric_idx = ["boxsize"]
     util_idx = ["sort_idx", "grp_idx"]
@@ -50,4 +50,4 @@ def prepare_napari(
     output_data["sort_idx"] = input_df["filename"]
     output_data["grp_idx"] = input_df["filename"]
 
-    return output_data, coords_idx, metric_idx
+    return output_data, coords_idx, metric_idx, {"out_of_slice_display": False}

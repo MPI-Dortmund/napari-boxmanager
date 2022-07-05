@@ -97,7 +97,8 @@ def test_prepare_napari_box_file_center_correct_coord_values(params):
             "grp_idx": "test",
         }
     )
-    data, coords_idx, metrics_idx = brb.prepare_napari(input_df)
+    data, coords_idx, metrics_idx, kwargs = brb.prepare_napari(input_df)
     pandas.testing.assert_frame_equal(data, expected_df)
     assert coords_idx == ["x", "y"]
     assert metrics_idx == ["boxsize"]
+    assert kwargs == {"out_of_slice_display": False}

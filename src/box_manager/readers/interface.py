@@ -15,7 +15,7 @@ class ReaderInterface(typing.Protocol):
 
     def prepare_napari(
         self,
-    ) -> "tuple[np.ndarray, dict[str, typing.Any], str]":
+    ) -> "tuple[np.ndarray, list[str], list[str], dict[str, typing.Any]]":
         ...
 
 
@@ -34,7 +34,9 @@ def to_napari(
     """
     if isinstance(input_data, (os.PathLike, str)):
         input_data = reader.read(input_data)
-    data, coords_idx, metadata_idx = reader.prepare_napari(input_data)
+    data, coords_idx, metadata_idx, extra_kwargs = reader.prepare_napari(
+        input_data
+    )
 
     colors = mcm.get_cmap("gist_rainbow")
     n_classes = np.unique(data["grp_idx"]).size
@@ -57,7 +59,7 @@ def to_napari(
             entry: cluster_df[entry].to_numpy() for entry in metadata_idx
         }
 
-        point_kwargs = {
+        kwargs = {
             "edge_color": [color],
             "face_color": "transparent",
             "symbol": "disc",
@@ -70,6 +72,7 @@ def to_napari(
             "metadata": metadata,
             "features": features,
         }
-        output_list.append((cluster_df[coords_idx], point_kwargs, "points"))
+        kwargs.update(extra_kwargs)
+        output_list.append((cluster_df[coords_idx], kwargs, "points"))
 
     return output_list

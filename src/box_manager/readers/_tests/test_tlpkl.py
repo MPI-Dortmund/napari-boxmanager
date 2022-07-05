@@ -95,9 +95,10 @@ def test_correct_prepare_napari():
             "sort_idx": [0] * 3,
         }
     )
-    test_df, test_coords, test_metadata = nrt.prepare_napari(input_df)
+    test_df, test_coords, test_metadata, kwargs = nrt.prepare_napari(input_df)
     assert test_coords == ["x", "y", "z"]
     assert test_metadata == ["metric", "size", "boxsize"]
     pandas.testing.assert_frame_equal(
         test_df[expected.columns.values], expected
     )
+    assert kwargs == {}

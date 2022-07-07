@@ -1,5 +1,7 @@
+import glob
 import os
 import typing
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -44,12 +46,17 @@ def to_napari(
     features: dict[str, typing.Any]
 
     if not isinstance(path, pd.DataFrame):
+        if not isinstance(path, list):
+            path = glob.glob(path)
+
         if isinstance(path, list) and len(path) > 1:
+            idx_func: Callable[[], list[str]] = _get_3d_coords_idx
             name = "boxfiles"
         elif isinstance(path, list):
+            idx_func: Callable[[], list[str]] = _get_2d_coords_idx
             name = path[0]
         else:
-            name = path
+            assert False, path
         input_df = _prepare_df(path if isinstance(path, list) else [path])
     else:
         input_df = path
@@ -77,11 +84,15 @@ def to_napari(
         "features": features,
     }
 
-    return [(input_df[_get_coords_idx()], kwargs, "points")]
+    return [(input_df[idx_func()], kwargs, "points")]
 
 
-def _get_coords_idx():
+def _get_3d_coords_idx():
     return ["x", "y", "z"]
+
+
+def _get_2d_coords_idx():
+    return ["y", "z"]
 
 
 def _get_meta_idx():
@@ -92,15 +103,15 @@ def _prepare_napari(
     input_df: pd.DataFrame,
     z_value: int = 1,
 ) -> pd.DataFrame:
-    coords_idx = _get_coords_idx()
+    coords_idx = _get_3d_coords_idx()
     metric_idx = _get_meta_idx()
     util_idx = ["sort_idx", "grp_idx"]
     output_data: pd.DataFrame = pd.DataFrame(
         columns=coords_idx + metric_idx + util_idx
     )
 
-    output_data["y"] = input_df["y"] + input_df["box_y"] // 2
     output_data["z"] = input_df["x"] + input_df["box_x"] // 2
+    output_data["y"] = input_df["y"] + input_df["box_y"] // 2
     output_data["x"] = z_value
     output_data["boxsize"] = np.maximum(
         input_df[["box_x", "box_y"]].mean(axis=1), 10

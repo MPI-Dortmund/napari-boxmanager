@@ -127,3 +127,8 @@ def _prepare_df(path: list[os.PathLike]) -> pd.DataFrame:
     for idx, entry in enumerate(path):
         data_df.append(_prepare_napari(read(entry), idx))
     return pd.concat(data_df, ignore_index=True)
+
+
+def from_napari(path, data, meta):
+    print(path, data, meta)
+    return path

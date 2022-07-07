@@ -16,3 +16,11 @@ class ReaderInterface(typing.Protocol):
 
     def get_valid_extensions(self) -> list[str]:
         ...
+
+    def from_napari(
+        self,
+        path: os.PathLike | list[os.PathLike] | pd.DataFrame,
+        data: typing.Any,
+        meta: dict,
+    ):
+        ...

@@ -36,3 +36,9 @@ def get_reader(
     key: str,
 ) -> "Callable[[os.PathLike | list[os.PathLike] | pd.DataFrame], list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]] | None":
     return _VALID_READERS[key].to_napari if key in _VALID_READERS else None
+
+
+def get_writer(
+    key: str,
+) -> "Callable[[os.PathLike | list[os.PathLike], list, dict]], None":
+    return _VALID_READERS[key].from_napari if key in _VALID_READERS else None

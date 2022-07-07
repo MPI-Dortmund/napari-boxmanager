@@ -5,11 +5,17 @@ contributions:
     - id: napari-boxmanager.get_reader
       python_name: box_manager._reader:napari_get_reader
       title: Open data with Box Manager
+    - id: napari-boxmanager.get_writer
+      python_name: box_manager._writer:napari_get_writer
+      title: Save image data with Box Manager
   readers:
     - command: napari-boxmanager.get_reader
       accepts_directories: false
-      filename_patterns: ['*.pkl', '*.tlpkl', '*.tepkl', '*.tmpkl', '*.cbox', '*.box', '*.star']
-  writers: []
+      filename_patterns: ['*.tloc', '*.temb', '*.tmap', '*.cbox', '*.box', '*.star']
+  writers:
+    - command: napari-boxmanager.get_writer
+      layer_types: ['points']
+      filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star']
   sample_data: []
   widgets: []
 

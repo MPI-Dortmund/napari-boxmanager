@@ -32,8 +32,5 @@ def napari_get_reader(
         # so we are only going to look at the first file.
         path = path[0]
 
-    if path.endswith(".pkl"):  # type: ignore
-        load_type = pd.read_pickle(path).attrs["boxread_identifier"]
-    else:
-        load_type = os.path.splitext(path)[-1][1:]
+    load_type = os.path.splitext(path)[-1][1:]
     return bm_readers.get_reader(load_type)

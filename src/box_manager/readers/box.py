@@ -129,6 +129,15 @@ def _prepare_df(path: list[os.PathLike]) -> pd.DataFrame:
     return pd.concat(data_df, ignore_index=True)
 
 
-def from_napari(path, data, meta):
-    print(path, data, meta)
+def from_napari(path: str, data: typing.Any, meta: dict):
+    lines: list[str] = []
+    shown: list[bool] = meta["shown"]
+    for (y, x), boxsize in zip(
+        data[shown], meta["features"]["boxsize"][shown]
+    ):
+        lines.append(f"{x-boxsize//2}  {y-boxsize//2}  {boxsize}  {boxsize}\n")
+
+    with open(path, "w") as write:
+        write.writelines(lines)
+
     return path

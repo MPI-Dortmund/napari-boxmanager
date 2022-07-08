@@ -132,12 +132,21 @@ def _prepare_df(path: list[os.PathLike]) -> pd.DataFrame:
 def from_napari(path: str, data: typing.Any, meta: dict):
     lines: list[str] = []
     shown: list[bool] = meta["shown"]
-    for (y, x), boxsize in zip(
-        data[shown], meta["features"]["boxsize"][shown]
-    ):
-        lines.append(f"{x-boxsize//2}  {y-boxsize//2}  {boxsize}  {boxsize}\n")
 
-    with open(path, "w") as write:
-        write.writelines(lines)
+    if data.shape[1] == 2:
+        for (y, x), boxsize in zip(
+            data[shown], meta["features"]["boxsize"][shown]
+        ):
+            lines.append(
+                f"{x-boxsize//2}  {y-boxsize//2}  {boxsize}  {boxsize}\n"
+            )
+
+        with open(path, "w") as write:
+            write.writelines(lines)
+
+    elif data.shape[1] == 3:
+        print(data)
+    else:
+        assert False, data
 
     return path

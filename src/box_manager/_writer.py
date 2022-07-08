@@ -7,7 +7,7 @@ if typing.TYPE_CHECKING:
     pass
 
 
-def napari_get_writer(path: str, data: typing.Any, meta: dict):
+def napari_get_writer(path: os.PathLike, data: typing.Any, meta: dict):
     load_type = os.path.splitext(path)[-1][1:]
     writer = bm_readers.get_writer(load_type)
     if not writer:

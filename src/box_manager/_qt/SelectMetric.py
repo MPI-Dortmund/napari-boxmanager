@@ -30,12 +30,29 @@ class ButtonActions(enum.Enum):
 class GroupModel(QStandardItemModel):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setHorizontalHeaderLabels(["", "", ""])
         self.group_items = {}
+        self.label_dict = {}
+        self._update_labels(["", "name"])
 
-    def add_group(self, group_name) -> bool:
+    def _update_labels(self, columns):
+        old_columns = []
+        i_label = -1
+        for i_label in range(self.columnCount()):
+            label = self.horizontalHeaderItem(i_label).text()
+            old_columns.append(label)
+            self.label_dict[label] = i_label
+
+        for i_label, new_label in enumerate(columns, i_label + 1):
+            old_columns.append(new_label)
+            self.label_dict[new_label] = i_label
+
+        self.setHorizontalHeaderLabels(old_columns)
+
+    def add_group(self, group_name, columns) -> bool:
         if group_name in self.group_items:
             return False
+
+        self._update_labels(columns)
 
         item_root = QStandardItem()
         item_root.setEditable(False)
@@ -43,6 +60,7 @@ class GroupModel(QStandardItemModel):
         item.setEditable(False)
         root_element = self.invisibleRootItem()
         row_idx = root_element.rowCount()
+
         for col_idx, col_item in enumerate((item_root, item)):
             root_element.setChild(row_idx, col_idx, col_item)
             root_element.setEditable(False)
@@ -167,10 +185,11 @@ class SelectMetricWidget(QWidget):
             return None
 
         if action == ButtonActions.ADD:
-            if self.table_model.add_group(layer_name):
-                self.table_model.append_element_to_group(
-                    layer_name, ("1", "ok")
-                )
+            layer = self.napari_viewer.layers[layer_name]
+            if self.table_model.add_group(
+                layer_name, list(layer.features.columns)
+            ):
+                pass
         elif action == ButtonActions.DEL:
             self.table_model.remove_group(layer_name)
         else:

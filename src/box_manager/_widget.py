@@ -6,13 +6,19 @@
 #
 # Replace code below according to your needs.
 # """
-# from typing import TYPE_CHECKING
-#
-# from magicgui import magic_factory
+from typing import TYPE_CHECKING
+
 # from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
-#
-# if TYPE_CHECKING:
-#    import napari
+
+if TYPE_CHECKING:
+    import napari
+    import napari.layers
+
+
+def example_magic_widget(img_layer: "napari.layers.Points"):
+    print(f"you have selected {img_layer}")
+
+
 #
 #
 # class ExampleQWidget(QWidget):

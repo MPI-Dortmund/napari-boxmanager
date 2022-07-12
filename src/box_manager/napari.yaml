@@ -14,7 +14,7 @@ contributions:
       filename_patterns: ['*.tloc', '*.temb', '*.tmap', '*.cbox', '*.box', '*.star']
   writers:
     - command: napari-boxmanager.get_writer
-      layer_types: ['points']
+      layer_types: ['points*']
       filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star']
   sample_data: []
   widgets: []

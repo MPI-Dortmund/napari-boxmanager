@@ -34,43 +34,38 @@ def read(path: "os.PathLike") -> pd.DataFrame:
     except pd.errors.IntCastingNaNError:
         raise BoxFileNumberOfColumnsError
 
-    box_data["filename"] = path
-
     return box_data
 
 
 def to_napari(
-    path: os.PathLike | list[os.PathLike] | pd.DataFrame,
+    path: os.PathLike | list[os.PathLike],
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
     input_df: pd.DataFrame
     name: str
     features: dict[str, typing.Any]
 
-    if not isinstance(path, pd.DataFrame):
-        if not isinstance(path, list):
-            path = glob.glob(path)  # type: ignore
+    if not isinstance(path, list):
+        path = glob.glob(path)  # type: ignore
 
-        if isinstance(path, list) and len(path) > 1:
-            idx_func: Callable[[], list[str]] = _get_3d_coords_idx
-            name = "boxfiles"
-        elif isinstance(path, list):
-            idx_func: Callable[[], list[str]] = _get_2d_coords_idx
-            name = path[0]  # type: ignore
-        else:
-            assert False, path
-        input_df = _prepare_df(path if isinstance(path, list) else [path])
-    else:
-        input_df = path
+    if isinstance(path, list) and len(path) > 1:
+        idx_func: Callable[[], list[str]] = _get_3d_coords_idx
         name = "boxfiles"
+    elif isinstance(path, list):
+        idx_func: Callable[[], list[str]] = _get_2d_coords_idx
+        name = path[0]  # type: ignore
+    else:
+        assert False, path
+    input_df, idx_dict = _prepare_df(
+        path if isinstance(path, list) else [path]
+    )
 
     features = {entry: input_df[entry].to_numpy() for entry in _get_meta_idx()}
-    features["identifier"] = input_df["sort_idx"]
-    features["group"] = input_df["grp_idx"]
     metadata = {
         f"{entry}_{func.__name__}": func(input_df[entry])
         for func in [min, max]
         for entry in _get_meta_idx()
     }
+    metadata["idx_dict"] = idx_dict
     kwargs = {
         "edge_color": "blue",
         "face_color": "transparent",
@@ -97,6 +92,10 @@ def _get_2d_coords_idx():
 
 
 def _get_meta_idx():
+    return []
+
+
+def _get_hidden_meta_idx():
     return ["boxsize"]
 
 
@@ -104,11 +103,8 @@ def _prepare_napari(
     input_df: pd.DataFrame,
     z_value: int = 1,
 ) -> pd.DataFrame:
-    coords_idx = _get_3d_coords_idx()
-    metric_idx = _get_meta_idx()
-    util_idx = ["sort_idx", "grp_idx"]
     output_data: pd.DataFrame = pd.DataFrame(
-        columns=coords_idx + metric_idx + util_idx
+        columns=_get_3d_coords_idx() + _get_meta_idx() + _get_hidden_meta_idx()
     )
 
     output_data["z"] = input_df["x"] + input_df["box_x"] // 2
@@ -117,17 +113,19 @@ def _prepare_napari(
     output_data["boxsize"] = np.maximum(
         input_df[["box_x", "box_y"]].mean(axis=1), 10
     ).astype(int)
-    output_data["sort_idx"] = input_df["filename"]
-    output_data["grp_idx"] = input_df["filename"]
 
     return output_data
 
 
-def _prepare_df(path: list[os.PathLike]) -> pd.DataFrame:
+def _prepare_df(
+    path: list[os.PathLike],
+) -> tuple[pd.DataFrame, dict[int, os.PathLike]]:
     data_df: list[pd.DataFrame] = []
+    idx_dict: dict[int, os.PathLike] = {}
     for idx, entry in enumerate(path):
+        idx_dict[idx] = entry  # type: ignore
         data_df.append(_prepare_napari(read(entry), idx))
-    return pd.concat(data_df, ignore_index=True)
+    return pd.concat(data_df, ignore_index=True), idx_dict
 
 
 def from_napari(

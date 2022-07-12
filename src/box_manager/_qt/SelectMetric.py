@@ -182,7 +182,7 @@ class SelectMetricWidget(QWidget):
 
     def _prepare_entries(self, features) -> list:
         output_list = []
-        for identifier, ident_df in features.groupby("identifier", sort=False):
+        for identifier, ident_df in features.groupby("x", sort=False):
             output_list.append(self._prepare_columns(ident_df, identifier))
 
         return output_list

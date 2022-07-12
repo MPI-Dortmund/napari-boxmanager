@@ -197,9 +197,10 @@ class SelectMetricWidget(QWidget):
 
     @staticmethod
     def _prepare_columns(features, name) -> dict:
-        ignore_idx = "boxsize"
+        ignore_idx = ("boxsize",)
         output_dict = {}
         output_dict["name"] = name
+        output_dict["n_boxes"] = len(features)
         output_dict["boxsize"] = (
             10 if "boxsize" not in features else np.mean(features["boxsize"])
         )

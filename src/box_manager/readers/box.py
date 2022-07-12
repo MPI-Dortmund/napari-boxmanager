@@ -55,17 +55,14 @@ def to_napari(
         name = path[0]  # type: ignore
     else:
         assert False, path
-    input_df, idx_dict = _prepare_df(
+    input_df, metadata = _prepare_df(
         path if isinstance(path, list) else [path]
     )
 
-    features = {entry: input_df[entry].to_numpy() for entry in _get_meta_idx()}
-    metadata = {
-        f"{entry}_{func.__name__}": func(input_df[entry])
-        for func in [min, max]
-        for entry in _get_meta_idx()
+    features = {
+        entry: input_df[entry].to_numpy()
+        for entry in _get_meta_idx() + _get_hidden_meta_idx()
     }
-    metadata["idx_dict"] = idx_dict
     kwargs = {
         "edge_color": "blue",
         "face_color": "transparent",
@@ -121,11 +118,20 @@ def _prepare_df(
     path: list[os.PathLike],
 ) -> tuple[pd.DataFrame, dict[int, os.PathLike]]:
     data_df: list[pd.DataFrame] = []
-    idx_dict: dict[int, os.PathLike] = {}
+    metadata: dict = {}
     for idx, entry in enumerate(path):
-        idx_dict[idx] = entry  # type: ignore
         data_df.append(_prepare_napari(read(entry), idx))
-    return pd.concat(data_df, ignore_index=True), idx_dict
+        metadata[idx] = {}
+        metadata[idx]["path"] = entry
+        metadata[idx].update(
+            {
+                f"{entry}_{func.__name__}": func(data_df[entry])
+                for func in [min, max]
+                for entry in _get_meta_idx()
+            }
+        )
+
+    return pd.concat(data_df, ignore_index=True), metadata
 
 
 def from_napari(

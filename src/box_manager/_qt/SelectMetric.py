@@ -180,16 +180,24 @@ class SelectMetricWidget(QWidget):
             self.layer_input.setCurrentText(current_item)
             self.prev_points = point_layers
 
-    def _prepare_entries(self, features) -> list:
+    def _prepare_entries(self, layer) -> list:
         output_list = []
-        for identifier, ident_df in features.groupby("x", sort=False):
-            output_list.append(self._prepare_columns(ident_df, identifier))
+        features_copy = layer.features.copy()
+        features_copy["identifier"] = layer.data[:, 0]
+        for identifier, ident_df in features_copy.groupby(
+            "identifier", sort=False
+        ):
+            output_list.append(
+                self._prepare_columns(
+                    ident_df, layer.metadata[identifier]["path"]
+                )
+            )
 
         return output_list
 
     @staticmethod
     def _prepare_columns(features, name) -> dict:
-        ignore_idx = ("identifier", "group", "boxsize")
+        ignore_idx = "boxsize"
         output_dict = {}
         output_dict["name"] = name
         output_dict["boxsize"] = (
@@ -213,12 +221,14 @@ class SelectMetricWidget(QWidget):
             if self.table_model.add_group(
                 layer_name, self._prepare_columns(layer.features, layer_name)
             ):
-                if "identifier" in layer.features:
-                    entries = self._prepare_entries(layer.features)
-                else:
+                if layer.data.shape[1] == 2:
                     entries = [
                         self._prepare_columns(layer.features, layer_name)
                     ]
+                elif layer.data.shape[1] == 3:
+                    entries = self._prepare_entries(layer)
+                else:
+                    assert False, layer
                 for entry in entries:
                     self.table_model.append_element_to_group(layer_name, entry)
         elif action == ButtonActions.DEL:

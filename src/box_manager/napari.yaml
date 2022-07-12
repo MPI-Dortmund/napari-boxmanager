@@ -2,12 +2,23 @@ name: napari-boxmanager
 display_name: Box Manager
 contributions:
   commands:
+    # Reader
     - id: napari-boxmanager.get_reader
       python_name: box_manager._reader:napari_get_reader
       title: Open data with Box Manager
+
+    # Writer
     - id: napari-boxmanager.get_writer
       python_name: box_manager._writer:napari_get_writer
       title: Save image data with Box Manager
+
+    # Widgets
+    - id: napari-boxmanager.select_metric
+      python_name: box_manager._qt.SelectMetric:SelectMetricWidget
+      title: Select box metrics
+    - id: napari-boxmanager.example
+      python_name: box_manager._widget:example_magic_widget
+      title: Select box metrics
   readers:
     - command: napari-boxmanager.get_reader
       accepts_directories: false
@@ -17,7 +28,13 @@ contributions:
       layer_types: ['points*']
       filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star']
   sample_data: []
-  widgets: []
+  widgets:
+    - command: napari-boxmanager.select_metric
+      display_name: metric_selection
+    - command: napari-boxmanager.example
+      autogenerate: true
+      display_name: example
+
 
       #contributions:
       #  commands:

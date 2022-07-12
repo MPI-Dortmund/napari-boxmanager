@@ -48,14 +48,14 @@ def to_napari(
 
     if not isinstance(path, pd.DataFrame):
         if not isinstance(path, list):
-            path = glob.glob(path)
+            path = glob.glob(path)  # type: ignore
 
         if isinstance(path, list) and len(path) > 1:
             idx_func: Callable[[], list[str]] = _get_3d_coords_idx
             name = "boxfiles"
         elif isinstance(path, list):
             idx_func: Callable[[], list[str]] = _get_2d_coords_idx
-            name = path[0]
+            name = path[0]  # type: ignore
         else:
             assert False, path
         input_df = _prepare_df(path if isinstance(path, list) else [path])

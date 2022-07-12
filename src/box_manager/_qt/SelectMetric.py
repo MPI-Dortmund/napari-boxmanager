@@ -2,8 +2,9 @@ import enum
 import typing
 
 import napari.layers
+import numpy as np
 from qtpy.QtCore import QModelIndex, Slot
-from qtpy.QtGui import QColor, QIcon, QStandardItem, QStandardItemModel
+from qtpy.QtGui import QStandardItem, QStandardItemModel
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -32,43 +33,35 @@ class GroupModel(QStandardItemModel):
         super().__init__(parent)
         self.group_items = {}
         self.label_dict = {}
-        self._update_labels(["", "name"])
+        self.default_labels = [""]
+        self._update_labels(self.default_labels)
 
     def _update_labels(self, columns):
-        old_columns = []
+        self.label_dict = {}
         i_label = -1
         for i_label in range(self.columnCount()):
             label = self.horizontalHeaderItem(i_label).text()
-            old_columns.append(label)
             self.label_dict[label] = i_label
 
         for i_label, new_label in enumerate(columns, i_label + 1):
-            old_columns.append(new_label)
-            self.label_dict[new_label] = i_label
+            if new_label not in self.label_dict:
+                self.label_dict[new_label] = i_label
 
-        self.setHorizontalHeaderLabels(old_columns)
+        self.setHorizontalHeaderLabels(self.label_dict)
 
-    def add_group(self, group_name, columns) -> bool:
+    def add_group(self, group_name, columns: dict) -> bool:
         if group_name in self.group_items:
             return False
 
-        self._update_labels(columns)
+        self._update_labels(columns.keys())
 
         item_root = QStandardItem()
-        item_root.setEditable(False)
-        item = QStandardItem(group_name)
-        item.setEditable(False)
         root_element = self.invisibleRootItem()
         row_idx = root_element.rowCount()
 
-        for col_idx, col_item in enumerate((item_root, item)):
-            root_element.setChild(row_idx, col_idx, col_item)
-            root_element.setEditable(False)
-        for col_idx in range(self.columnCount()):
-            col_item = root_element.child(row_idx, col_idx)
-            if col_item is None:
-                col_item = QStandardItem()
-                root_element.setChild(row_idx, col_idx, col_item)
+        self.append_to_row(
+            root_element, columns, row_idx, first_item=item_root
+        )
         self.group_items[group_name] = item_root
         return True
 
@@ -80,34 +73,41 @@ class GroupModel(QStandardItemModel):
         self.takeRow(index.row())
         del self.group_items[group_name]
 
-    def append_element_to_group(self, group_name, texts):
+    def append_to_row(self, root_element, columns, row_idx, first_item=None):
+        for col_idx in range(self.columnCount()):
+            cur_label = self.horizontalHeaderItem(col_idx).text()
+            if col_idx == 0:
+                col_item = first_item or QStandardItem()
+                col_item.setEditable(False)
+            else:
+                col_item = QStandardItem(
+                    str(columns[cur_label]) if cur_label in columns else "-"
+                )
+                col_item.setEditable(True)
+            root_element.setChild(row_idx, col_idx, col_item)
+
+    def append_element_to_group(self, group_name, columns):
         group_item = self.group_items[group_name]
-        j = group_item.rowCount()
+        row_idx = group_item.rowCount()
         item_icon = QStandardItem()
         item_icon.setEditable(False)
-        item_icon.setIcon(QIcon("game.png"))
-        item_icon.setBackground(QColor("#0D1225"))
-        group_item.setChild(j, 0, item_icon)
-        for i, text in enumerate(texts):
-            item = QStandardItem(text)
-            item.setEditable(False)
-            item.setBackground(QColor("#0D1225"))
-            item.setForeground(QColor("#F2F2F2"))
-            group_item.setChild(j, i + 1, item)
+        group_item.setChild(row_idx, 0, item_icon)
+
+        self.append_to_row(group_item, columns, row_idx)
 
 
 class GroupDelegate(QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._plus_icon = QIcon("plus.png")
-        self._minus_icon = QIcon("minus.png")
+        self._plus_icon = "\U0000002B"  # QIcon("plus.png")
+        self._minus_icon = "\U00002212"  # QIcon("minus.png")
 
     def initStyleOption(self, option, index):
         super().initStyleOption(option, index)
         if not index.parent().isValid():
             is_open = bool(option.state & QStyle.State_Open)
             option.features |= QStyleOptionViewItem.HasDecoration
-            option.icon = self._minus_icon if is_open else self._plus_icon
+            option.text = self._minus_icon if is_open else self._plus_icon
 
 
 class GroupView(QTreeView):
@@ -135,9 +135,10 @@ class SelectMetricWidget(QWidget):
         self.metrics: dict[str, typing.Any] = {}
         self.prev_points: list[str] = []
 
-        self.layer_input = QComboBox(self)
         self.napari_viewer.layers.events.inserted.connect(self.reset_choices)
         self.napari_viewer.layers.events.removed.connect(self.reset_choices)
+
+        self.layer_input = QComboBox(self)
         self.reset_choices(None)
 
         self.table_model = GroupModel(self)
@@ -179,17 +180,47 @@ class SelectMetricWidget(QWidget):
             self.layer_input.setCurrentText(current_item)
             self.prev_points = point_layers
 
+    def _prepare_entries(self, features) -> list:
+        output_list = []
+        for identifier, ident_df in features.groupby("identifier", sort=False):
+            output_list.append(self._prepare_columns(ident_df, identifier))
+
+        return output_list
+
+    @staticmethod
+    def _prepare_columns(features, name) -> dict:
+        ignore_idx = ("identifier", "group", "boxsize")
+        output_dict = {}
+        output_dict["name"] = name
+        output_dict["boxsize"] = (
+            10 if "boxsize" not in features else np.mean(features["boxsize"])
+        )
+        for col_name in features.columns:
+            if col_name in ignore_idx:
+                continue
+
+            output_dict[f"{col_name}_min"] = np.min(features[col_name])
+            output_dict[f"{col_name}_max"] = np.max(features[col_name])
+        return output_dict
+
     def _add_remove_table(self, action: "ButtonActions"):
         layer_name = self.layer_input.currentText()
         if not layer_name.strip():
             return None
 
         if action == ButtonActions.ADD:
-            layer = self.napari_viewer.layers[layer_name]
+            layer = self.napari_viewer.layers[layer_name]  # type: ignore
             if self.table_model.add_group(
-                layer_name, list(layer.features.columns)
+                layer_name, self._prepare_columns(layer.features, layer_name)
             ):
-                pass
+                if "identifier" in layer.features:
+                    entries = self._prepare_entries(layer.features)
+                else:
+                    entries = [
+                        self._prepare_columns(layer.features, layer_name)
+                    ]
+                for entry in entries:
+                    self.table_model.append_element_to_group(layer_name, entry)
         elif action == ButtonActions.DEL:
             self.table_model.remove_group(layer_name)
         else:

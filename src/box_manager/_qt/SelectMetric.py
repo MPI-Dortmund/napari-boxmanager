@@ -44,7 +44,6 @@ class GroupModel(QStandardItemModel):
 
         self.dataChanged.connect(self.change_children)
 
-    @Slot("QModelIndex", "QModelIndex", "QVector<int>")
     def change_children(self, top_idx, _, idx):
         if not idx:
             return
@@ -255,7 +254,6 @@ class SelectMetricWidget(QWidget):
         self.layout().addWidget(self.table_widget)
         self.layout().addLayout(self.metric_area)  # type: ignore
 
-    @Slot("QModelIndex", "QModelIndex", "QVector<int>")
     def _update_view(self, top_idx, _, idx):
         if not idx:
             return

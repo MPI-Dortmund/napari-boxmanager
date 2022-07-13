@@ -119,7 +119,7 @@ class GroupView(QTreeView):
         delegate = GroupDelegate(self)
         self.setItemDelegateForColumn(0, delegate)
         self.setModel(model)
-        self.header().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.header().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
 
     @Slot(QModelIndex)
@@ -180,27 +180,32 @@ class SelectMetricWidget(QWidget):
             self.layer_input.setCurrentText(current_item)
             self.prev_points = point_layers
 
-    def _prepare_entries(self, layer) -> list:
+    def _prepare_entries(self, layer, name=None) -> list:
         output_list = []
         features_copy = layer.features.copy()
-        features_copy["identifier"] = layer.data[:, 0]
+        if layer.data.shape[1] == 3:
+            features_copy["identifier"] = name or layer.data[:, 0]
+        elif layer.data.shape[1] == 2:
+            features_copy["identifier"] = name or 0
+        else:
+            assert False, layer.data
+
+        features_copy["shown"] = layer.shown
         for identifier, ident_df in features_copy.groupby(
             "identifier", sort=False
         ):
-            output_list.append(
-                self._prepare_columns(
-                    ident_df, layer.metadata[identifier]["path"]
-                )
-            )
+            cur_name = name or layer.metadata[identifier]["path"]
+            output_list.append(self._prepare_columns(ident_df, cur_name))
 
         return output_list
 
     @staticmethod
     def _prepare_columns(features, name) -> dict:
-        ignore_idx = ("boxsize",)
+        ignore_idx = ("boxsize", "identifier", "shown", "n_selected")
         output_dict = {}
         output_dict["name"] = name
         output_dict["n_boxes"] = len(features)
+        output_dict["n_selected"] = np.count_nonzero(features["shown"])
         output_dict["boxsize"] = (
             10 if "boxsize" not in features else np.mean(features["boxsize"])
         )
@@ -220,16 +225,9 @@ class SelectMetricWidget(QWidget):
         if action == ButtonActions.ADD:
             layer = self.napari_viewer.layers[layer_name]  # type: ignore
             if self.table_model.add_group(
-                layer_name, self._prepare_columns(layer.features, layer_name)
+                layer_name, self._prepare_entries(layer, layer_name)[0]
             ):
-                if layer.data.shape[1] == 2:
-                    entries = [
-                        self._prepare_columns(layer.features, layer_name)
-                    ]
-                elif layer.data.shape[1] == 3:
-                    entries = self._prepare_entries(layer)
-                else:
-                    assert False, layer
+                entries = self._prepare_entries(layer)
                 for entry in entries:
                     self.table_model.append_element_to_group(layer_name, entry)
         elif action == ButtonActions.DEL:

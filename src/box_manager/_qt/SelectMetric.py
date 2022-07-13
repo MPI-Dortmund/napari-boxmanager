@@ -3,14 +3,17 @@ import typing
 
 import napari.layers
 import numpy as np
-from qtpy.QtCore import QModelIndex, Slot
-from qtpy.QtGui import QStandardItem, QStandardItemModel
+from qtpy.QtCore import QModelIndex, Qt, Slot
+from qtpy.QtGui import QDoubleValidator, QStandardItem, QStandardItemModel
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QComboBox,
     QHBoxLayout,
     QHeaderView,
+    QLabel,
+    QLineEdit,
     QPushButton,
+    QSlider,
     QStyle,
     QStyledItemDelegate,
     QStyleOptionViewItem,
@@ -265,8 +268,84 @@ class SelectMetricWidget(QWidget):
             self.table_model.sort()
             self._update_slider()
 
+    def _get_min_max(self, label_name):
+        if label_name.endswith("_min"):
+            metric_name = label_name.removesuffix("_min")
+        elif label_name.endswith("_max"):
+            metric_name = label_name.removesuffix("_max")
+        else:
+            assert False, label_name
+
+        layer_names = self.table_model.group_items
+        cur_minimum = np.inf
+        cur_maximum = -np.inf
+        for layer_name in layer_names:
+            cur_minimum = np.minimum(
+                np.min(
+                    self.napari_viewer.layers[layer_name].features[metric_name]
+                ),
+                cur_minimum,
+            )
+            cur_maximum = np.maximum(
+                np.max(
+                    self.napari_viewer.layers[layer_name].features[metric_name]
+                ),
+                cur_maximum,
+            )
+        return cur_minimum, cur_maximum
+
     def _update_slider(self):
         for label in self.table_model.label_dict:
             if label in self.ignore_idx:
                 continue
-            print(label)
+            if label in self.metric_dict:
+                viewer = self.metric_dict[label]
+            else:
+                viewer = SliderView(label)
+                self.metric_dict[label] = viewer
+                self.metric_area.addWidget(viewer)
+            min_val, max_val = self._get_min_max(label)
+            viewer.set_range(min_val, max_val)
+
+            if label.endswith("_min"):
+                viewer.set_value(min_val)
+            elif label.endswith("_max"):
+                viewer.set_value(max_val)
+            else:
+                assert False, label
+
+
+class SliderView(QWidget):
+    def __init__(self, text, parent=None):
+        super().__init__(parent)
+        self.setLayout(QHBoxLayout())
+        self.layout().addWidget(QLabel(text, self))
+        self.step_size = 1000
+
+        self.slider = QSlider(Qt.Horizontal, self)
+        self.slider.sliderMoved.connect(self.mouse_move)
+        self.slider.valueChanged.connect(self.mouse_move)
+        self.slider.setRange(
+            self.step_size * self.slider.minimum(),
+            self.step_size * self.slider.maximum(),
+        )
+        self.label = QLineEdit(str(self.slider.value() / self.step_size), self)
+        self.label.setValidator(QDoubleValidator())
+        self.label.returnPressed.connect(self.set_value)
+
+        self.layout().addWidget(self.slider, stretch=1)
+        self.layout().addWidget(self.label)
+
+        self.layout().setContentsMargins(0, 0, 0, 0)
+
+    def mouse_move(self, value):
+        self.label.setText(str(value / self.step_size))
+
+    def set_value(self, value=None):
+        value = value if value is not None else float(self.label.text())
+        self.slider.setValue(int(self.step_size * value))
+
+    def set_range(self, val_min, val_max):
+        self.slider.setRange(
+            int(self.step_size * val_min), int(self.step_size * val_max)
+        )

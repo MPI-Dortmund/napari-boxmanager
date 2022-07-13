@@ -48,6 +48,10 @@ class GroupModel(QStandardItemModel):
     def change_children(self, top_idx, _, idx):
         if not idx:
             return
+
+        if self.label_dict_rev[top_idx.column()] in self.read_only:
+            return
+
         if top_idx.parent().row() == -1:
             root_item = self.invisibleRootItem().child(top_idx.row(), 0)
             value = (
@@ -79,6 +83,16 @@ class GroupModel(QStandardItemModel):
 
     def sort(self):
         self.invisibleRootItem().sortChildren(self.label_dict["name"])
+
+    def set_value(self, parent_idx, row_idx, col_name, value):
+        root_element = self.invisibleRootItem()
+        if parent_idx == -1:
+            child_item = root_element
+        else:
+            child_item = root_element.child(parent_idx, 0)
+        child_item.child(row_idx, self.label_dict[col_name]).setText(
+            str(value)
+        )
 
     def get_value(self, parent_idx, row_idx, col_name):
         root_element = self.invisibleRootItem()
@@ -291,6 +305,25 @@ class SelectMetricWidget(QWidget):
             layer.shown[mask_dimension & ~mask_metric] = False
 
             layer.metadata[row_idx][col_name] = layer_val
+            self.table_model.set_value(
+                parent_idx,
+                row_idx,
+                "n_selected",
+                np.count_nonzero(mask_dimension & mask_metric),
+            )
+            self.table_model.set_value(
+                parent_idx,
+                row_idx,
+                "n_boxes",
+                len(mask_dimension & mask_metric),
+            )
+
+            self.table_model.set_value(
+                -1, parent_idx, "n_selected", np.count_nonzero(layer.shown)
+            )
+            self.table_model.set_value(
+                -1, parent_idx, "n_boxes", len(layer.shown)
+            )
         elif metric_name == "boxsize":
             layer.size[mask_dimension] = layer_val
         else:

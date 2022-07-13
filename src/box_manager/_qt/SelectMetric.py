@@ -453,12 +453,15 @@ class SelectMetricWidget(QWidget):
 
     def _update_slider(self):
         for col_idx, label in enumerate(self.table_model.label_dict):
-            if label in self.ignore_idx:
+            if label in self.read_only:
                 continue
             if label in self.metric_dict:
                 viewer = self.metric_dict[label]
             else:
-                viewer = SliderView(label, col_idx)
+                if label in ("boxsize",):
+                    viewer = EditView(label, col_idx)
+                else:
+                    viewer = SliderView(label, col_idx)
                 viewer.value_changed.connect(self.table_widget.update_elements)
                 self.metric_dict[label] = viewer
                 self.metric_area.addWidget(viewer)
@@ -469,8 +472,36 @@ class SelectMetricWidget(QWidget):
                 viewer.set_value(self._get_min_floor(min_val))
             elif label.endswith("_max"):
                 viewer.set_value(self._get_max_floor(max_val))
+            elif label in ("boxsize",):
+                viewer.set_value(max_val)
             else:
                 assert False, label
+
+
+class EditView(QWidget):
+    value_changed = Signal(float, int)
+
+    def __init__(self, text, col_idx, parent=None):
+        super().__init__(parent)
+        self.col_idx = col_idx
+        self.setLayout(QHBoxLayout())
+        self.layout().addWidget(QLabel(text, self))
+        self.edit = QLineEdit(self)
+        self.edit.setValidator(QDoubleValidator())
+        self.edit.returnPressed.connect(self._emit_signal)
+        self.layout().addWidget(self.edit, stretch=1)
+        self.layout().setContentsMargins(0, 0, 0, 0)
+
+    def _emit_signal(self):
+        value = float(self.edit.text())
+        self.value_changed.emit(value, self.col_idx)
+
+    def set_value(self, value):
+        self.edit.setText(str(value))
+        self._emit_signal()
+
+    def set_range(self, *_):
+        pass
 
 
 class SliderView(QWidget):
@@ -503,6 +534,8 @@ class SliderView(QWidget):
         self.value_changed.emit(value / self.step_size, self.col_idx)
 
     def set_value(self, value=None):
+        if value in (np.inf, -np.inf):
+            return
         value = value if value is not None else float(self.label.text())
         value = int(self.step_size * value)
 
@@ -510,6 +543,10 @@ class SliderView(QWidget):
         self.slider.sliderMoved.emit(value)
 
     def set_range(self, val_min, val_max):
+        if val_min in (np.inf, -np.inf):
+            return
+        if val_max in (np.inf, -np.inf):
+            return
         self.slider.setRange(
             int(self.step_size * val_min) - 1,
             int(self.step_size * val_max) + 1,

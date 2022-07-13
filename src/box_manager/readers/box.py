@@ -66,7 +66,7 @@ def to_napari(
     kwargs = {
         "edge_color": "blue",
         "face_color": "transparent",
-        "symbol": "disc",
+        "symbol": "square",
         "edge_width": 2,
         "edge_width_is_relative": False,
         "size": input_df["boxsize"],
@@ -89,8 +89,7 @@ def _get_2d_coords_idx():
 
 
 def _get_meta_idx():
-    # TODO: DELETE
-    return ["metric"]
+    return []
 
 
 def _get_hidden_meta_idx():
@@ -111,8 +110,6 @@ def _prepare_napari(
     output_data["boxsize"] = np.maximum(
         input_df[["box_x", "box_y"]].mean(axis=1), 10
     ).astype(int)
-    # TODO: DELETE
-    output_data["metric"] = np.random.random(len(output_data))
 
     return output_data
 

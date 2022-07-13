@@ -26,6 +26,7 @@ if typing.TYPE_CHECKING:
 class ButtonActions(enum.Enum):
     ADD = 0
     DEL = 1
+    UPDATE = 2
 
 
 class GroupModel(QStandardItemModel):
@@ -48,6 +49,9 @@ class GroupModel(QStandardItemModel):
                 self.label_dict[new_label] = i_label
 
         self.setHorizontalHeaderLabels(self.label_dict)
+
+    def sort(self):
+        self.invisibleRootItem().sortChildren(1)
 
     def add_group(self, group_name, columns: dict) -> bool:
         if group_name in self.group_items:
@@ -155,7 +159,9 @@ class SelectMetricWidget(QWidget):
             lambda _, name=ButtonActions.DEL: self._add_remove_table(name)
         )
         btn_update = QPushButton("Update", self)
-        btn_update.clicked.connect(lambda _: self._update_table())
+        btn_update.clicked.connect(
+            lambda _, name=ButtonActions.UPDATE: self._add_remove_table(name)
+        )
         layout_input.addWidget(self.layer_input, stretch=1)
         layout_input.addWidget(btn_add)
         layout_input.addWidget(btn_del)
@@ -232,10 +238,8 @@ class SelectMetricWidget(QWidget):
                     self.table_model.append_element_to_group(layer_name, entry)
         elif action == ButtonActions.DEL:
             self.table_model.remove_group(layer_name)
-        else:
-            assert False
+        elif action == ButtonActions.UPDATE:
+            self._add_remove_table(ButtonActions.DEL)
+            self._add_remove_table(ButtonActions.ADD)
 
-        self._update_table()
-
-    def _update_table(self):
-        pass
+        self.table_model.sort()

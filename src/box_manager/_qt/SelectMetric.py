@@ -3,7 +3,7 @@ import typing
 
 import napari.layers
 import numpy as np
-from qtpy.QtCore import QModelIndex, Qt, Slot
+from qtpy.QtCore import QModelIndex, Qt, Signal, Slot
 from qtpy.QtGui import QDoubleValidator, QStandardItem, QStandardItemModel
 from qtpy.QtWidgets import (
     QAbstractItemView,
@@ -33,28 +33,60 @@ class ButtonActions(enum.Enum):
 
 
 class GroupModel(QStandardItemModel):
-    def __init__(self, parent=None):
+    def __init__(self, read_only, parent=None):
         super().__init__(parent)
+        self.read_only = read_only
         self.group_items = {}
         self.label_dict = {}
+        self.label_dict_rev = {}
         self.default_labels = [""]
         self._update_labels(self.default_labels)
 
+        self.dataChanged.connect(self.change_children)
+
+    @Slot("QModelIndex", "QModelIndex", "QVector<int>")
+    def change_children(self, top_idx, _, idx):
+        if not idx:
+            return
+        if top_idx.parent().row() == -1:
+            root_item = self.invisibleRootItem().child(top_idx.row(), 0)
+            value = (
+                self.invisibleRootItem()
+                .child(top_idx.row(), top_idx.column())
+                .text()
+            )
+            for grandchild_idx in range(root_item.rowCount()):
+                grandchild_item = root_item.child(
+                    grandchild_idx, top_idx.column()
+                )
+                grandchild_item.setText(str(value))
+
     def _update_labels(self, columns):
         self.label_dict = {}
+        self.label_dict_rev = {}
         i_label = -1
         for i_label in range(self.columnCount()):
             label = self.horizontalHeaderItem(i_label).text()
             self.label_dict[label] = i_label
+            self.label_dict_rev[i_label] = label
 
         for i_label, new_label in enumerate(columns, i_label + 1):
             if new_label not in self.label_dict:
                 self.label_dict[new_label] = i_label
+                self.label_dict_rev[i_label] = new_label
 
         self.setHorizontalHeaderLabels(self.label_dict)
 
     def sort(self):
-        self.invisibleRootItem().sortChildren(1)
+        self.invisibleRootItem().sortChildren(self.label_dict["name"])
+
+    def get_value(self, parent_idx, row_idx, col_name):
+        root_element = self.invisibleRootItem()
+        if parent_idx == -1:
+            child_item = root_element
+        else:
+            child_item = root_element.child(parent_idx, 0)
+        return child_item.child(row_idx, self.label_dict[col_name]).text()
 
     def add_group(self, group_name, columns: dict) -> bool:
         if group_name in self.group_items:
@@ -90,11 +122,8 @@ class GroupModel(QStandardItemModel):
                 col_item = QStandardItem(
                     columns[cur_label] if cur_label in columns else "-"
                 )
-                col_item.setEditable(True)
+                col_item.setEditable(cur_label not in self.read_only)
             root_element.setChild(row_idx, col_idx, col_item)
-
-    def update_element(self, item, text):
-        item.setCurrentText(text)
 
     def append_element_to_group(self, group_name, columns):
         group_item = self.group_items[group_name]
@@ -128,7 +157,8 @@ class GroupView(QTreeView):
         self.clicked.connect(self.on_clicked)
         delegate = GroupDelegate(self)
         self.setItemDelegateForColumn(0, delegate)
-        self.setModel(model)
+        self.model = model
+        self.setModel(self.model)
         self.header().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -137,6 +167,24 @@ class GroupView(QTreeView):
     def on_clicked(self, index):
         if not index.parent().isValid() and index.column() == 0:
             self.setExpanded(index, not self.isExpanded(index))
+
+    @Slot(float, int)
+    def update_elements(self, value, col_idx):
+        rows_candidates = {
+            (entry.parent().row(), entry.row())
+            for entry in self.selectedIndexes()
+        }
+        parents = {entry[1] for entry in rows_candidates if entry[0] == -1}
+        rows = [entry for entry in rows_candidates if entry[0] not in parents]
+
+        for parent_idx, row_idx in rows:
+            if parent_idx == -1:
+                parent_item = self.model.invisibleRootItem()
+            else:
+                parent_item = self.model.item(parent_idx, 0)
+
+            child_item = parent_item.child(row_idx, col_idx)
+            child_item.setText(str(value))
 
 
 class SelectMetricWidget(QWidget):
@@ -147,15 +195,17 @@ class SelectMetricWidget(QWidget):
         self.metric_dict: dict = {}
         self.prev_points: list[str] = []
 
-        self.ignore_idx = [
+        self.read_only = [
             "",
-            "boxsize",
             "identifier",
             "shown",
             "n_selected",
             "n_boxes",
             "name",
         ]
+        self.ignore_idx = [
+            "boxsize",
+        ] + self.read_only
 
         self.napari_viewer.layers.events.inserted.connect(self.reset_choices)
         self.napari_viewer.layers.events.removed.connect(self.reset_choices)
@@ -163,8 +213,9 @@ class SelectMetricWidget(QWidget):
         self.layer_input = QComboBox(self)
         self.reset_choices(None)
 
-        self.table_model = GroupModel(self)
-        table_widget = GroupView(self.table_model, self)
+        self.table_model = GroupModel(self.read_only, self)
+        self.table_model.dataChanged.connect(self._update_view)
+        self.table_widget = GroupView(self.table_model, self)
         self.metric_area = QVBoxLayout()
 
         layout_input = QHBoxLayout()
@@ -187,8 +238,78 @@ class SelectMetricWidget(QWidget):
 
         self.setLayout(QVBoxLayout())
         self.layout().addLayout(layout_input, stretch=0)  # type: ignore
-        self.layout().addWidget(table_widget)
+        self.layout().addWidget(self.table_widget)
         self.layout().addLayout(self.metric_area)  # type: ignore
+
+    @Slot("QModelIndex", "QModelIndex", "QVector<int>")
+    def _update_view(self, top_idx, _, idx):
+        if not idx:
+            return
+
+        parent_idx = top_idx.parent().row()
+        if parent_idx == -1:
+            return
+
+        row_idx = top_idx.row()
+        col_idx = top_idx.column()
+
+        col_name = self.table_model.label_dict_rev[col_idx]
+        if col_name in self.read_only:
+            return
+
+        metric_name, is_min_max = self.trim_suffix(col_name)
+        layer_name = self.table_model.get_value(-1, parent_idx, "name")
+        layer = self.napari_viewer.layers[layer_name]  # type: ignore
+
+        layer_val = float(
+            self.table_model.get_value(parent_idx, row_idx, col_name)
+        )
+
+        if layer.data.shape[1] == 3:
+            mask_dimension = layer.data[:, 0] == row_idx
+        elif layer.data.shape[1] == 2:
+            mask_dimension = np.ones(layer.data.shape[0])
+        else:
+            assert False, layer
+
+        if is_min_max:
+            min_val = float(
+                self.table_model.get_value(
+                    parent_idx, row_idx, f"{metric_name}_min"
+                )
+            )
+            max_val = float(
+                self.table_model.get_value(
+                    parent_idx, row_idx, f"{metric_name}_max"
+                )
+            )
+            mask_metric = (min_val <= layer.features[metric_name]) & (
+                layer.features[metric_name] <= max_val
+            )
+
+            layer.shown[mask_dimension & mask_metric] = True
+            layer.shown[mask_dimension & ~mask_metric] = False
+
+            layer.metadata[row_idx][col_name] = layer_val
+        elif metric_name == "boxsize":
+            layer.size[mask_dimension] = layer_val
+        else:
+            assert False, (layer_name, metric_name)
+
+        layer.visible = layer.visible
+
+    @staticmethod
+    def trim_suffix(label_name):
+        if label_name.endswith("_min"):
+            metric_name = label_name.removesuffix("_min")
+            min_max = True
+        elif label_name.endswith("_max"):
+            metric_name = label_name.removesuffix("_max")
+            min_max = True
+        else:
+            metric_name = label_name
+            min_max = False
+        return metric_name, min_max
 
     def reset_choices(self, _):
         point_layers: list[str] = sorted(
@@ -223,6 +344,14 @@ class SelectMetricWidget(QWidget):
 
         return output_list
 
+    @staticmethod
+    def _get_min_floor(vals):
+        return np.round(np.floor(np.min(vals) * 1000) / 1000, 3)
+
+    @staticmethod
+    def _get_max_floor(vals):
+        return np.round(np.ceil(np.max(vals) * 1000) / 1000, 3)
+
     def _prepare_columns(self, features, name) -> dict:
         output_dict = {}
         output_dict["name"] = name
@@ -238,10 +367,10 @@ class SelectMetricWidget(QWidget):
                 continue
 
             output_dict[f"{col_name}_min"] = str(
-                np.round(np.min(features[col_name]), 3)
+                self._get_min_floor(features[col_name])
             )
             output_dict[f"{col_name}_max"] = str(
-                np.round(np.max(features[col_name]), 3)
+                self._get_max_floor(features[col_name])
             )
         return output_dict
 
@@ -269,12 +398,7 @@ class SelectMetricWidget(QWidget):
             self._update_slider()
 
     def _get_min_max(self, label_name):
-        if label_name.endswith("_min"):
-            metric_name = label_name.removesuffix("_min")
-        elif label_name.endswith("_max"):
-            metric_name = label_name.removesuffix("_max")
-        else:
-            assert False, label_name
+        metric_name = self.trim_suffix(label_name)[0]
 
         layer_names = self.table_model.group_items
         cur_minimum = np.inf
@@ -295,36 +419,39 @@ class SelectMetricWidget(QWidget):
         return cur_minimum, cur_maximum
 
     def _update_slider(self):
-        for label in self.table_model.label_dict:
+        for col_idx, label in enumerate(self.table_model.label_dict):
             if label in self.ignore_idx:
                 continue
             if label in self.metric_dict:
                 viewer = self.metric_dict[label]
             else:
-                viewer = SliderView(label)
+                viewer = SliderView(label, col_idx)
+                viewer.value_changed.connect(self.table_widget.update_elements)
                 self.metric_dict[label] = viewer
                 self.metric_area.addWidget(viewer)
             min_val, max_val = self._get_min_max(label)
             viewer.set_range(min_val, max_val)
 
             if label.endswith("_min"):
-                viewer.set_value(min_val)
+                viewer.set_value(self._get_min_floor(min_val))
             elif label.endswith("_max"):
-                viewer.set_value(max_val)
+                viewer.set_value(self._get_max_floor(max_val))
             else:
                 assert False, label
 
 
 class SliderView(QWidget):
-    def __init__(self, text, parent=None):
+    value_changed = Signal(float, int)
+
+    def __init__(self, text, col_idx, parent=None):
         super().__init__(parent)
+        self.col_idx = col_idx
         self.setLayout(QHBoxLayout())
         self.layout().addWidget(QLabel(text, self))
         self.step_size = 1000
 
         self.slider = QSlider(Qt.Horizontal, self)
         self.slider.sliderMoved.connect(self.mouse_move)
-        self.slider.valueChanged.connect(self.mouse_move)
         self.slider.setRange(
             self.step_size * self.slider.minimum(),
             self.step_size * self.slider.maximum(),
@@ -340,12 +467,17 @@ class SliderView(QWidget):
 
     def mouse_move(self, value):
         self.label.setText(str(value / self.step_size))
+        self.value_changed.emit(value / self.step_size, self.col_idx)
 
     def set_value(self, value=None):
         value = value if value is not None else float(self.label.text())
-        self.slider.setValue(int(self.step_size * value))
+        value = int(self.step_size * value)
+
+        self.slider.setValue(value)
+        self.slider.sliderMoved.emit(value)
 
     def set_range(self, val_min, val_max):
         self.slider.setRange(
-            int(self.step_size * val_min), int(self.step_size * val_max)
+            int(self.step_size * val_min) - 1,
+            int(self.step_size * val_max) + 1,
         )

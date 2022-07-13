@@ -128,7 +128,7 @@ def _prepare_df(
         metadata[idx]["path"] = entry
         metadata[idx].update(
             {
-                f"{entry}_{func.__name__}": func(data_df[idx])
+                f"{entry}_{func.__name__}": func(data_df[idx][entry])
                 for func in [min, max]
                 for entry in _get_meta_idx()
             }

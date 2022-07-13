@@ -85,10 +85,13 @@ class GroupModel(QStandardItemModel):
                 col_item.setEditable(False)
             else:
                 col_item = QStandardItem(
-                    str(columns[cur_label]) if cur_label in columns else "-"
+                    columns[cur_label] if cur_label in columns else "-"
                 )
                 col_item.setEditable(True)
             root_element.setChild(row_idx, col_idx, col_item)
+
+    def update_element(self, item, text):
+        item.setCurrentText(text)
 
     def append_element_to_group(self, group_name, columns):
         group_item = self.group_items[group_name]
@@ -125,6 +128,7 @@ class GroupView(QTreeView):
         self.setModel(model)
         self.header().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
     @Slot(QModelIndex)
     def on_clicked(self, index):
@@ -137,7 +141,18 @@ class SelectMetricWidget(QWidget):
         super().__init__()
         self.napari_viewer = napari_viewer
         self.metrics: dict[str, typing.Any] = {}
+        self.metric_dict: dict = {}
         self.prev_points: list[str] = []
+
+        self.ignore_idx = [
+            "",
+            "boxsize",
+            "identifier",
+            "shown",
+            "n_selected",
+            "n_boxes",
+            "name",
+        ]
 
         self.napari_viewer.layers.events.inserted.connect(self.reset_choices)
         self.napari_viewer.layers.events.removed.connect(self.reset_choices)
@@ -205,25 +220,29 @@ class SelectMetricWidget(QWidget):
 
         return output_list
 
-    @staticmethod
-    def _prepare_columns(features, name) -> dict:
-        ignore_idx = ("boxsize", "identifier", "shown", "n_selected")
+    def _prepare_columns(self, features, name) -> dict:
         output_dict = {}
         output_dict["name"] = name
-        output_dict["n_boxes"] = len(features)
-        output_dict["n_selected"] = np.count_nonzero(features["shown"])
+        output_dict["n_boxes"] = str(len(features))
+        output_dict["n_selected"] = str(np.count_nonzero(features["shown"]))
         output_dict["boxsize"] = (
-            10 if "boxsize" not in features else np.mean(features["boxsize"])
+            10
+            if "boxsize" not in features
+            else str(int(np.mean(features["boxsize"])))
         )
         for col_name in features.columns:
-            if col_name in ignore_idx:
+            if col_name in self.ignore_idx:
                 continue
 
-            output_dict[f"{col_name}_min"] = np.min(features[col_name])
-            output_dict[f"{col_name}_max"] = np.max(features[col_name])
+            output_dict[f"{col_name}_min"] = str(
+                np.round(np.min(features[col_name]), 3)
+            )
+            output_dict[f"{col_name}_max"] = str(
+                np.round(np.max(features[col_name]), 3)
+            )
         return output_dict
 
-    def _add_remove_table(self, action: "ButtonActions"):
+    def _add_remove_table(self, action: "ButtonActions", update=True):
         layer_name = self.layer_input.currentText()
         if not layer_name.strip():
             return None
@@ -239,7 +258,15 @@ class SelectMetricWidget(QWidget):
         elif action == ButtonActions.DEL:
             self.table_model.remove_group(layer_name)
         elif action == ButtonActions.UPDATE:
-            self._add_remove_table(ButtonActions.DEL)
-            self._add_remove_table(ButtonActions.ADD)
+            self._add_remove_table(ButtonActions.DEL, update=False)
+            self._add_remove_table(ButtonActions.ADD, update=False)
 
-        self.table_model.sort()
+        if update:
+            self.table_model.sort()
+            self._update_slider()
+
+    def _update_slider(self):
+        for label in self.table_model.label_dict:
+            if label in self.ignore_idx:
+                continue
+            print(label)

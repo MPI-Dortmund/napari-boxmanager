@@ -89,7 +89,8 @@ def _get_2d_coords_idx():
 
 
 def _get_meta_idx():
-    return []
+    # TODO: DELETE
+    return ["metric"]
 
 
 def _get_hidden_meta_idx():
@@ -110,6 +111,8 @@ def _prepare_napari(
     output_data["boxsize"] = np.maximum(
         input_df[["box_x", "box_y"]].mean(axis=1), 10
     ).astype(int)
+    # TODO: DELETE
+    output_data["metric"] = np.random.random(len(output_data))
 
     return output_data
 
@@ -125,7 +128,7 @@ def _prepare_df(
         metadata[idx]["path"] = entry
         metadata[idx].update(
             {
-                f"{entry}_{func.__name__}": func(data_df[entry])
+                f"{entry}_{func.__name__}": func(data_df[idx])
                 for func in [min, max]
                 for entry in _get_meta_idx()
             }

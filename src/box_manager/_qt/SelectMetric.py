@@ -8,9 +8,9 @@ from qtpy.QtGui import QDoubleValidator, QStandardItem, QStandardItemModel
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QComboBox,
+    QFormLayout,
     QHBoxLayout,
     QHeaderView,
-    QLabel,
     QLineEdit,
     QPushButton,
     QSlider,
@@ -230,7 +230,7 @@ class SelectMetricWidget(QWidget):
         self.table_model = GroupModel(self.read_only, self)
         self.table_model.dataChanged.connect(self._update_view)
         self.table_widget = GroupView(self.table_model, self)
-        self.metric_area = QVBoxLayout()
+        self.metric_area = QFormLayout()
 
         layout_input = QHBoxLayout()
         btn_add = QPushButton("Add", self)
@@ -470,12 +470,12 @@ class SelectMetricWidget(QWidget):
                 viewer = self.metric_dict[label]
             else:
                 if label in ("boxsize",):
-                    viewer = EditView(label, col_idx)
+                    viewer = EditView(col_idx)
                 else:
-                    viewer = SliderView(label, col_idx)
+                    viewer = SliderView(col_idx)
                 viewer.value_changed.connect(self.table_widget.update_elements)
                 self.metric_dict[label] = viewer
-                self.metric_area.addWidget(viewer)
+                self.metric_area.addRow(label, viewer)
             min_val, max_val = self._get_min_max(label)
             viewer.set_range(min_val, max_val)
 
@@ -492,11 +492,10 @@ class SelectMetricWidget(QWidget):
 class EditView(QWidget):
     value_changed = Signal(float, int)
 
-    def __init__(self, text, col_idx, parent=None):
+    def __init__(self, col_idx, parent=None):
         super().__init__(parent)
         self.col_idx = col_idx
         self.setLayout(QHBoxLayout())
-        self.layout().addWidget(QLabel(text, self))
         self.edit = QLineEdit(self)
         self.edit.setValidator(QDoubleValidator())
         self.edit.returnPressed.connect(self._emit_signal)
@@ -518,11 +517,10 @@ class EditView(QWidget):
 class SliderView(QWidget):
     value_changed = Signal(float, int)
 
-    def __init__(self, text, col_idx, parent=None):
+    def __init__(self, col_idx, parent=None):
         super().__init__(parent)
         self.col_idx = col_idx
         self.setLayout(QHBoxLayout())
-        self.layout().addWidget(QLabel(text, self))
         self.step_size = 1000
 
         self.slider = QSlider(Qt.Horizontal, self)

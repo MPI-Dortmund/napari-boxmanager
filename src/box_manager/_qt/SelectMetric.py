@@ -3,8 +3,12 @@ import typing
 
 import napari.layers
 import numpy as np
-from qtpy.QtCore import QModelIndex, Qt, Signal, Slot
-from qtpy.QtGui import QDoubleValidator, QStandardItem, QStandardItemModel
+from qtpy.QtCore import QModelIndex, QRegularExpression, Qt, Signal, Slot
+from qtpy.QtGui import (
+    QRegularExpressionValidator,
+    QStandardItem,
+    QStandardItemModel,
+)
 from qtpy.QtWidgets import (
     QAbstractItemView,
     QComboBox,
@@ -470,9 +474,19 @@ class SelectMetricWidget(QWidget):
                 viewer = self.metric_dict[label]
             else:
                 if label in ("boxsize",):
-                    viewer = EditView(col_idx)
+                    viewer = EditView(
+                        col_idx,
+                        QRegularExpressionValidator(
+                            QRegularExpression("[0-9]*")
+                        ),
+                    )
                 else:
-                    viewer = SliderView(col_idx)
+                    viewer = SliderView(
+                        col_idx,
+                        QRegularExpressionValidator(
+                            QRegularExpression(r"-?[0-9]*\.[0-9]*")
+                        ),
+                    )
                 viewer.value_changed.connect(self.table_widget.update_elements)
                 self.metric_dict[label] = viewer
                 self.metric_area.addRow(label, viewer)
@@ -484,7 +498,7 @@ class SelectMetricWidget(QWidget):
             elif label.endswith("_max"):
                 viewer.set_value(self._get_max_floor(max_val))
             elif label in ("boxsize",):
-                viewer.set_value(max_val)
+                viewer.set_value(int(max_val))
             else:
                 assert False, label
 
@@ -492,18 +506,19 @@ class SelectMetricWidget(QWidget):
 class EditView(QWidget):
     value_changed = Signal(float, int)
 
-    def __init__(self, col_idx, parent=None):
+    def __init__(self, col_idx, validator=None, parent=None):
         super().__init__(parent)
         self.col_idx = col_idx
         self.setLayout(QHBoxLayout())
         self.edit = QLineEdit(self)
-        self.edit.setValidator(QDoubleValidator())
+        if validator is not None:
+            self.edit.setValidator(validator)
         self.edit.returnPressed.connect(self._emit_signal)
         self.layout().addWidget(self.edit, stretch=1)
         self.layout().setContentsMargins(0, 0, 0, 0)
 
     def _emit_signal(self):
-        value = float(self.edit.text())
+        value = int(self.edit.text())
         self.value_changed.emit(value, self.col_idx)
 
     def set_value(self, value):
@@ -517,7 +532,7 @@ class EditView(QWidget):
 class SliderView(QWidget):
     value_changed = Signal(float, int)
 
-    def __init__(self, col_idx, parent=None):
+    def __init__(self, col_idx, validator=None, parent=None):
         super().__init__(parent)
         self.col_idx = col_idx
         self.setLayout(QHBoxLayout())
@@ -530,7 +545,8 @@ class SliderView(QWidget):
             self.step_size * self.slider.maximum(),
         )
         self.label = QLineEdit(str(self.slider.value() / self.step_size), self)
-        self.label.setValidator(QDoubleValidator())
+        if validator is not None:
+            self.label.setValidator(validator)
         self.label.returnPressed.connect(self.set_value)
 
         self.layout().addWidget(self.slider, stretch=1)

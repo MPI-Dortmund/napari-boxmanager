@@ -370,7 +370,7 @@ class SelectMetricWidget(QWidget):
         for identifier, ident_df in features_copy.groupby(
             "identifier", sort=False
         ):
-            cur_name = name or layer.metadata[identifier]["path"]
+            cur_name = name or layer.metadata[identifier]["name"]
             output_list.append(self._prepare_columns(ident_df, cur_name))
 
         return output_list

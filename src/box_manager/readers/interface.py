@@ -10,7 +10,7 @@ if typing.TYPE_CHECKING:
 class ReaderInterface(typing.Protocol):
     def to_napari(
         self,
-        path: os.PathLike | list[os.PathLike] | pd.DataFrame,
+        path: os.PathLike | list[os.PathLike],
     ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
         ...
 

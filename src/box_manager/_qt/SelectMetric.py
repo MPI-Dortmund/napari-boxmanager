@@ -215,6 +215,7 @@ class SelectMetricWidget(QWidget):
             "n_selected",
             "n_boxes",
             "name",
+            "slice",
         ]
         self.ignore_idx = [
             "boxsize",
@@ -276,33 +277,42 @@ class SelectMetricWidget(QWidget):
         layer_val = float(
             self.table_model.get_value(parent_idx, row_idx, col_name)
         )
+        slice_idx = int(
+            self.table_model.get_value(parent_idx, row_idx, "slice")
+        )
 
         if layer.data.shape[1] == 3:
-            mask_dimension = layer.data[:, 0] == row_idx
+            mask_dimension = layer.data[:, 0] == slice_idx
         elif layer.data.shape[1] == 2:
             mask_dimension = np.ones(layer.data.shape[0])
         else:
             assert False, layer
 
         if is_min_max:
-            min_val = float(
-                self.table_model.get_value(
-                    parent_idx, row_idx, f"{metric_name}_min"
+            mask_metric = np.ones(mask_dimension.shape)
+            for metric_name in layer.features.columns:
+                if metric_name in self.ignore_idx:
+                    continue
+                min_val = float(
+                    self.table_model.get_value(
+                        parent_idx, row_idx, f"{metric_name}_min"
+                    )
                 )
-            )
-            max_val = float(
-                self.table_model.get_value(
-                    parent_idx, row_idx, f"{metric_name}_max"
+                max_val = float(
+                    self.table_model.get_value(
+                        parent_idx, row_idx, f"{metric_name}_max"
+                    )
                 )
-            )
-            mask_metric = (min_val <= layer.features[metric_name]) & (
-                layer.features[metric_name] <= max_val
-            )
+                mask_metric = (
+                    mask_metric
+                    & (min_val <= layer.features[metric_name])
+                    & (layer.features[metric_name] <= max_val)
+                )
 
             layer.shown[mask_dimension & mask_metric] = True
             layer.shown[mask_dimension & ~mask_metric] = False
 
-            layer.metadata[row_idx][col_name] = layer_val
+            layer.metadata[slice_idx][col_name] = layer_val
             self.table_model.set_value(
                 parent_idx,
                 row_idx,
@@ -313,7 +323,7 @@ class SelectMetricWidget(QWidget):
                 parent_idx,
                 row_idx,
                 "n_boxes",
-                len(mask_dimension & mask_metric),
+                np.count_nonzero(mask_dimension),
             )
 
             self.table_model.set_value(
@@ -371,7 +381,9 @@ class SelectMetricWidget(QWidget):
             "identifier", sort=False
         ):
             cur_name = name or layer.metadata[identifier]["name"]
-            output_list.append(self._prepare_columns(ident_df, cur_name))
+            output_list.append(
+                self._prepare_columns(ident_df, cur_name, identifier)
+            )
 
         return output_list
 
@@ -383,9 +395,10 @@ class SelectMetricWidget(QWidget):
     def _get_max_floor(vals):
         return np.round(np.ceil(np.max(vals) * 1000) / 1000, 3)
 
-    def _prepare_columns(self, features, name) -> dict:
+    def _prepare_columns(self, features, name, slice_idx) -> dict:
         output_dict = {}
         output_dict["name"] = name
+        output_dict["slice"] = str(slice_idx)
         output_dict["n_boxes"] = str(len(features))
         output_dict["n_selected"] = str(np.count_nonzero(features["shown"]))
         output_dict["boxsize"] = (

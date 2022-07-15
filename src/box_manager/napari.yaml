@@ -22,11 +22,11 @@ contributions:
   readers:
     - command: napari-boxmanager.get_reader
       accepts_directories: false
-      filename_patterns: ['*.tloc', '*.temb', '*.tmap', '*.cbox', '*.box', '*.star']
+      filename_patterns: ['*.tloc', '*.temb', '*.tmap', '*.cbox', '*.box', '*.star', '*.mrc', "*.mrcs", "*.st"]
   writers:
     - command: napari-boxmanager.get_writer
-      layer_types: ['points*']
-      filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star']
+      layer_types: ['points*', 'image*']
+      filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star', '.mrc', '.mrcs', '.st']
   sample_data: []
   widgets:
     - command: napari-boxmanager.select_metric

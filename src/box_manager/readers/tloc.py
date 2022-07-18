@@ -10,6 +10,10 @@ if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
 
+def write(path: "os.PathLike", output_df: pd.DataFrame):
+    output_df.to_pickle(path)
+
+
 def read(path: "os.PathLike") -> pd.DataFrame:
     """
     Read a tloc conform file into memory.
@@ -51,15 +55,19 @@ def to_napari(
         for cluster_name, cluster_df in napari_df.groupby(
             "grp_idx", sort=False
         ):
-            output_dfs.append((file_name, cluster_name, cluster_df))
+            output_dfs.append(
+                (file_name, cluster_name, cluster_df, input_df.attrs)
+            )
 
     colors = mcm.get_cmap("gist_rainbow")
     n_layers = np.maximum(len(output_dfs), 2)  # Avoid zero division
 
     output_layers = []
-    for idx, (file_name, cluster_name, cluster_df) in enumerate(output_dfs):
+    for idx, (file_name, cluster_name, cluster_df, attrs) in enumerate(
+        output_dfs
+    ):
         cur_color = colors(idx / (n_layers - 1))
-        metadata = {}
+        metadata = {"input_attrs": attrs}
         for idx in range(cluster_df["x"].max() + 1):
             metadata[idx] = {"path": file_name, "name": f"slice {idx}"}
             idx_view_df = cluster_df[cluster_df["x"] == idx]
@@ -97,11 +105,45 @@ def to_napari(
 
 
 def from_napari(
-    path: os.PathLike | list[os.PathLike] | pd.DataFrame,
-    data: typing.Any,
-    meta: dict,
+    path: os.PathLike,
+    layer_data: typing.Any,
 ):
-    raise NotImplementedError
+    column_names = [
+        "X",
+        "Y",
+        "Z",
+        "filename",
+        "predicted_class",
+        "predicted_class_name",
+        "size",
+        "metric_best",
+        "width",
+        "height",
+        "depth",
+    ]
+    output_dfs = []
+    for idx, (coords, meta, _) in enumerate(layer_data):
+        shown_mask = meta["shown"]
+        data_df = pd.DataFrame(columns=column_names)
+        features = meta["features"]
+        data_df["X"] = coords[shown_mask, 2]
+        data_df["Y"] = coords[shown_mask, 1]
+        data_df["Z"] = coords[shown_mask, 0]
+        data_df["filename"] = meta["metadata"][0]["path"]
+        data_df["predicted_class"] = idx
+        data_df["predicted_class_name"] = meta["name"]
+        data_df["size"] = features.loc[shown_mask, "size"].to_numpy()
+        data_df["metric_best"] = features.loc[shown_mask, "metric"].to_numpy()
+        data_df["width"] = meta["size"][shown_mask, 2]
+        data_df["height"] = meta["size"][shown_mask, 1]
+        data_df["depth"] = meta["size"][shown_mask, 0]
+        data_df.attrs = meta["metadata"]["input_attrs"]
+        output_dfs.append(data_df)
+
+    output_df = pd.concat(output_dfs, ignore_index=True, axis=0)
+    write(path, output_df)
+
+    return path
 
 
 def _prepare_napari(

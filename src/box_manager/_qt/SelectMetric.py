@@ -3,6 +3,8 @@ import typing
 
 import napari.layers
 import numpy as np
+import pandas as pd
+from matplotlib.backends.backend_qt5agg import FigureCanvas
 from qtpy.QtCore import QModelIndex, QRegularExpression, Qt, Signal, Slot
 from qtpy.QtGui import (
     QRegularExpressionValidator,
@@ -15,6 +17,7 @@ from qtpy.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
     QHeaderView,
+    QLabel,
     QLineEdit,
     QPushButton,
     QSlider,
@@ -234,7 +237,7 @@ class SelectMetricWidget(QWidget):
         self.table_model = GroupModel(self.read_only, self)
         self.table_model.dataChanged.connect(self._update_view)
         self.table_widget = GroupView(self.table_model, self)
-        self.metric_area = QFormLayout()
+        self.metric_area = QVBoxLayout()
 
         layout_input = QHBoxLayout()
         btn_add = QPushButton("Add", self)
@@ -256,8 +259,8 @@ class SelectMetricWidget(QWidget):
 
         self.setLayout(QVBoxLayout())
         self.layout().addLayout(layout_input, stretch=0)  # type: ignore
-        self.layout().addWidget(self.table_widget)
-        self.layout().addLayout(self.metric_area)  # type: ignore
+        self.layout().addWidget(self.table_widget, stretch=1)
+        self.layout().addLayout(self.metric_area, stretch=0)  # type: ignore
 
     def _update_view(self, top_idx, _, idx):
         if not idx:
@@ -445,63 +448,139 @@ class SelectMetricWidget(QWidget):
             self.table_model.sort()
             self._update_slider()
 
-    def _get_min_max(self, label_name):
-        metric_name = self.trim_suffix(label_name)[0]
+    def _get_all_data(self, metric_name):
 
         layer_names = self.table_model.group_items
-        cur_minimum = np.inf
-        cur_maximum = -np.inf
+        layer_features = []
         for layer_name in layer_names:
-            cur_minimum = np.minimum(
-                np.min(
-                    self.napari_viewer.layers[layer_name].features[metric_name]
-                ),
-                cur_minimum,
+            layer_features.append(
+                self.napari_viewer.layers[layer_name].features[metric_name]
             )
-            cur_maximum = np.maximum(
-                np.max(
-                    self.napari_viewer.layers[layer_name].features[metric_name]
-                ),
-                cur_maximum,
-            )
-        return cur_minimum, cur_maximum
+        return pd.concat(layer_features, ignore_index=True)
 
     def _update_slider(self):
         for col_idx, label in enumerate(self.table_model.label_dict):
             if label in self.read_only:
                 continue
-            if label in self.metric_dict:
-                viewer = self.metric_dict[label]
-            else:
-                if label in ("boxsize",):
+
+            metric_name, _ = self.trim_suffix(label)
+            labels_data = self._get_all_data(metric_name)
+
+            if label in ("boxsize",):
+                if metric_name in self.metric_dict:
+                    viewer = self.metric_dict[metric_name]
+                else:
+                    layout = QHBoxLayout()
+                    layout.addWidget(QLabel(label))
                     viewer = EditView(
                         col_idx,
                         QRegularExpressionValidator(
                             QRegularExpression("[0-9]*")
                         ),
                     )
-                else:
-                    viewer = SliderView(
-                        col_idx,
-                        QRegularExpressionValidator(
-                            QRegularExpression(r"-?[0-9]*\.[0-9]*")
-                        ),
-                    )
-                viewer.value_changed.connect(self.table_widget.update_elements)
-                self.metric_dict[label] = viewer
-                self.metric_area.addRow(label, viewer)
-            min_val, max_val = self._get_min_max(label)
-            if max_val not in (np.inf, -np.inf):
-                viewer.set_range(min_val, max_val)
+                    layout.addWidget(viewer)
+                    self.metric_area.addLayout(layout)
+                    viewer.value_changed.connect(self.table_widget.update_elements)  # type: ignore
+                    self.metric_dict[label] = viewer
+                viewer.set_value(int(labels_data.mean()))
+                continue
 
-                if label.endswith("_min"):
-                    viewer.set_value(self._get_min_floor(min_val))
-                elif label.endswith("_max"):
-                    viewer.set_value(self._get_max_floor(max_val))
-                elif label in ("boxsize",):
-                    viewer.set_value(int(max_val))
-                else:
-                    assert False, label
+            if metric_name in self.metric_dict:
+                viewer = self.metric_dict[metric_name]
+            else:
+                viewer = HistogramMinMaxView(metric_name, self)
+                self.metric_area.addWidget(viewer)
+                viewer.value_changed.connect(self.table_widget.update_elements)  # type: ignore
+                self.metric_dict[metric_name] = viewer
+
+            viewer.set_data(labels_data)
+
+            if label.endswith("_min"):
+                viewer.set_col_min(col_idx)
+            elif label.endswith("_max"):
+                viewer.set_col_max(col_idx)
+            else:
+                assert False, label
+
+
+class HistogramMinMaxView(QWidget):
+    value_changed = Signal(float, int)
+
+    def __init__(self, label_name, parent=None):
+        super().__init__(parent)
+
+        self.setLayout(QVBoxLayout())
+        self.col_min = -1
+        self.col_max = -1
+        self.step_size = 1000
+
+        self.canvas = FigureCanvas()
+        self.canvas.figure.set_tight_layout(True)
+        self.canvas.figure.patch.set_facecolor("#262930")
+        self.canvas.setMaximumHeight(100)
+        self.axis = self.canvas.figure.subplots()
+        self.axis.get_yaxis().set_visible(False)
+        self.line_min = self.axis.axvline(0, color="w")
+        self.line_max = self.axis.axvline(0, color="r")
+
+        self.slider_min = SliderView(
+            QRegularExpressionValidator(
+                QRegularExpression(r"-?[0-9]*\.[0-9]*")
+            ),
+            self,
+        )
+        self.slider_min.value_changed.connect(self.value_changed.emit)
+        self.slider_min.value_changed.connect(
+            lambda x, _, is_max=False: self.adjust_line(x, is_max)
+        )
+        self.slider_max = SliderView(
+            QRegularExpressionValidator(
+                QRegularExpression(r"-?[0-9]*\.[0-9]*")
+            ),
+            self,
+        )
+        self.slider_max.value_changed.connect(self.value_changed.emit)
+        self.slider_max.value_changed.connect(
+            lambda x, _, is_max=True: self.adjust_line(x, is_max)
+        )
+
+        layout = QFormLayout()
+        layout.addRow(f"{label_name} min", self.slider_min)
+        layout.addRow(f"{label_name} max", self.slider_max)
+
+        self.layout().addLayout(layout)
+        self.layout().addWidget(self.canvas, stretch=0)
+        self.layout().setContentsMargins(0, 0, 0, 0)
+
+    def adjust_line(self, value, is_max):
+        if is_max:
+            self.line_max.set_data([value, value], [0, 1])
+        else:
+            self.line_min.set_data([value, value], [0, 1])
+        self.canvas.draw_idle()
+
+    def set_data(self, label_data):
+        val_min = label_data.min()
+        val_max = label_data.max()
+        self.slider_min.set_range(val_min, val_max)
+        self.slider_max.set_range(val_min, val_max)
+        self.slider_min.set_value(val_min)
+        self.slider_max.set_value(val_max)
+        self.line_min.set_data([val_min, val_min], [0, 1])
+        self.line_max.set_data([val_max, val_max], [0, 1])
+
+        self.axis.clear()
+        self.axis.hist(label_data, 100)
+        self.axis.add_artist(self.line_min)
+        self.axis.add_artist(self.line_max)
+        self.canvas.figure.tight_layout()
+        self.canvas.draw_idle()
+
+    def set_col_min(self, col_min):
+        self.slider_min.set_col(col_min)
+
+    def set_col_max(self, col_max):
+        self.slider_max.set_col(col_max)
 
 
 class EditView(QWidget):
@@ -533,9 +612,9 @@ class EditView(QWidget):
 class SliderView(QWidget):
     value_changed = Signal(float, int)
 
-    def __init__(self, col_idx, validator=None, parent=None):
+    def __init__(self, validator=None, parent=None):
         super().__init__(parent)
-        self.col_idx = col_idx
+        self.col_idx = -1
         self.setLayout(QHBoxLayout())
         self.step_size = 1000
 
@@ -571,3 +650,6 @@ class SliderView(QWidget):
             int(self.step_size * val_min) - 1,
             int(self.step_size * val_max) + 1,
         )
+
+    def set_col(self, col):
+        self.col_idx = col

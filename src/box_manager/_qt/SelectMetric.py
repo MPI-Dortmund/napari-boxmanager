@@ -515,13 +515,12 @@ class HistogramMinMaxView(QWidget):
         self.step_size = 1000
 
         self.canvas = FigureCanvas()
-        self.canvas.figure.set_tight_layout(True)
-        self.canvas.figure.patch.set_facecolor("#262930")
         self.canvas.setMaximumHeight(100)
         self.axis = self.canvas.figure.subplots()
         self.axis.get_yaxis().set_visible(False)
-        self.line_min = self.axis.axvline(0, color="w")
-        self.line_max = self.axis.axvline(0, color="r")
+        self.axis.set_position([0.01, 0.25, 0.98, 0.73])
+        self.line_min = self.axis.axvline(0, color="k")
+        self.line_max = self.axis.axvline(0, color="orange")
 
         self.slider_min = SliderView(
             QRegularExpressionValidator(
@@ -573,7 +572,6 @@ class HistogramMinMaxView(QWidget):
         self.axis.hist(label_data, 100)
         self.axis.add_artist(self.line_min)
         self.axis.add_artist(self.line_max)
-        self.canvas.figure.tight_layout()
         self.canvas.draw_idle()
 
     def set_col_min(self, col_min):

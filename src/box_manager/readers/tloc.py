@@ -52,11 +52,11 @@ def to_napari(
     for file_name in path:  # type: ignore
         input_df = read(file_name)
         napari_df = _prepare_napari(input_df)
-        for cluster_name, cluster_df in napari_df.groupby(
+        for cluster_id, cluster_df in napari_df.groupby(
             "grp_idx", sort=False
         ):
             output_dfs.append(
-                (file_name, cluster_name, cluster_df, input_df.attrs)
+                (file_name, input_df.attrs['references'][cluster_id], cluster_df, input_df.attrs)
             )
 
     colors = mcm.get_cmap("gist_rainbow")
@@ -112,9 +112,7 @@ def from_napari(
         "X",
         "Y",
         "Z",
-        "filename",
         "predicted_class",
-        "predicted_class_name",
         "size",
         "metric_best",
         "width",
@@ -129,9 +127,7 @@ def from_napari(
         data_df["X"] = coords[shown_mask, 2]
         data_df["Y"] = coords[shown_mask, 1]
         data_df["Z"] = coords[shown_mask, 0]
-        data_df["filename"] = meta["metadata"][0]["path"]
         data_df["predicted_class"] = idx
-        data_df["predicted_class_name"] = meta["name"]
         data_df["size"] = features.loc[shown_mask, "size"].to_numpy()
         data_df["metric_best"] = features.loc[shown_mask, "metric"].to_numpy()
         data_df["width"] = meta["size"][shown_mask, 2]
@@ -164,7 +160,7 @@ def _prepare_napari(
     output_data["boxsize"] = input_df[["height", "width", "depth"]].mean(
         axis=1
     )
-    output_data["grp_idx"] = input_df["predicted_class_name"]
+    output_data["grp_idx"] = input_df["predicted_class"]
 
     return output_data
 

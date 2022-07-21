@@ -49,27 +49,44 @@ class GroupModel(QStandardItemModel):
         self.default_labels = [""]
         self._update_labels(self.default_labels)
 
-        self.dataChanged.connect(self.change_children)
+    def update_model(self, rows_candidates, value, col_idx):
+        parents = {entry[1] for entry in rows_candidates if entry[0] == -1}
 
-    def change_children(self, top_idx, _, idx):
-        if not idx:
+        layer_dict = {}
+        for parent_idx, row_idx in rows_candidates:
+            if parent_idx in parents:
+                continue
+            layer_dict.setdefault(parent_idx, []).append(row_idx)
+
+        self.blockSignals(True)
+        for parent_idx, rows_idx in layer_dict.items():
+            if parent_idx == -1:
+                parent_item = self.invisibleRootItem()
+                change_children = True
+            else:
+                parent_item = self.item(parent_idx, 0)
+                change_children = False
+
+            for row_idx in rows_idx:
+                child_item = parent_item.child(row_idx, col_idx)
+                child_item.setText(str(value))
+                if change_children:
+                    self.change_children(row_idx, col_idx)
+        self.blockSignals(False)
+        self.layoutChanged.emit()
+
+    def change_children(self, row, column):
+
+        if self.label_dict_rev[column] in self.read_only:
             return
 
-        if self.label_dict_rev[top_idx.column()] in self.read_only:
-            return
-
-        if top_idx.parent().row() == -1:
-            root_item = self.invisibleRootItem().child(top_idx.row(), 0)
-            value = (
-                self.invisibleRootItem()
-                .child(top_idx.row(), top_idx.column())
-                .text()
-            )
-            for grandchild_idx in range(root_item.rowCount()):
-                grandchild_item = root_item.child(
-                    grandchild_idx, top_idx.column()
-                )
-                grandchild_item.setText(str(value))
+        root_item = self.invisibleRootItem().child(row, 0)
+        value = self.invisibleRootItem().child(row, column).text()
+        prev_signal = self.blockSignals(True)
+        for grandchild_idx in range(root_item.rowCount()):
+            grandchild_item = root_item.child(grandchild_idx, column)
+            grandchild_item.setText(str(value))
+        self.blockSignals(prev_signal)
 
     def _update_labels(self, columns):
         self.label_dict = {}
@@ -194,17 +211,10 @@ class GroupView(QTreeView):
             (entry.parent().row(), entry.row())
             for entry in self.selectedIndexes()
         }
-        parents = {entry[1] for entry in rows_candidates if entry[0] == -1}
-        rows = [entry for entry in rows_candidates if entry[0] not in parents]
+        if not rows_candidates:
+            return
 
-        for parent_idx, row_idx in rows:
-            if parent_idx == -1:
-                parent_item = self.model.invisibleRootItem()
-            else:
-                parent_item = self.model.item(parent_idx, 0)
-
-            child_item = parent_item.child(row_idx, col_idx)
-            child_item.setText(str(value))
+        self.model.update_model(rows_candidates, value, col_idx)
 
 
 class SelectMetricWidget(QWidget):
@@ -235,7 +245,6 @@ class SelectMetricWidget(QWidget):
         self.reset_choices(None)
 
         self.table_model = GroupModel(self.read_only, self)
-        self.table_model.dataChanged.connect(self._update_view)
         self.table_widget = GroupView(self.table_model, self)
         self.metric_area = QVBoxLayout()
 

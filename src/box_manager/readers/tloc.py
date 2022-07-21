@@ -56,18 +56,18 @@ def to_napari(
             "grp_idx", sort=False
         ):
             output_dfs.append(
-                (file_name, input_df.attrs['references'][cluster_id], cluster_df, input_df.attrs)
+                (cluster_id, file_name, input_df.attrs['references'][cluster_id], cluster_df, input_df.attrs)
             )
 
     colors = mcm.get_cmap("gist_rainbow")
     n_layers = np.maximum(len(output_dfs), 2)  # Avoid zero division
 
     output_layers = []
-    for idx, (file_name, cluster_name, cluster_df, attrs) in enumerate(
+    for idx, (cluster_id, file_name, cluster_name, cluster_df, attrs) in enumerate(
         output_dfs
     ):
         cur_color = colors(idx / (n_layers - 1))
-        metadata = {"input_attrs": attrs}
+        metadata = {"input_attrs": attrs, 'predicted_class': cluster_id}
         for idx in range(cluster_df["x"].max() + 1):
             metadata[idx] = {"path": file_name, "name": f"slice {idx}"}
             idx_view_df = cluster_df[cluster_df["x"] == idx]
@@ -127,7 +127,7 @@ def from_napari(
         data_df["X"] = coords[shown_mask, 2]
         data_df["Y"] = coords[shown_mask, 1]
         data_df["Z"] = coords[shown_mask, 0]
-        data_df["predicted_class"] = idx
+        data_df["predicted_class"] = meta["metadata"]["predicted_class"]
         data_df["size"] = features.loc[shown_mask, "size"].to_numpy()
         data_df["metric_best"] = features.loc[shown_mask, "metric"].to_numpy()
         data_df["width"] = meta["size"][shown_mask, 2]

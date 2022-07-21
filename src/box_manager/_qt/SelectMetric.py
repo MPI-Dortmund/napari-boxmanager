@@ -74,6 +74,7 @@ class GroupModel(QStandardItemModel):
                     self.change_children(row_idx, col_idx)
         self.blockSignals(False)
         self.layoutChanged.emit()
+        return layer_dict
 
     def change_children(self, row, column):
 
@@ -116,6 +117,9 @@ class GroupModel(QStandardItemModel):
         child_item.child(row_idx, self.label_dict[col_name]).setText(
             str(value)
         )
+
+    def get_values(self, parent_idx, rows_idx, col_name):
+        return [self.get_value(parent_idx, row, col_name) for row in rows_idx]
 
     def get_value(self, parent_idx, row_idx, col_name):
         root_element = self.invisibleRootItem()
@@ -187,6 +191,8 @@ class GroupDelegate(QStyledItemDelegate):
 
 
 class GroupView(QTreeView):
+    elementsUpdated = Signal(int, list, str)
+
     def __init__(self, model, parent=None):
         super().__init__(parent)
         self.setIndentation(0)
@@ -214,7 +220,16 @@ class GroupView(QTreeView):
         if not rows_candidates:
             return
 
-        self.model.update_model(rows_candidates, value, col_idx)
+        update_dict = self.model.update_model(rows_candidates, value, col_idx)
+        for parent_idx, rows_idx in update_dict.items():
+            col_name = self.model.label_dict_rev[col_idx]
+            if parent_idx == -1:
+                for row in rows_idx:
+                    root_item = self.model.invisibleRootItem().child(row, 0)
+                    rows = list(range(root_item.rowCount()))
+                    self.elementsUpdated.emit(row, rows, col_name)
+            else:
+                self.elementsUpdated.emit(parent_idx, rows_idx, col_name)
 
 
 class SelectMetricWidget(QWidget):
@@ -246,6 +261,7 @@ class SelectMetricWidget(QWidget):
 
         self.table_model = GroupModel(self.read_only, self)
         self.table_widget = GroupView(self.table_model, self)
+        self.table_widget.elementsUpdated.connect(self._update_view)
         self.metric_area = QVBoxLayout()
 
         layout_input = QHBoxLayout()
@@ -271,7 +287,11 @@ class SelectMetricWidget(QWidget):
         self.layout().addWidget(self.table_widget, stretch=1)
         self.layout().addLayout(self.metric_area, stretch=0)  # type: ignore
 
-    def _update_view(self, top_idx, _, idx):
+    @Slot(int, list, str)
+    def _update_view(self, parent_idx, rows_idx, column_name):
+        print(parent_idx, rows_idx, column_name)
+
+    def _update_view_old(self, top_idx, _, idx):
         if not idx:
             return
 
@@ -610,7 +630,6 @@ class EditView(QWidget):
 
     def set_value(self, value):
         self.edit.setText(str(value))
-        self._emit_signal()
 
     def set_range(self, *_):
         pass
@@ -646,11 +665,16 @@ class SliderView(QWidget):
         self.value_changed.emit(value / self.step_size, self.col_idx)
 
     def set_value(self, value=None):
+        emit_signal = True if value is None else False
         value = value if value is not None else float(self.label.text())
         value = int(self.step_size * value)
 
         self.slider.setValue(value)
-        self.slider.sliderMoved.emit(value)
+        if emit_signal:
+            self.slider.sliderMoved.emit(value)
+        else:
+            # Otherwise handeld by the sliderMoved event
+            self.label.setText(str(value / self.step_size))
 
     def set_range(self, val_min, val_max):
         self.slider.setRange(

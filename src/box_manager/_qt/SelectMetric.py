@@ -33,6 +33,14 @@ if typing.TYPE_CHECKING:
     import napari
 
 
+def _get_min_floor(vals, step=1000):
+    return np.round(np.floor(np.min(vals) * step) / step, 3)
+
+
+def _get_max_floor(vals, step=1000):
+    return np.round(np.ceil(np.max(vals) * step) / step, 3)
+
+
 class ButtonActions(enum.Enum):
     ADD = 0
     DEL = 1
@@ -107,6 +115,10 @@ class GroupModel(QStandardItemModel):
 
     def sort(self):
         self.invisibleRootItem().sortChildren(self.label_dict["name"])
+
+    def set_values(self, parent_idx, rows_idx, col_name, value):
+        for row in rows_idx:
+            self.set_value(parent_idx, row, col_name, value)
 
     def set_value(self, parent_idx, row_idx, col_name, value):
         root_element = self.invisibleRootItem()
@@ -191,7 +203,7 @@ class GroupDelegate(QStyledItemDelegate):
 
 
 class GroupView(QTreeView):
-    elementsUpdated = Signal(int, list, str)
+    elementsUpdated = Signal(dict, str)
 
     def __init__(self, model, parent=None):
         super().__init__(parent)
@@ -221,15 +233,18 @@ class GroupView(QTreeView):
             return
 
         update_dict = self.model.update_model(rows_candidates, value, col_idx)
+        layer_dict = {}
         for parent_idx, rows_idx in update_dict.items():
-            col_name = self.model.label_dict_rev[col_idx]
             if parent_idx == -1:
                 for row in rows_idx:
                     root_item = self.model.invisibleRootItem().child(row, 0)
                     rows = list(range(root_item.rowCount()))
-                    self.elementsUpdated.emit(row, rows, col_name)
+                    layer_dict[row] = rows
             else:
-                self.elementsUpdated.emit(parent_idx, rows_idx, col_name)
+                layer_dict[parent_idx] = rows_idx
+
+        col_name = self.model.label_dict_rev[col_idx]
+        self.elementsUpdated.emit(layer_dict, col_name)
 
 
 class SelectMetricWidget(QWidget):
@@ -287,9 +302,105 @@ class SelectMetricWidget(QWidget):
         self.layout().addWidget(self.table_widget, stretch=1)
         self.layout().addLayout(self.metric_area, stretch=0)  # type: ignore
 
-    @Slot(int, list, str)
-    def _update_view(self, parent_idx, rows_idx, column_name):
-        print(parent_idx, rows_idx, column_name)
+    @Slot(dict, str)
+    def _update_view(self, layer_dict, col_name):
+        metric_name, is_min_max = self.trim_suffix(col_name)
+
+        for parent_idx, rows_idx in layer_dict.items():
+            do_update = False
+            layer_name = self.table_model.get_value(-1, parent_idx, "name")
+            layer = self.napari_viewer.layers[layer_name]  # type: ignore
+
+            slice_idx = list(
+                map(
+                    int,
+                    self.table_model.get_values(parent_idx, rows_idx, "slice"),
+                )
+            )
+            layer_vals = float(
+                self.table_model.get_value(parent_idx, rows_idx[0], col_name)
+            )
+
+            if layer.data.shape[1] == 3:
+                mask_dimension = np.isin(layer.data[:, 0], slice_idx)
+            elif layer.data.shape[1] == 2:
+                mask_dimension = np.ones(layer.data.shape[0], dtype=bool)
+            else:
+                assert False, layer
+
+            if is_min_max:
+                old_shown = layer.shown.copy()
+                mask_metric = np.ones(mask_dimension.shape)
+                for metric_name in layer.features.columns:
+                    if metric_name in self.ignore_idx:
+                        continue
+                    min_val = min(
+                        map(
+                            float,
+                            self.table_model.get_values(
+                                parent_idx, rows_idx, f"{metric_name}_min"
+                            ),
+                        )
+                    )
+                    max_val = max(
+                        map(
+                            float,
+                            self.table_model.get_values(
+                                parent_idx, rows_idx, f"{metric_name}_max"
+                            ),
+                        )
+                    )
+                    mask_metric = (
+                        mask_metric
+                        & (min_val <= layer.features[metric_name])
+                        & (layer.features[metric_name] <= max_val)
+                    )
+                layer.shown[mask_dimension & mask_metric] = True
+                layer.shown[mask_dimension & ~mask_metric] = False
+
+                if not np.array_equal(old_shown, layer.shown):
+                    for idx, row in enumerate(rows_idx):
+                        if layer.data.shape[1] == 3:
+                            slice_mask = layer.data[:, 0] == slice_idx[idx]
+                        elif layer.data.shape[1] == 2:
+                            slice_mask = np.ones(
+                                layer.data.shape[0], dtype=bool
+                            )
+                        else:
+                            assert False, layer
+                        self.table_model.set_value(
+                            parent_idx,
+                            row,
+                            "n_selected",
+                            np.count_nonzero(
+                                mask_dimension & mask_metric & slice_mask
+                            ),
+                        )
+                        self.table_model.set_value(
+                            parent_idx,
+                            row,
+                            "n_boxes",
+                            np.count_nonzero(mask_dimension & slice_mask),
+                        )
+
+                    self.table_model.set_value(
+                        -1,
+                        parent_idx,
+                        "n_selected",
+                        np.count_nonzero(layer.shown),
+                    )
+                    self.table_model.set_value(
+                        -1, parent_idx, "n_boxes", len(layer.shown)
+                    )
+                    do_update = True
+            elif metric_name == "boxsize":
+                do_update = True
+                layer.size[mask_dimension] = layer_vals
+            else:
+                assert False
+
+            if do_update:
+                layer.visible = layer.visible
 
     def _update_view_old(self, top_idx, _, idx):
         if not idx:
@@ -423,14 +534,6 @@ class SelectMetricWidget(QWidget):
 
         return output_list
 
-    @staticmethod
-    def _get_min_floor(vals):
-        return np.round(np.floor(np.min(vals) * 1000) / 1000, 3)
-
-    @staticmethod
-    def _get_max_floor(vals):
-        return np.round(np.ceil(np.max(vals) * 1000) / 1000, 3)
-
     def _prepare_columns(self, features, name, slice_idx) -> dict:
         output_dict = {}
         output_dict["name"] = name
@@ -447,10 +550,10 @@ class SelectMetricWidget(QWidget):
                 continue
 
             output_dict[f"{col_name}_min"] = str(
-                self._get_min_floor(features[col_name])
+                _get_min_floor(features[col_name])
             )
             output_dict[f"{col_name}_max"] = str(
-                self._get_max_floor(features[col_name])
+                _get_max_floor(features[col_name])
             )
         return output_dict
 
@@ -588,8 +691,8 @@ class HistogramMinMaxView(QWidget):
         self.canvas.draw_idle()
 
     def set_data(self, label_data):
-        val_min = label_data.min()
-        val_max = label_data.max()
+        val_min = _get_min_floor(label_data.min())
+        val_max = _get_max_floor(label_data.max())
         self.slider_min.set_range(val_min, val_max)
         self.slider_max.set_range(val_min, val_max)
         self.slider_min.set_value(val_min)

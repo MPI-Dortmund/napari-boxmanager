@@ -415,8 +415,10 @@ class SelectMetricWidget(QWidget):
                     self._add_remove_table(layer, ButtonActions.ADD)
                     if "put_editable" in layer.metadata:
                         layer.editable = layer.metadata["put_editable"]
+
                     layer.events.set_data.disconnect(self._update_on_data)
                     layer.events.set_data.connect(self._update_on_data)
+
                     layer.events.editable.disconnect(self._update_editable)
                     layer.events.editable.connect(self._update_editable)
                 else:
@@ -426,9 +428,8 @@ class SelectMetricWidget(QWidget):
             self.prev_valid_layers = valid_layers
 
     def _update_on_data(self, event):
-        print(event)
-        print(event.mode)
-        print(event.data)
+        layer = event.source
+        self._add_remove_table(layer, ButtonActions.UPDATE)
 
     def _update_editable(self, event):
         layer = event.source
@@ -452,7 +453,10 @@ class SelectMetricWidget(QWidget):
         for identifier, ident_df in features_copy.groupby(
             "identifier", sort=False
         ):
-            cur_name = name or layer.metadata[identifier]["name"]
+            try:
+                cur_name = name or layer.metadata[identifier]["name"]
+            except KeyError:
+                cur_name = "Manual"
             output_list.append(
                 self._prepare_columns(
                     pd.DataFrame(layer.size, dtype=float),

@@ -265,6 +265,7 @@ class SelectMetricWidget(QWidget):
         self.metrics: dict[str, typing.Any] = {}
         self.metric_dict: dict = {}
         self.prev_valid_layers: list[napari.layers.Layer] = []
+        self._plugin_view_update = False
 
         self.read_only = [
             "",
@@ -295,6 +296,7 @@ class SelectMetricWidget(QWidget):
 
     @Slot(dict, str)
     def _update_view(self, layer_dict, col_name):
+        self._plugin_view_update = True
         metric_name, is_min_max = self.trim_suffix(col_name)
 
         for parent_idx, rows_idx in layer_dict.items():
@@ -392,6 +394,7 @@ class SelectMetricWidget(QWidget):
 
             if do_update:
                 layer.visible = True
+        self._plugin_view_update = False
 
     @staticmethod
     def trim_suffix(label_name):
@@ -436,8 +439,9 @@ class SelectMetricWidget(QWidget):
             self.prev_valid_layers = valid_layers
 
     def _update_on_data(self, event):
-        layer = event.source
-        self._add_remove_table(layer, ButtonActions.UPDATE)
+        if not self._plugin_view_update:
+            layer = event.source
+            self._add_remove_table(layer, ButtonActions.UPDATE)
 
     def _update_editable(self, event):
         layer = event.source

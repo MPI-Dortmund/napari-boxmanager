@@ -55,14 +55,6 @@ class GroupModel(QStandardItemModel):
         self.default_labels = [""]
         self._update_labels(self.default_labels)
 
-    #    self.dataChanged.connect(self.update_by_edit)
-
-    # @Slot(QModelIndex, QModelIndex, 'QVector<int>')
-    # def update_by_edit(self, idx, _, role):
-    #    if not role:
-    #        return
-    #    print(idx)
-
     def update_model(self, rows_candidates, value, col_idx):
         parents = {entry[1] for entry in rows_candidates if entry[0] == -1}
 
@@ -77,7 +69,7 @@ class GroupModel(QStandardItemModel):
             if parent_item.child(row_idx, col_idx).text() != "-":
                 layer_dict.setdefault(parent_idx, []).append(row_idx)
 
-        self.blockSignals(True)
+        prev_status = self.blockSignals(True)
         for parent_idx, rows_idx in layer_dict.items():
             if parent_idx == -1:
                 parent_item = self.invisibleRootItem()
@@ -91,7 +83,7 @@ class GroupModel(QStandardItemModel):
                 child_item.setText(str(value))
                 if change_children:
                     self.change_children(row_idx, col_idx)
-        self.blockSignals(False)
+        self.blockSignals(prev_status)
         self.layoutChanged.emit()
         return layer_dict
 
@@ -229,10 +221,27 @@ class GroupView(QTreeView):
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
+        self.model.dataChanged.connect(self.update_by_edit)
+
     @Slot(QModelIndex)
     def on_clicked(self, index):
         if not index.parent().isValid() and index.column() == 0:
             self.setExpanded(index, not self.isExpanded(index))
+
+    @Slot(QModelIndex, QModelIndex, "QVector<int>")
+    def update_by_edit(self, idx, _, role):
+        if not role:
+            return
+
+        parent_idx = idx.parent().row()
+        row_idx = idx.row()
+        col_idx = idx.column()
+        col_name = self.model.label_dict_rev[col_idx]
+        if col_name in self.model.read_only:
+            return
+
+        value = self.model.get_value(parent_idx, row_idx, col_name)
+        self.update_elements(value, col_idx)
 
     @Slot(float, int)
     def update_elements(self, value, col_idx):

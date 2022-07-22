@@ -55,6 +55,14 @@ class GroupModel(QStandardItemModel):
         self.default_labels = [""]
         self._update_labels(self.default_labels)
 
+    #    self.dataChanged.connect(self.update_by_edit)
+
+    # @Slot(QModelIndex, QModelIndex, 'QVector<int>')
+    # def update_by_edit(self, idx, _, role):
+    #    if not role:
+    #        return
+    #    print(idx)
+
     def update_model(self, rows_candidates, value, col_idx):
         parents = {entry[1] for entry in rows_candidates if entry[0] == -1}
 
@@ -518,6 +526,7 @@ class SelectMetricWidget(QWidget):
         elif action == ButtonActions.UPDATE:
             self._add_remove_table(layer, ButtonActions.DEL)
             self._add_remove_table(layer, ButtonActions.ADD)
+            self.table_model.sort()
 
     def _get_all_data(self, metric_name):
 

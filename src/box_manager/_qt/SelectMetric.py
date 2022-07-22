@@ -307,9 +307,9 @@ class SelectMetricWidget(QWidget):
         metric_name, is_min_max = self.trim_suffix(col_name)
 
         for parent_idx, rows_idx in layer_dict.items():
-            do_update = False
             layer_name = self.table_model.get_value(-1, parent_idx, "name")
             layer = self.napari_viewer.layers[layer_name]  # type: ignore
+            do_update = not layer.visible
 
             slice_idx = list(
                 map(
@@ -400,7 +400,7 @@ class SelectMetricWidget(QWidget):
                 assert False
 
             if do_update:
-                layer.visible = layer.visible
+                layer.visible = True
 
     def _update_view_old(self, top_idx, _, idx):
         if not idx:

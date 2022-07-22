@@ -55,19 +55,7 @@ class GroupModel(QStandardItemModel):
         self.default_labels = [""]
         self._update_labels(self.default_labels)
 
-    def update_model(self, rows_candidates, value, col_idx):
-        parents = {entry[1] for entry in rows_candidates if entry[0] == -1}
-
-        layer_dict = {}
-        for parent_idx, row_idx in rows_candidates:
-            if parent_idx in parents:
-                continue
-            elif parent_idx == -1:
-                parent_item = self.invisibleRootItem()
-            else:
-                parent_item = self.item(parent_idx, 0)
-            if parent_item.child(row_idx, col_idx).text() != "-":
-                layer_dict.setdefault(parent_idx, []).append(row_idx)
+    def update_model(self, layer_dict, value, col_idx):
 
         prev_status = self.blockSignals(True)
         for parent_idx, rows_idx in layer_dict.items():
@@ -243,31 +231,57 @@ class GroupView(QTreeView):
         value = self.model.get_value(parent_idx, row_idx, col_name)
         self.update_elements(value, col_idx)
 
-    @Slot(float, int)
-    def update_elements(self, value, col_idx):
-        rows_candidates = {
+    def get_row_candidates(self):
+        return {
             (entry.parent().row(), entry.row())
             for entry in self.selectedIndexes()
         }
-        if not rows_candidates:
-            return
 
-        update_dict = self.model.update_model(rows_candidates, value, col_idx)
+    def get_rows(self, rows_candidates, col_idx):
+        parents = {entry[1] for entry in rows_candidates if entry[0] == -1}
+
         layer_dict = {}
-        for parent_idx, rows_idx in update_dict.items():
+        for parent_idx, row_idx in rows_candidates:
+            if parent_idx in parents:
+                continue
+            elif parent_idx == -1:
+                parent_item = self.model.invisibleRootItem()
+            else:
+                parent_item = self.model.item(parent_idx, 0)
+            if parent_item.child(row_idx, col_idx).text() != "-":
+                layer_dict.setdefault(parent_idx, []).append(row_idx)
+        return layer_dict
+
+    def get_all_rows(self, layer_dict):
+        output_dict = {}
+        for parent_idx, rows_idx in layer_dict.items():
             if parent_idx == -1:
                 for row in rows_idx:
                     root_item = self.model.invisibleRootItem().child(row, 0)
                     rows = list(range(root_item.rowCount()))
-                    layer_dict[row] = rows
+                    output_dict[row] = rows
             else:
-                layer_dict[parent_idx] = rows_idx
+                output_dict[parent_idx] = rows_idx
+        return output_dict
+
+    @Slot(float, int)
+    def update_elements(self, value, col_idx):
+        rows_candidates = self.get_row_candidates()
+        if not rows_candidates:
+            return
+
+        layer_dict = self.get_rows(rows_candidates, col_idx)
+
+        update_dict = self.model.update_model(layer_dict, value, col_idx)
+        layer_dict = self.get_all_rows(update_dict)
 
         col_name = self.model.label_dict_rev[col_idx]
         self.elementsUpdated.emit(layer_dict, col_name)
 
 
 class SelectMetricWidget(QWidget):
+    sig_update_hist = Signal(object)
+
     def __init__(self, napari_viewer: "napari.Viewer"):
         super().__init__()
         self.napari_viewer = napari_viewer
@@ -295,6 +309,9 @@ class SelectMetricWidget(QWidget):
         self.table_model = GroupModel(self.read_only, self)
         self.table_widget = GroupView(self.table_model, self)
         self.table_widget.elementsUpdated.connect(self._update_view)
+        self.table_widget.selectionModel().selectionChanged.connect(
+            self.update_hist
+        )
         self.metric_area = QVBoxLayout()
 
         self.setLayout(QVBoxLayout())
@@ -541,9 +558,11 @@ class SelectMetricWidget(QWidget):
             self._add_remove_table(layer, ButtonActions.ADD)
             self.table_model.sort()
 
-    def _get_all_data(self, metric_name):
+    def _get_all_data(self, metric_name, layer_mask=None):
 
-        layer_names = self.table_model.group_items
+        layer_names = (
+            self.table_model.group_items if layer_mask is None else layer_mask
+        )
         layer_features = []
         for layer_name in layer_names:
             try:
@@ -552,11 +571,18 @@ class SelectMetricWidget(QWidget):
                 # Layer has been deleted
                 continue
 
+            if layer_mask is None:
+                mask = np.ones(len(layer.data), dtype=bool)
+            else:
+                mask = layer_mask[layer_name]
+
             try:
-                layer_features.append(layer.features[metric_name])
-            except KeyError:
+                layer_features.append(layer.features.loc[mask, metric_name])
+            except (KeyError, TypeError):
                 if metric_name == "boxsize":
-                    layer_features.append(pd.DataFrame(layer.size).mean())
+                    layer_features.append(
+                        pd.DataFrame(layer.size).loc[mask, :].mean()
+                    )
         return pd.concat(layer_features, ignore_index=True)
 
     def _update_slider(self):
@@ -600,6 +626,7 @@ class SelectMetricWidget(QWidget):
                 viewer = HistogramMinMaxView(metric_name, self)
                 self.metric_area.addWidget(viewer)
                 viewer.value_changed.connect(self.table_widget.update_elements)  # type: ignore
+                self.sig_update_hist.connect(viewer.set_data)
                 self.metric_dict[metric_name] = viewer
 
             viewer.set_data(labels_data)
@@ -610,6 +637,51 @@ class SelectMetricWidget(QWidget):
                 viewer.set_col_max(col_idx)
             else:
                 assert False, label
+
+    def update_hist(self, *_):
+        rows_candidates = self.table_widget.get_row_candidates()
+        if not rows_candidates:
+            return
+
+        layer_dict = self.table_widget.get_all_rows(
+            self.table_widget.get_rows(rows_candidates, 0)
+        )
+
+        layer_mask = {}
+        for parent_idx, rows_idx in layer_dict.items():
+            layer_name = self.table_model.get_value(-1, parent_idx, "name")
+            layer = self.napari_viewer.layers[layer_name]  # type: ignore
+            slice_idx = list(
+                map(
+                    int,
+                    self.table_model.get_values(parent_idx, rows_idx, "slice"),
+                )
+            )
+
+            if layer.data.shape[1] == 3:
+                mask = np.isin(layer.data[:, 0], slice_idx)
+            elif layer.data.shape[1] == 2:
+                mask = np.ones(layer.data.shape[0], dtype=bool)
+            else:
+                assert False, layer
+            layer_mask[layer_name] = mask
+
+        metric_done = []
+        for label in self.table_model.label_dict:
+            if label in self.ignore_idx:
+                continue
+
+            metric_name, _ = self.trim_suffix(label)
+            if metric_name in metric_done:
+                continue
+
+            try:
+                labels_data = self._get_all_data(metric_name, layer_mask)
+            except ValueError:
+                continue
+            self.metric_dict[metric_name].set_data(labels_data)
+
+            metric_done.append(metric_name)
 
 
 class HistogramMinMaxView(QWidget):
@@ -676,9 +748,7 @@ class HistogramMinMaxView(QWidget):
         self.slider_max.set_value(val_max)
         self.line_min.set_data([val_min, val_min], [0, 1])
         self.line_max.set_data([val_max, val_max], [0, 1])
-        self.canvas.draw_idle()
 
-    def update_hist(self, label_data):
         self.axis.clear()
         self.axis.hist(label_data, 100)
         self.axis.add_artist(self.line_min)

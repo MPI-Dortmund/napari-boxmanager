@@ -629,18 +629,29 @@ class SelectMetricWidget(QWidget):
                 self.sig_update_hist.connect(viewer.set_data)
                 self.metric_dict[metric_name] = viewer
 
-            viewer.set_data(labels_data)
-
             if label.endswith("_min"):
                 viewer.set_col_min(col_idx)
             elif label.endswith("_max"):
                 viewer.set_col_max(col_idx)
             else:
                 assert False, label
+        self.update_hist()
 
     def update_hist(self, *_):
         rows_candidates = self.table_widget.get_row_candidates()
         if not rows_candidates:
+            # Set all to 0 if nothing is selected
+            metric_done = []
+            for label in self.table_model.label_dict:
+                if label in self.ignore_idx:
+                    continue
+
+                metric_name, _ = self.trim_suffix(label)
+                if metric_name in metric_done:
+                    continue
+                labels_data = pd.Series([0], dtype=int)
+                self.metric_dict[metric_name].set_data(labels_data)
+                metric_done.append(metric_name)
             return
 
         layer_dict = self.table_widget.get_all_rows(
@@ -678,7 +689,7 @@ class SelectMetricWidget(QWidget):
             try:
                 labels_data = self._get_all_data(metric_name, layer_mask)
             except ValueError:
-                continue
+                labels_data = pd.Series([0], dtype=int)
             self.metric_dict[metric_name].set_data(labels_data)
 
             metric_done.append(metric_name)

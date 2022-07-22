@@ -256,7 +256,7 @@ class SelectMetricWidget(QWidget):
         self.napari_viewer = napari_viewer
         self.metrics: dict[str, typing.Any] = {}
         self.metric_dict: dict = {}
-        self.prev_points: list[napari.layers.Points] = []
+        self.prev_valid_layers: list[napari.layers.Layer] = []
 
         self.read_only = [
             "",
@@ -400,7 +400,7 @@ class SelectMetricWidget(QWidget):
 
     @Slot(object)
     def _sync_table(self, _=None):
-        point_layers: list[napari.layers.Points] = sorted(
+        valid_layers: list[napari.layers.Layer] = sorted(
             (
                 entry
                 for entry in self.napari_viewer.layers
@@ -409,22 +409,34 @@ class SelectMetricWidget(QWidget):
             key=lambda x: x.name,
         )  # type: ignore
 
-        if point_layers != self.prev_points:
-            for point in self.prev_points + point_layers:
-                if point in point_layers:
-                    self._add_remove_table(point, ButtonActions.ADD)
-                    if "put_editable" in point.metadata:
-                        point.editable = point.metadata["put_editable"]
-                    point.events.set_data.disconnect(self._update_editable)
-                    point.events.set_data.connect(self._update_editable)
+        if valid_layers != self.prev_valid_layers:
+            for layer in self.prev_valid_layers + valid_layers:
+                if layer in valid_layers:
+                    self._add_remove_table(layer, ButtonActions.ADD)
+                    if "put_editable" in layer.metadata:
+                        layer.editable = layer.metadata["put_editable"]
+                    layer.events.set_data.disconnect(self._update_on_data)
+                    layer.events.set_data.connect(self._update_on_data)
+                    layer.events.editable.disconnect(self._update_editable)
+                    layer.events.editable.connect(self._update_editable)
                 else:
-                    self._add_remove_table(point, ButtonActions.DEL)
+                    self._add_remove_table(layer, ButtonActions.DEL)
             self.table_model.sort()
             self._update_slider()
-            self.prev_points = point_layers
+            self.prev_valid_layers = valid_layers
+
+    def _update_on_data(self, event):
+        print(event)
+        print(event.mode)
+        print(event.data)
 
     def _update_editable(self, event):
-        print(event)
+        layer = event.source
+        if (
+            "put_editable" in layer.metadata
+            and layer.editable != layer.metadata["put_editable"]
+        ):
+            layer.editable = layer.metadata["put_editable"]
 
     def _prepare_entries(self, layer, name=None) -> list:
         output_list = []

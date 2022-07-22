@@ -52,22 +52,30 @@ def to_napari(
     for file_name in path:  # type: ignore
         input_df = read(file_name)
         napari_df = _prepare_napari(input_df)
-        for cluster_id, cluster_df in napari_df.groupby(
-            "grp_idx", sort=False
-        ):
+        for cluster_id, cluster_df in napari_df.groupby("grp_idx", sort=False):
             output_dfs.append(
-                (cluster_id, file_name, input_df.attrs['references'][cluster_id], cluster_df, input_df.attrs)
+                (
+                    cluster_id,
+                    file_name,
+                    input_df.attrs["references"][cluster_id],
+                    cluster_df,
+                    input_df.attrs,
+                )
             )
 
     colors = mcm.get_cmap("gist_rainbow")
     n_layers = np.maximum(len(output_dfs), 2)  # Avoid zero division
 
     output_layers = []
-    for idx, (cluster_id, file_name, cluster_name, cluster_df, attrs) in enumerate(
-        output_dfs
-    ):
+    for idx, (
+        cluster_id,
+        file_name,
+        cluster_name,
+        cluster_df,
+        attrs,
+    ) in enumerate(output_dfs):
         cur_color = colors(idx / (n_layers - 1))
-        metadata = {"input_attrs": attrs, 'predicted_class': cluster_id}
+        metadata = {"input_attrs": attrs, "predicted_class": cluster_id}
         for idx in range(cluster_df["x"].max() + 1):
             metadata[idx] = {"path": file_name, "name": f"slice {idx}"}
             idx_view_df = cluster_df[cluster_df["x"] == idx]
@@ -120,7 +128,7 @@ def from_napari(
         "depth",
     ]
     output_dfs = []
-    for idx, (coords, meta, _) in enumerate(layer_data):
+    for coords, meta, _ in layer_data:
         shown_mask = meta["shown"]
         data_df = pd.DataFrame(columns=column_names)
         features = meta["features"]

@@ -75,7 +75,11 @@ def to_napari(
         attrs,
     ) in enumerate(output_dfs):
         cur_color = colors(idx / (n_layers - 1))
-        metadata = {"input_attrs": attrs, "predicted_class": cluster_id}
+        metadata = {
+            "input_attrs": attrs,
+            "predicted_class": cluster_id,
+            "put_editable": False,
+        }
         for idx in range(cluster_df["x"].max() + 1):
             metadata[idx] = {"path": file_name, "name": f"slice {idx}"}
             idx_view_df = cluster_df[cluster_df["x"] == idx]
@@ -186,7 +190,7 @@ def _get_meta_idx():
 
 
 def _get_hidden_meta_idx():
-    return ["boxsize"]
+    return []
 
 
 def _get_util_idx():

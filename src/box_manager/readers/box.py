@@ -93,7 +93,7 @@ def _get_meta_idx():
 
 
 def _get_hidden_meta_idx():
-    return ["boxsize"]
+    return []
 
 
 def _prepare_napari(

@@ -413,11 +413,18 @@ class SelectMetricWidget(QWidget):
             for point in self.prev_points + point_layers:
                 if point in point_layers:
                     self._add_remove_table(point, ButtonActions.ADD)
+                    if "put_editable" in point.metadata:
+                        point.editable = point.metadata["put_editable"]
+                    point.events.set_data.disconnect(self._update_editable)
+                    point.events.set_data.connect(self._update_editable)
                 else:
                     self._add_remove_table(point, ButtonActions.DEL)
             self.table_model.sort()
             self._update_slider()
             self.prev_points = point_layers
+
+    def _update_editable(self, event):
+        print(event)
 
     def _prepare_entries(self, layer, name=None) -> list:
         output_list = []
@@ -435,7 +442,12 @@ class SelectMetricWidget(QWidget):
         ):
             cur_name = name or layer.metadata[identifier]["name"]
             output_list.append(
-                self._prepare_columns(ident_df, cur_name, identifier)
+                self._prepare_columns(
+                    pd.DataFrame(layer.size, dtype=float),
+                    ident_df,
+                    cur_name,
+                    identifier,
+                )
             )
 
         # Case: No points available
@@ -444,10 +456,11 @@ class SelectMetricWidget(QWidget):
             try:
                 cur_name = name or layer.metadata[identifier]["name"]
             except KeyError:
-                cur_name = layer.name
+                cur_name = "Manual"
             features = pd.DataFrame(columns=["shown"])
             output_list.append(
                 self._prepare_columns(
+                    pd.DataFrame(layer.size, dtype=float),
                     features,
                     cur_name,
                     identifier,
@@ -456,16 +469,14 @@ class SelectMetricWidget(QWidget):
 
         return output_list
 
-    def _prepare_columns(self, features, name, slice_idx) -> dict:
+    def _prepare_columns(self, size, features, name, slice_idx) -> dict:
         output_dict = {}
         output_dict["name"] = name
         output_dict["slice"] = str(slice_idx)
         output_dict["n_boxes"] = str(len(features))
         output_dict["n_selected"] = str(np.count_nonzero(features["shown"]))
         output_dict["boxsize"] = (
-            10
-            if "boxsize" not in features
-            else str(int(np.mean(features["boxsize"])))
+            "0" if size.empty else str(int(size.mean().mean()))
         )
         for col_name in features.columns:
             if col_name in self.ignore_idx:
@@ -509,9 +520,8 @@ class SelectMetricWidget(QWidget):
             try:
                 layer_features.append(layer.features[metric_name])
             except KeyError:
-                layer_features.append(
-                    pd.Series([0] * len(layer.data), dtype=int)
-                )
+                if metric_name == "boxsize":
+                    layer_features.append(pd.DataFrame(layer.size).mean())
         return pd.concat(layer_features, ignore_index=True)
 
     def _update_slider(self):
@@ -520,22 +530,27 @@ class SelectMetricWidget(QWidget):
                 continue
 
             metric_name, _ = self.trim_suffix(label)
-            labels_data = self._get_all_data(metric_name)
+            try:
+                labels_data = self._get_all_data(metric_name)
+            except ValueError:
+                if metric_name in self.metric_dict:
+                    self.metric_dict[metric_name].setParent(None)
+                    self.metric_dict[metric_name].deleteLater()
+                    del self.metric_dict[metric_name]
+                continue
 
             if label in ("boxsize",):
                 if metric_name in self.metric_dict:
                     viewer = self.metric_dict[metric_name]
                 else:
-                    layout = QHBoxLayout()
-                    layout.addWidget(QLabel(label))
                     viewer = EditView(
+                        label,
                         col_idx,
                         QRegularExpressionValidator(
                             QRegularExpression("[0-9]*")
                         ),
                     )
-                    layout.addWidget(viewer)
-                    self.metric_area.addLayout(layout)
+                    self.metric_area.addWidget(viewer)
                     viewer.value_changed.connect(self.table_widget.update_elements)  # type: ignore
                     self.metric_dict[label] = viewer
                 try:
@@ -645,7 +660,7 @@ class HistogramMinMaxView(QWidget):
 class EditView(QWidget):
     value_changed = Signal(float, int)
 
-    def __init__(self, col_idx, validator=None, parent=None):
+    def __init__(self, label, col_idx, validator=None, parent=None):
         super().__init__(parent)
         self.col_idx = col_idx
         self.setLayout(QHBoxLayout())
@@ -653,6 +668,7 @@ class EditView(QWidget):
         if validator is not None:
             self.edit.setValidator(validator)
         self.edit.returnPressed.connect(self._emit_signal)
+        self.layout().addWidget(QLabel(label))
         self.layout().addWidget(self.edit, stretch=1)
         self.layout().setContentsMargins(0, 0, 0, 0)
 

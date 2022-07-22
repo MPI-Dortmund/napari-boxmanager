@@ -413,8 +413,8 @@ class SelectMetricWidget(QWidget):
             for layer in self.prev_valid_layers + valid_layers:
                 if layer in valid_layers:
                     self._add_remove_table(layer, ButtonActions.ADD)
-                    if "put_editable" in layer.metadata:
-                        layer.editable = layer.metadata["put_editable"]
+                    if not layer.features.empty:
+                        layer.editable = False
 
                     layer.events.set_data.disconnect(self._update_on_data)
                     layer.events.set_data.connect(self._update_on_data)
@@ -433,11 +433,8 @@ class SelectMetricWidget(QWidget):
 
     def _update_editable(self, event):
         layer = event.source
-        if (
-            "put_editable" in layer.metadata
-            and layer.editable != layer.metadata["put_editable"]
-        ):
-            layer.editable = layer.metadata["put_editable"]
+        if not layer.features.empty and layer.editable:
+            layer.editable = False
 
     def _prepare_entries(self, layer, name=None) -> list:
         output_list = []

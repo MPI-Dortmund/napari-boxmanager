@@ -78,7 +78,6 @@ def to_napari(
         metadata = {
             "input_attrs": attrs,
             "predicted_class": cluster_id,
-            "put_editable": False,
         }
         for idx in range(cluster_df["x"].max() + 1):
             metadata[idx] = {"path": file_name, "name": f"slice {idx}"}

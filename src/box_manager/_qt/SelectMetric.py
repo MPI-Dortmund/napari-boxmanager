@@ -104,6 +104,20 @@ class GroupModel(QStandardItemModel):
 
         self.setHorizontalHeaderLabels(self.label_dict)
 
+    def remove_labels(self, columns):
+        if not columns:
+            return
+
+        col_idx = []
+        for col in columns:
+            idx = self.label_dict[col]
+            del self.label_dict_rev[idx]
+            del self.label_dict[col]
+            col_idx.append(idx)
+
+        for idx in reversed(sorted(col_idx)):
+            self.takeColumn(idx)
+
     def sort(self):
         self.invisibleRootItem().sortChildren(self.label_dict["name"])
 
@@ -216,6 +230,9 @@ class GroupView(QTreeView):
         if not index.parent().isValid() and index.column() == 0:
             self.setExpanded(index, not self.isExpanded(index))
 
+    def select_first(self):
+        self.setCurrentIndex(self.model.index(0, 0))
+
     def update_by_edit(self, idx, _, role):
         if not role:
             return
@@ -317,7 +334,7 @@ class SelectMetricWidget(QWidget):
         self.layout().addWidget(self.table_widget, stretch=1)
         self.layout().addLayout(self.metric_area, stretch=0)  # type: ignore
 
-        self._sync_table()
+        self._sync_table(select_first=True)
 
     @Slot(dict, str)
     def _update_view(self, layer_dict, col_name):
@@ -439,7 +456,7 @@ class SelectMetricWidget(QWidget):
         return metric_name, min_max
 
     @Slot(object)
-    def _sync_table(self, _=None):
+    def _sync_table(self, event=None, *, select_first=False):
         valid_layers: list[napari.layers.Layer] = sorted(
             (
                 entry
@@ -448,6 +465,13 @@ class SelectMetricWidget(QWidget):
             ),
             key=lambda x: x.name,
         )  # type: ignore
+
+        if (
+            event is not None
+            and event.type == "inserted"
+            and len(valid_layers) == 1
+        ):
+            select_first = True
 
         if valid_layers != self.prev_valid_layers:
             for layer in self.prev_valid_layers + valid_layers:
@@ -466,6 +490,8 @@ class SelectMetricWidget(QWidget):
             self.table_model.sort()
             self._update_slider()
             self.prev_valid_layers = valid_layers
+            if select_first:
+                self.table_widget.select_first()
 
     def _update_on_data(self, event):
         if not self._plugin_view_update:
@@ -591,6 +617,7 @@ class SelectMetricWidget(QWidget):
         return pd.concat(layer_features, ignore_index=True)
 
     def _update_slider(self):
+        invalid_labels = []
         for col_idx, label in enumerate(self.table_model.label_dict):
             if label in self.read_only:
                 continue
@@ -599,6 +626,7 @@ class SelectMetricWidget(QWidget):
             try:
                 labels_data = self._get_all_data(metric_name)
             except ValueError:
+                invalid_labels.append(label)
                 if metric_name in self.metric_dict:
                     self.metric_dict[metric_name].setParent(None)
                     self.metric_dict[metric_name].deleteLater()
@@ -640,6 +668,7 @@ class SelectMetricWidget(QWidget):
                 viewer.set_col_max(col_idx)
             else:
                 assert False, label
+        self.table_model.remove_labels(invalid_labels)
         self.update_hist()
 
     def update_hist(self, *_):
@@ -647,14 +676,20 @@ class SelectMetricWidget(QWidget):
         if not rows_candidates:
             # Set all to 0 if nothing is selected
             metric_done = []
+            if "boxsize" in self.metric_dict:
+                self.metric_dict["boxsize"].setVisible(False)
             for label in self.table_model.label_dict:
                 if label in self.ignore_idx:
                     continue
 
                 metric_name, _ = self.trim_suffix(label)
-                if metric_name in metric_done:
+                if (
+                    metric_name in metric_done
+                    or metric_name not in self.metric_dict
+                ):
                     continue
                 labels_data = pd.Series([0], dtype=int)
+                self.metric_dict[metric_name].setVisible(False)
                 self.metric_dict[metric_name].set_data(labels_data)
                 metric_done.append(metric_name)
             return
@@ -683,18 +718,25 @@ class SelectMetricWidget(QWidget):
             layer_mask[layer_name] = mask
 
         metric_done = []
+        self.metric_dict["boxsize"].setVisible(True)
         for label in self.table_model.label_dict:
             if label in self.ignore_idx:
                 continue
 
             metric_name, _ = self.trim_suffix(label)
-            if metric_name in metric_done:
+            if (
+                metric_name in metric_done
+                or metric_name not in self.metric_dict
+            ):
                 continue
 
             try:
                 labels_data = self._get_all_data(metric_name, layer_mask)
             except ValueError:
                 labels_data = pd.Series([0], dtype=int)
+                self.metric_dict[metric_name].setVisible(False)
+            else:
+                self.metric_dict[metric_name].setVisible(True)
             self.metric_dict[metric_name].set_data(labels_data)
 
             metric_done.append(metric_name)

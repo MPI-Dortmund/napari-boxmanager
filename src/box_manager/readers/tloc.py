@@ -79,7 +79,7 @@ def to_napari(
             "input_attrs": attrs,
             "predicted_class": cluster_id,
         }
-        for idx in range(cluster_df["x"].max() + 1):
+        for idx in range(int(cluster_df["x"].max().round(0)) + 1):
             metadata[idx] = {"path": file_name, "name": f"slice {idx}"}
             idx_view_df = cluster_df[cluster_df["x"] == idx]
             metadata[idx].update(

@@ -340,7 +340,9 @@ class SelectMetricWidget(QWidget):
             )
 
             if layer.data.shape[1] == 3:
-                mask_dimension = np.isin(layer.data[:, 0], slice_idx)
+                mask_dimension = np.isin(
+                    np.round(layer.data[:, 0], 0), slice_idx
+                )
             elif layer.data.shape[1] == 2:
                 mask_dimension = np.ones(layer.data.shape[0], dtype=bool)
             else:
@@ -379,7 +381,9 @@ class SelectMetricWidget(QWidget):
                 if not np.array_equal(old_shown, layer.shown):
                     for idx, row in enumerate(rows_idx):
                         if layer.data.shape[1] == 3:
-                            slice_mask = layer.data[:, 0] == slice_idx[idx]
+                            slice_mask = (
+                                np.round(layer.data[:, 0], 0) == slice_idx[idx]
+                            )
                         elif layer.data.shape[1] == 2:
                             slice_mask = np.ones(
                                 layer.data.shape[0], dtype=bool
@@ -477,7 +481,9 @@ class SelectMetricWidget(QWidget):
         output_list = []
         features_copy = layer.features.copy()
         if layer.data.shape[1] == 3:
-            features_copy["identifier"] = name or layer.data[:, 0].astype(int)
+            features_copy["identifier"] = name or np.round(
+                layer.data[:, 0], 0
+            ).astype(int)
         elif layer.data.shape[1] == 2:
             features_copy["identifier"] = name or 0
         else:
@@ -669,7 +675,7 @@ class SelectMetricWidget(QWidget):
             )
 
             if layer.data.shape[1] == 3:
-                mask = np.isin(layer.data[:, 0], slice_idx)
+                mask = np.isin(np.round(layer.data[:, 0], 0), slice_idx)
             elif layer.data.shape[1] == 2:
                 mask = np.ones(layer.data.shape[0], dtype=bool)
             else:

@@ -216,7 +216,6 @@ class GroupView(QTreeView):
         if not index.parent().isValid() and index.column() == 0:
             self.setExpanded(index, not self.isExpanded(index))
 
-    @Slot(QModelIndex, QModelIndex, "QVector<int>")
     def update_by_edit(self, idx, _, role):
         if not role:
             return

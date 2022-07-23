@@ -30,7 +30,7 @@ def read(path: "os.PathLike") -> pd.DataFrame:
         usecols=range(4),
     )  # type: ignore
     try:
-        box_data = box_data.astype(int)
+        box_data.astype(int)
     except pd.errors.IntCastingNaNError:
         raise BoxFileNumberOfColumnsError
 

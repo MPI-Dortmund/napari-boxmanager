@@ -27,9 +27,9 @@ def read(path: "os.PathLike") -> pd.DataFrame:
     """
     pandas_data: pd.DataFrame = pd.read_pickle(path)
 
-    pandas_data["X"] = pandas_data["X"].astype(int)
-    pandas_data["Y"] = pandas_data["Y"].astype(int)
-    pandas_data["Z"] = pandas_data["Z"].astype(int)
+    pandas_data["X"] = pandas_data["X"]
+    pandas_data["Y"] = pandas_data["Y"]
+    pandas_data["Z"] = pandas_data["Z"]
 
     return pandas_data
 

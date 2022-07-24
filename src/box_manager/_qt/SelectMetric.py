@@ -55,6 +55,25 @@ class GroupModel(QStandardItemModel):
         self.default_labels = [""]
         self._update_labels(self.default_labels)
 
+    def rename_group(self, current_layers, new_name):
+        old_name = [
+            key for key in self.group_items if key not in current_layers
+        ]
+        assert len(old_name) == 1, (old_name, new_name, current_layers)
+        old_name = old_name[0]
+
+        self.group_items[new_name] = self.group_items.pop(old_name)
+        prev_status = self.blockSignals(True)
+        root_idx = self.group_items[new_name].index()
+        self.set_value(
+            root_idx.parent().row(), root_idx.row(), "name", new_name
+        )
+        self.set_value(
+            root_idx.parent().row(), root_idx.row(), "slice", new_name
+        )
+        self.blockSignals(prev_status)
+        self.layoutChanged.emit()
+
     def update_model(self, layer_dict, value, col_idx):
 
         prev_status = self.blockSignals(True)
@@ -485,6 +504,12 @@ class SelectMetricWidget(QWidget):
 
                     layer.events.editable.disconnect(self._update_editable)
                     layer.events.editable.connect(self._update_editable)
+
+                    layer.events.name.disconnect(self._update_name)
+                    layer.events.name.connect(self._update_name)
+
+                    layer.events.opacity.disconnect(self._update_opacity)
+                    layer.events.opacity.connect(self._update_opacity)
                 else:
                     self._add_remove_table(layer, ButtonActions.DEL)
             self.table_model.sort()
@@ -492,6 +517,15 @@ class SelectMetricWidget(QWidget):
             self.prev_valid_layers = valid_layers
             if select_first:
                 self.table_widget.select_first()
+
+    def _update_opacity(self, event):
+        layer = event.source
+        layer.metadata["prev_opacity"] = layer.opacity
+
+    def _update_name(self, event):
+        self.table_model.rename_group(
+            {x.name for x in self.prev_valid_layers}, event.source.name
+        )
 
     def _update_on_data(self, event):
         if not self._plugin_view_update:
@@ -674,6 +708,14 @@ class SelectMetricWidget(QWidget):
     def update_hist(self, *_):
         rows_candidates = self.table_widget.get_row_candidates()
         if not rows_candidates:
+            for layer in self.prev_valid_layers:
+                layer.events.opacity.disconnect(self._update_opacity)
+                layer.opacity = (
+                    layer.metadata["prev_opacity"]
+                    if "prev_opacity" in layer.metadata
+                    else 0.5
+                )
+                layer.events.opacity.connect(self._update_opacity)
             # Set all to 0 if nothing is selected
             metric_done = []
             if "boxsize" in self.metric_dict:
@@ -698,10 +740,18 @@ class SelectMetricWidget(QWidget):
             self.table_widget.get_rows(rows_candidates, 0)
         )
 
+        for layer in self.prev_valid_layers:
+            layer.events.opacity.disconnect(self._update_opacity)
+            layer.opacity = 0.1
+            layer.events.opacity.connect(self._update_opacity)
+
         layer_mask = {}
         for parent_idx, rows_idx in layer_dict.items():
             layer_name = self.table_model.get_value(-1, parent_idx, "name")
             layer = self.napari_viewer.layers[layer_name]  # type: ignore
+            layer.events.opacity.disconnect(self._update_opacity)
+            layer.opacity = 1
+            layer.events.opacity.connect(self._update_opacity)
             slice_idx = list(
                 map(
                     int,

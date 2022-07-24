@@ -7,6 +7,8 @@ from collections.abc import Callable
 import numpy as np
 import pandas as pd
 
+from . import _MAX_LAYER_NAME
+
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
@@ -52,7 +54,10 @@ def to_napari(
         name = "boxfiles"
     elif isinstance(path, list):
         idx_func: Callable[[], list[str]] = _get_2d_coords_idx
-        name = path[0]  # type: ignore
+        if len(path[0]) >= _MAX_LAYER_NAME + 3:
+            name = f"...{path[0][-_MAX_LAYER_NAME:]}"  # type: ignore
+        else:
+            name = path[0]  # type: ignore
     else:
         assert False, path
     input_df, metadata = _prepare_df(

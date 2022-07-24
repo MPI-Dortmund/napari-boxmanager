@@ -14,6 +14,7 @@ if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
 _IGNORE_LIST = ["interface.py", os.path.basename(__file__)]
+_MAX_LAYER_NAME = 30
 
 _VALID_READERS: dict[
     str,

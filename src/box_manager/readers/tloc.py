@@ -6,6 +6,8 @@ import matplotlib.cm as mcm
 import numpy as np
 import pandas as pd
 
+from . import _MAX_LAYER_NAME
+
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
@@ -53,11 +55,16 @@ def to_napari(
         input_df = read(file_name)
         napari_df = _prepare_napari(input_df)
         for cluster_id, cluster_df in napari_df.groupby("grp_idx", sort=False):
+            path = input_df.attrs["references"][cluster_id]
+            if len(path) >= _MAX_LAYER_NAME + 3:
+                name = f"...{path[-{_MAX_LAYER_NAME}:]}"  # type: ignore
+            else:
+                name = path  # type: ignore
             output_dfs.append(
                 (
                     cluster_id,
                     file_name,
-                    input_df.attrs["references"][cluster_id],
+                    name,
                     cluster_df,
                     input_df.attrs,
                 )

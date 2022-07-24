@@ -330,8 +330,8 @@ class SelectMetricWidget(QWidget):
             "",
             "identifier",
             "shown",
-            "n_selected",
-            "n_boxes",
+            "selected",
+            "boxes",
             "name",
             "slice",
         ]
@@ -430,7 +430,7 @@ class SelectMetricWidget(QWidget):
                         self.table_model.set_value(
                             parent_idx,
                             row,
-                            "n_selected",
+                            "selected",
                             np.count_nonzero(
                                 mask_dimension & mask_metric & slice_mask
                             ),
@@ -438,18 +438,18 @@ class SelectMetricWidget(QWidget):
                         self.table_model.set_value(
                             parent_idx,
                             row,
-                            "n_boxes",
+                            "boxes",
                             np.count_nonzero(mask_dimension & slice_mask),
                         )
 
                     self.table_model.set_value(
                         -1,
                         parent_idx,
-                        "n_selected",
+                        "selected",
                         np.count_nonzero(layer.shown),
                     )
                     self.table_model.set_value(
-                        -1, parent_idx, "n_boxes", len(layer.shown)
+                        -1, parent_idx, "boxes", len(layer.shown)
                     )
                     do_update = True
             elif metric_name == "boxsize":
@@ -562,11 +562,13 @@ class SelectMetricWidget(QWidget):
         output_list = []
         features_copy = layer.features.copy()
         if layer.data.shape[1] == 3:
-            features_copy["identifier"] = name or np.round(
-                layer.data[:, 0], 0
-            ).astype(int)
+            features_copy["identifier"] = (
+                ""
+                if name is not None
+                else np.round(layer.data[:, 0], 0).astype(int)
+            )
         elif layer.data.shape[1] == 2:
-            features_copy["identifier"] = name or 0
+            features_copy["identifier"] = "" if name is not None else 0
         else:
             assert False, layer.data
 
@@ -610,8 +612,8 @@ class SelectMetricWidget(QWidget):
         output_dict = {}
         output_dict["name"] = name
         output_dict["slice"] = str(slice_idx)
-        output_dict["n_boxes"] = str(len(features))
-        output_dict["n_selected"] = str(np.count_nonzero(features["shown"]))
+        output_dict["boxes"] = str(len(features))
+        output_dict["selected"] = str(np.count_nonzero(features["shown"]))
         output_dict["boxsize"] = (
             "0" if size.empty else str(int(size.mean().mean()))
         )

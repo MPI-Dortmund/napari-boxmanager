@@ -364,7 +364,7 @@ class SelectMetricWidget(QWidget):
         for parent_idx, rows_idx in layer_dict.items():
             layer_name = self.table_model.get_value(-1, parent_idx, "name")
             layer = self.napari_viewer.layers[layer_name]  # type: ignore
-            do_update = not layer.visible
+            do_update = False
 
             slice_idx = list(
                 map(
@@ -459,7 +459,7 @@ class SelectMetricWidget(QWidget):
                 assert False
 
             if do_update:
-                layer.visible = True
+                layer.refresh()
         self._plugin_view_update = False
 
     @staticmethod
@@ -515,6 +515,10 @@ class SelectMetricWidget(QWidget):
 
                     layer.events.opacity.disconnect(self._update_opacity)
                     layer.events.opacity.connect(self._update_opacity)
+
+                    layer.events.visible.disconnect(self._update_visible)
+                    layer.events.visible.connect(self._update_visible)
+
                     self.prev_valid_layers[layer.name] = [layer, layer.data]
                 else:
                     self._add_remove_table(layer, ButtonActions.DEL)
@@ -526,6 +530,10 @@ class SelectMetricWidget(QWidget):
     def _update_opacity(self, event):
         layer = event.source
         layer.metadata["prev_opacity"] = layer.opacity
+
+    def _update_visible(self, event):
+        layer = event.source
+        layer.metadata["prev_visible"] = layer.visible
 
     def _update_name(self, event):
         old_name = self.table_model.rename_group(
@@ -722,13 +730,15 @@ class SelectMetricWidget(QWidget):
         rows_candidates = self.table_widget.get_row_candidates()
         if not rows_candidates:
             for layer, _ in self.prev_valid_layers.values():
-                layer.events.opacity.disconnect(self._update_opacity)
-                layer.opacity = (
-                    layer.metadata["prev_opacity"]
-                    if "prev_opacity" in layer.metadata
-                    else 0.5
-                )
-                layer.events.opacity.connect(self._update_opacity)
+                if "prev_opacity" in layer.metadata:
+                    layer.events.opacity.disconnect(self._update_opacity)
+                    layer.opacity = layer.metadata["prev_opacity"]
+                    layer.events.opacity.connect(self._update_opacity)
+                if "prev_visible" in layer.metadata:
+                    layer.events.visible.disconnect(self._update_visible)
+                    layer.visible = layer.metadata["prev_visible"]
+                    layer.events.visible.connect(self._update_visible)
+
             # Set all to 0 if nothing is selected
             metric_done = []
             if "boxsize" in self.metric_dict:
@@ -753,18 +763,12 @@ class SelectMetricWidget(QWidget):
             self.table_widget.get_rows(rows_candidates, 0)
         )
 
-        for layer, _ in self.prev_valid_layers.values():
-            layer.events.opacity.disconnect(self._update_opacity)
-            layer.opacity = 0.1
-            layer.events.opacity.connect(self._update_opacity)
-
         layer_mask = {}
+        valid_layers = []
         for parent_idx, rows_idx in layer_dict.items():
             layer_name = self.table_model.get_value(-1, parent_idx, "name")
             layer = self.napari_viewer.layers[layer_name]  # type: ignore
-            layer.events.opacity.disconnect(self._update_opacity)
-            layer.opacity = 1
-            layer.events.opacity.connect(self._update_opacity)
+            valid_layers.append(layer)
             slice_idx = list(
                 map(
                     int,
@@ -779,6 +783,21 @@ class SelectMetricWidget(QWidget):
             else:
                 assert False, layer
             layer_mask[layer_name] = mask
+
+        for layer, _ in self.prev_valid_layers.values():
+            if "prev_opacity" not in layer.metadata:
+                layer.metadata["prev_opacity"] = layer.opacity
+            if "prev_visible" not in layer.metadata:
+                layer.metadata["prev_visible"] = layer.visible
+            layer.events.opacity.disconnect(self._update_opacity)
+            layer.events.visible.disconnect(self._update_visible)
+            if layer in valid_layers:
+                layer.opacity = 1
+                layer.visible = True
+            else:
+                layer.opacity = 0.1
+            layer.events.opacity.connect(self._update_opacity)
+            layer.events.visible.connect(self._update_visible)
 
         metric_done = []
         self.metric_dict["boxsize"].setVisible(True)

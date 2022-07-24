@@ -73,6 +73,7 @@ class GroupModel(QStandardItemModel):
         )
         self.blockSignals(prev_status)
         self.layoutChanged.emit()
+        return old_name
 
     def update_model(self, layer_dict, value, col_idx):
 
@@ -322,7 +323,7 @@ class SelectMetricWidget(QWidget):
         self.napari_viewer = napari_viewer
         self.metrics: dict[str, typing.Any] = {}
         self.metric_dict: dict = {}
-        self.prev_valid_layers: list[napari.layers.Layer] = []
+        self.prev_valid_layers = {}
         self._plugin_view_update = False
 
         self.read_only = [
@@ -492,8 +493,12 @@ class SelectMetricWidget(QWidget):
         ):
             select_first = True
 
-        if valid_layers != self.prev_valid_layers:
-            for layer in self.prev_valid_layers + valid_layers:
+        prev_layers = [entry for entry, _ in self.prev_valid_layers.values()]
+        self.prev_valid_layers = {}
+        if sorted(valid_layers, key=lambda x: x.name) != sorted(
+            prev_layers, key=lambda x: x.name
+        ):
+            for layer in prev_layers + valid_layers:
                 if layer in valid_layers:
                     self._add_remove_table(layer, ButtonActions.ADD)
                     if not layer.features.empty:
@@ -510,11 +515,11 @@ class SelectMetricWidget(QWidget):
 
                     layer.events.opacity.disconnect(self._update_opacity)
                     layer.events.opacity.connect(self._update_opacity)
+                    self.prev_valid_layers[layer.name] = [layer, layer.data]
                 else:
                     self._add_remove_table(layer, ButtonActions.DEL)
             self.table_model.sort()
             self._update_slider()
-            self.prev_valid_layers = valid_layers
             if select_first:
                 self.table_widget.select_first()
 
@@ -523,14 +528,22 @@ class SelectMetricWidget(QWidget):
         layer.metadata["prev_opacity"] = layer.opacity
 
     def _update_name(self, event):
-        self.table_model.rename_group(
-            {x.name for x in self.prev_valid_layers}, event.source.name
+        old_name = self.table_model.rename_group(
+            [x[0].name for x in self.prev_valid_layers.values()],
+            event.source.name,
+        )
+        self.prev_valid_layers[event.source.name] = self.prev_valid_layers.pop(
+            old_name
         )
 
     def _update_on_data(self, event):
         if not self._plugin_view_update:
             layer = event.source
-            self._add_remove_table(layer, ButtonActions.UPDATE)
+            if not np.array_equal(
+                layer.data, self.prev_valid_layers[layer.name][1]
+            ):
+                self.prev_valid_layers[layer.name][1] = layer.data
+                self._add_remove_table(layer, ButtonActions.UPDATE)
 
     def _update_editable(self, event):
         layer = event.source
@@ -708,7 +721,7 @@ class SelectMetricWidget(QWidget):
     def update_hist(self, *_):
         rows_candidates = self.table_widget.get_row_candidates()
         if not rows_candidates:
-            for layer in self.prev_valid_layers:
+            for layer, _ in self.prev_valid_layers.values():
                 layer.events.opacity.disconnect(self._update_opacity)
                 layer.opacity = (
                     layer.metadata["prev_opacity"]
@@ -740,7 +753,7 @@ class SelectMetricWidget(QWidget):
             self.table_widget.get_rows(rows_candidates, 0)
         )
 
-        for layer in self.prev_valid_layers:
+        for layer, _ in self.prev_valid_layers.values():
             layer.events.opacity.disconnect(self._update_opacity)
             layer.opacity = 0.1
             layer.events.opacity.connect(self._update_opacity)

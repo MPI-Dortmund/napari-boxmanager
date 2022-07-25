@@ -1004,7 +1004,6 @@ class SliderView(QWidget):
         self.step_size = 1000
 
         self.slider = QSlider(Qt.Horizontal, self)
-        self.slider.sliderMoved.connect(self.mouse_move)
         self.slider.valueChanged.connect(self.mouse_move)
         self.slider.setRange(
             self.step_size * self.slider.minimum(),
@@ -1033,7 +1032,7 @@ class SliderView(QWidget):
         self.slider.setValue(value)
         self.slider.valueChanged.connect(self.mouse_move)
         if emit_signal:
-            self.slider.sliderMoved.emit(value)
+            self.slider.valueChanged.emit(value)
         else:
             # Otherwise handeld by the sliderMoved event
             self.label.setText(str(value / self.step_size))

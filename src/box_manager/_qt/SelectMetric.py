@@ -397,7 +397,7 @@ class SelectMetricWidget(QWidget):
         )
         self.metric_area = QVBoxLayout()
 
-        self.settings_area = QVBoxLayout()
+        self.settings_area = QHBoxLayout()
         self.hide_dim = QComboBox(self)
         self.hide_dim.addItems(["Show only", "Enhance", "Nothing"])
         self.hide_dim.currentTextChanged.connect(self.update_hist)

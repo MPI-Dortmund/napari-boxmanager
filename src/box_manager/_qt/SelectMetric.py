@@ -105,22 +105,38 @@ class GroupModel(QStandardItemModel):
             grandchild_item.setText(str(value))
         self.blockSignals(prev_signal)
 
-    def _update_labels(self, columns):
+    def _update_label_dict(self):
         self.label_dict = {}
         self.label_dict_rev = {}
-        i_label = -1
         for i_label in range(self.columnCount()):
             label = self.horizontalHeaderItem(i_label).text()
             self.label_dict[label] = i_label
             self.label_dict_rev[i_label] = label
 
+        root_item = self.invisibleRootItem()
+        update = False
+        prev_signal = self.blockSignals(True)
+        for row_idx in range(root_item.rowCount()):
+            for col_idx in range(1, self.columnCount()):
+                parent_item = root_item.child(row_idx, col_idx)
+                if parent_item is None:
+                    update = True
+                    root_item.setChild(row_idx, col_idx, QStandardItem("-"))
+        self.blockSignals(prev_signal)
+        if update:
+            self.layoutChanged.emit()
+
+    def _update_labels(self, columns):
+        new_columns = []
+        for i_label in range(self.columnCount()):
+            label = self.horizontalHeaderItem(i_label).text()
+            new_columns.append(label)
+
         for new_label in columns:
             if new_label not in self.label_dict:
-                i_label += 1
-                self.label_dict[new_label] = i_label
-                self.label_dict_rev[i_label] = new_label
-
-        self.setHorizontalHeaderLabels(self.label_dict)
+                new_columns.append(new_label)
+        self.setHorizontalHeaderLabels(new_columns)
+        self._update_label_dict()
 
     def remove_labels(self, columns):
         if not columns:
@@ -129,12 +145,11 @@ class GroupModel(QStandardItemModel):
         col_idx = []
         for col in columns:
             idx = self.label_dict[col]
-            del self.label_dict_rev[idx]
-            del self.label_dict[col]
             col_idx.append(idx)
 
         for idx in reversed(sorted(col_idx)):
             self.takeColumn(idx)
+        self._update_label_dict()
 
     def sort(self):
         self.invisibleRootItem().sortChildren(self.label_dict["name"])
@@ -282,7 +297,7 @@ class GroupView(QTreeView):
                 parent_item = self.model.invisibleRootItem()
             else:
                 parent_item = self.model.item(parent_idx, 0)
-            if parent_item.child(row_idx, col_idx).text() != "-":
+            if parent_item.child(row_idx, col_idx).text() not in ("-",):
                 layer_dict.setdefault(parent_idx, []).append(row_idx)
         return layer_dict
 

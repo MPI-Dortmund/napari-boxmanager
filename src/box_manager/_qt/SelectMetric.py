@@ -13,6 +13,7 @@ from qtpy.QtGui import (
 )
 from qtpy.QtWidgets import (
     QAbstractItemView,
+    QComboBox,
     QFormLayout,
     QHBoxLayout,
     QHeaderView,
@@ -396,7 +397,15 @@ class SelectMetricWidget(QWidget):
         )
         self.metric_area = QVBoxLayout()
 
+        self.settings_area = QVBoxLayout()
+        self.hide_dim = QComboBox(self)
+        self.hide_dim.addItems(["Show only", "Enhance", "Nothing"])
+        self.hide_dim.currentTextChanged.connect(self.update_hist)
+        self.settings_area.addWidget(QLabel("Highlight:", self))
+        self.settings_area.addWidget(self.hide_dim)
+
         self.setLayout(QVBoxLayout())
+        self.layout().addLayout(self.settings_area, stretch=0)  # type: ignore
         self.layout().addWidget(self.table_widget, stretch=1)
         self.layout().addLayout(self.metric_area, stretch=0)  # type: ignore
 
@@ -859,12 +868,24 @@ class SelectMetricWidget(QWidget):
                 layer.metadata["prev_visible"] = layer.visible
             layer.events.opacity.disconnect(self._update_opacity)
             layer.events.visible.disconnect(self._update_visible)
-            if layer in valid_layers:
-                layer.opacity = 1
-                layer.visible = True
-            else:
-                layer.opacity = 0.1
+            if self.hide_dim.currentText() == "Show only":
+                if layer in valid_layers:
+                    layer.visible = True
+                    layer.opacity = layer.metadata["prev_opacity"]
+                else:
+                    layer.visible = False
+            elif self.hide_dim.currentText() == "Enhance":
+                if layer in valid_layers:
+                    layer.opacity = 1
+                    layer.visible = True
+                else:
+                    layer.opacity = 0.05
+                    layer.visible = layer.metadata["prev_visible"]
+            elif self.hide_dim.currentText() == "Nothing":
+                layer.opacity = layer.metadata["prev_opacity"]
                 layer.visible = layer.metadata["prev_visible"]
+            else:
+                assert False, self.hide_dim.currentText()
             layer.events.opacity.connect(self._update_opacity)
             layer.events.visible.connect(self._update_visible)
 

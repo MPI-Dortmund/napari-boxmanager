@@ -779,6 +779,7 @@ class SelectMetricWidget(QWidget):
         )
 
         layer_mask = {}
+        min_max_vals = {}
         valid_layers = []
         for parent_idx, rows_idx in layer_dict.items():
             layer_name = self.table_model.get_value(-1, parent_idx, "name")
@@ -798,6 +799,12 @@ class SelectMetricWidget(QWidget):
             else:
                 assert False, layer
             layer_mask[layer_name] = mask
+
+            for label in self.table_model.label_dict:
+                if label in self.ignore_idx:
+                    continue
+                vals = self.table_model.get_values(parent_idx, rows_idx, label)
+                min_max_vals.setdefault(label, []).extend(vals)
 
         for layer, _ in self.prev_valid_layers.values():
             if "prev_opacity" not in layer.metadata:
@@ -834,7 +841,16 @@ class SelectMetricWidget(QWidget):
                 self.metric_dict[metric_name].setVisible(False)
             else:
                 self.metric_dict[metric_name].setVisible(True)
-            self.metric_dict[metric_name].set_data(labels_data)
+
+            min_val = None
+            max_val = None
+            if len(set(min_max_vals[f"{metric_name}_min"])) == 1:
+                min_val = float(min_max_vals[f"{metric_name}_min"][0])
+            if len(set(min_max_vals[f"{metric_name}_max"])) == 1:
+                max_val = float(min_max_vals[f"{metric_name}_max"][0])
+            self.metric_dict[metric_name].set_data(
+                labels_data, min_val, max_val
+            )
 
             metric_done.append(metric_name)
 
@@ -894,15 +910,21 @@ class HistogramMinMaxView(QWidget):
             self.line_min.set_data([value, value], [0, 1])
         self.canvas.draw_idle()
 
-    def set_data(self, label_data):
+    def set_data(self, label_data, cur_val_min=None, cur_val_max=None):
         val_min = _get_min_floor(label_data.min())
         val_max = _get_max_floor(label_data.max())
         self.slider_min.set_range(val_min, val_max)
         self.slider_max.set_range(val_min, val_max)
-        self.slider_min.set_value(val_min)
-        self.slider_max.set_value(val_max)
-        self.line_min.set_data([val_min, val_min], [0, 1])
-        self.line_max.set_data([val_max, val_max], [0, 1])
+
+        if cur_val_min is None:
+            cur_val_min = val_min
+        if cur_val_max is None:
+            cur_val_max = val_max
+
+        self.slider_min.set_value(cur_val_min)
+        self.slider_max.set_value(cur_val_max)
+        self.line_min.set_data([cur_val_min, cur_val_min], [0, 1])
+        self.line_max.set_data([cur_val_max, cur_val_max], [0, 1])
 
         self.axis.clear()
         self.axis.hist(label_data, 100)

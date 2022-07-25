@@ -154,6 +154,7 @@ class GroupModel(QStandardItemModel):
     def sort(self, columns):
         row_dict = {}
         root_item = self.invisibleRootItem()
+        root_item.sortChildren(self.label_dict["name"])
         prev_status = self.blockSignals(True)
         for row_idx in reversed(range(root_item.rowCount())):
             name = root_item.child(row_idx, self.label_dict["name"]).text()
@@ -847,6 +848,7 @@ class SelectMetricWidget(QWidget):
                 layer.visible = True
             else:
                 layer.opacity = 0.1
+                layer.visible = layer.metadata["prev_visible"]
             layer.events.opacity.connect(self._update_opacity)
             layer.events.visible.connect(self._update_visible)
 
@@ -905,7 +907,7 @@ class HistogramMinMaxView(QWidget):
 
         self.slider_min = SliderView(
             QRegularExpressionValidator(
-                QRegularExpression(r"-?[0-9]*\.[0-9]*")
+                QRegularExpression(r"-?[0-9]*\.?[0-9]*")
             ),
             self,
         )
@@ -915,7 +917,7 @@ class HistogramMinMaxView(QWidget):
         )
         self.slider_max = SliderView(
             QRegularExpressionValidator(
-                QRegularExpression(r"-?[0-9]*\.[0-9]*")
+                QRegularExpression(r"-?[0-9]*\.?[0-9]*")
             ),
             self,
         )
@@ -1038,10 +1040,12 @@ class SliderView(QWidget):
             self.label.setText(str(value / self.step_size))
 
     def set_range(self, val_min, val_max):
+        self.slider.valueChanged.disconnect(self.mouse_move)
         self.slider.setRange(
             int(self.step_size * val_min) - 1,
             int(self.step_size * val_max) + 1,
         )
+        self.slider.valueChanged.connect(self.mouse_move)
 
     def set_col(self, col):
         self.col_idx = col

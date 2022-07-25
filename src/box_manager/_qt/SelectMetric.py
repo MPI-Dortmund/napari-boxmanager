@@ -151,8 +151,23 @@ class GroupModel(QStandardItemModel):
             self.takeColumn(idx)
         self._update_label_dict()
 
-    def sort(self):
-        self.invisibleRootItem().sortChildren(self.label_dict["name"])
+    def sort(self, columns):
+        row_dict = {}
+        root_item = self.invisibleRootItem()
+        prev_status = self.blockSignals(True)
+        for row_idx in reversed(range(root_item.rowCount())):
+            name = root_item.child(row_idx, self.label_dict["name"]).text()
+            row_dict[name] = root_item.takeRow(row_idx)
+
+        row_idx = 0
+        for col_name in reversed(columns):
+            if col_name in row_dict:
+                for col_idx, item in enumerate(row_dict[col_name]):
+                    root_item.setChild(row_idx, col_idx, item)
+                row_idx += 1
+        self.blockSignals(prev_status)
+
+        self.layoutChanged.emit()
 
     def set_values(self, parent_idx, rows_idx, col_name, value):
         for row in rows_idx:
@@ -339,6 +354,7 @@ class SelectMetricWidget(QWidget):
         self.prev_valid_layers = {}
         self._plugin_view_update = False
 
+        self.loadable_layers = (napari.layers.Points,)
         self.read_only = [
             "",
             "identifier",
@@ -352,6 +368,7 @@ class SelectMetricWidget(QWidget):
             "boxsize",
         ] + self.read_only
 
+        self.napari_viewer.layers.events.reordered.connect(self._order_table)
         self.napari_viewer.layers.events.inserted.connect(self._sync_table)
         self.napari_viewer.layers.events.removed.connect(self._sync_table)
 
@@ -489,15 +506,21 @@ class SelectMetricWidget(QWidget):
         return metric_name, min_max
 
     @Slot(object)
+    def _order_table(self, event=None):
+        valid_names: list[str] = [
+            entry.name
+            for entry in self.napari_viewer.layers
+            if isinstance(entry, self.loadable_layers)
+        ]
+        self.table_model.sort(valid_names)
+
+    @Slot(object)
     def _sync_table(self, event=None, *, select_first=False):
-        valid_layers: list[napari.layers.Layer] = sorted(
-            (
-                entry
-                for entry in self.napari_viewer.layers
-                if isinstance(entry, napari.layers.Points)
-            ),
-            key=lambda x: x.name,
-        )  # type: ignore
+        valid_layers: list[napari.layers.Layer] = [
+            entry
+            for entry in self.napari_viewer.layers
+            if isinstance(entry, self.loadable_layers)
+        ]
 
         if (
             event is not None
@@ -535,7 +558,7 @@ class SelectMetricWidget(QWidget):
                     self.prev_valid_layers[layer.name] = [layer, layer.data]
                 else:
                     self._add_remove_table(layer, ButtonActions.DEL)
-            self.table_model.sort()
+            self._order_table()
             self._update_slider()
             if select_first:
                 self.table_widget.select_first()
@@ -657,7 +680,7 @@ class SelectMetricWidget(QWidget):
         elif action == ButtonActions.UPDATE:
             self._add_remove_table(layer, ButtonActions.DEL)
             self._add_remove_table(layer, ButtonActions.ADD)
-            self.table_model.sort()
+            self._order_table()
 
     def _get_all_data(self, metric_name, layer_mask=None):
 
@@ -803,7 +826,13 @@ class SelectMetricWidget(QWidget):
             for label in self.table_model.label_dict:
                 if label in self.ignore_idx:
                     continue
-                vals = self.table_model.get_values(parent_idx, rows_idx, label)
+                vals = [
+                    entry
+                    for entry in self.table_model.get_values(
+                        parent_idx, rows_idx, label
+                    )
+                    if entry not in ("-",)
+                ]
                 min_max_vals.setdefault(label, []).extend(vals)
 
         for layer, _ in self.prev_valid_layers.values():

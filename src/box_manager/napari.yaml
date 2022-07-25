@@ -16,9 +16,9 @@ contributions:
     - id: napari-boxmanager.select_metric
       python_name: box_manager._qt.SelectMetric:SelectMetricWidget
       title: Select box metrics
-    - id: napari-boxmanager.example
-      python_name: box_manager._widget:example_magic_widget
-      title: Select box metrics
+    - id: napari-boxmanager.bandpass_filter
+      python_name: box_manager._widget:filter_layer
+      title: Filter image layer
   readers:
     - command: napari-boxmanager.get_reader
       accepts_directories: false
@@ -31,9 +31,9 @@ contributions:
   widgets:
     - command: napari-boxmanager.select_metric
       display_name: metric_selection
-    - command: napari-boxmanager.example
+    - command: napari-boxmanager.bandpass_filter
       autogenerate: true
-      display_name: example
+      display_name: Bandpass filter
 
 
       #contributions:

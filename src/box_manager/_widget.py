@@ -9,16 +9,54 @@
 from typing import TYPE_CHECKING
 
 # from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
+from ._utils import filters
 
 if TYPE_CHECKING:
     import napari
     import napari.layers
 
 
-def example_magic_widget(img_layer: "napari.layers.Points"):
-    print(f"you have selected {img_layer}")
+def filter_layer(
+    napari_viewer: "napari.Viewer",
+    napari_layer: "napari.layers.Image",
+    lp_filter_resolution: float = 30,
+    hp_filter_resolution: float = 1000,
+    pixel_size: float = -1,
+    show_mask: bool = False,
+):
+
+    if pixel_size == -1:
+        try:
+            pixel_size = napari_layer.metadata["pixel_spacing"]
+        except KeyError:
+            print("No pixel spacing set in metadata")
+            return None
+
+    filtered_image, mask = filters.bandpass_filter(
+        napari_layer.data,
+        lp_filter_resolution,
+        hp_filter_resolution,
+        pixel_size,
+    )
+
+    napari_layer.visible = False
+    if show_mask:
+        napari_viewer.add_image(
+            mask,
+            name=f"MASK LP {int(lp_filter_resolution)} HP {int(hp_filter_resolution)} - {napari_layer.name}",
+        )
+
+    napari_viewer.add_image(
+        filtered_image,
+        name=f"LP {int(lp_filter_resolution)} HP {int(hp_filter_resolution)} - {napari_layer.name}",
+        metadata=napari_layer.metadata,
+    )
 
 
+# def example_magic_widget(img_layer: "napari.layers.Points"):
+#    print(f"you have selected {img_layer}")
+#
+#
 #
 #
 # class ExampleQWidget(QWidget):

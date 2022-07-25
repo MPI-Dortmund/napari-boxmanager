@@ -114,8 +114,9 @@ class GroupModel(QStandardItemModel):
             self.label_dict[label] = i_label
             self.label_dict_rev[i_label] = label
 
-        for i_label, new_label in enumerate(columns, i_label + 1):
+        for new_label in columns:
             if new_label not in self.label_dict:
+                i_label += 1
                 self.label_dict[new_label] = i_label
                 self.label_dict_rev[i_label] = new_label
 

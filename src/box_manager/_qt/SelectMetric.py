@@ -151,10 +151,25 @@ class GroupModel(QStandardItemModel):
             self.takeColumn(idx)
         self._update_label_dict()
 
+    def sort_children(self, group_name, label):
+        root_item = self.group_items[group_name]
+
+        row_items = []
+        for row_idx in reversed(range(root_item.rowCount())):
+            text = root_item.child(row_idx, self.label_dict[label]).text()
+            try:
+                val = float(text)
+            except ValueError:
+                val = text
+            row_items.append((val, root_item.takeRow(row_idx)))
+
+        for row_idx, (_, row_items) in enumerate(sorted(row_items)):
+            for col_idx, item in enumerate(row_items):
+                root_item.setChild(row_idx, col_idx, item)
+
     def sort(self, columns):
         row_dict = {}
         root_item = self.invisibleRootItem()
-        root_item.sortChildren(self.label_dict["name"])
         prev_status = self.blockSignals(True)
         for row_idx in reversed(range(root_item.rowCount())):
             name = root_item.child(row_idx, self.label_dict["name"]).text()
@@ -676,6 +691,7 @@ class SelectMetricWidget(QWidget):
                 entries = self._prepare_entries(layer)
                 for entry in entries:
                     self.table_model.append_element_to_group(layer_name, entry)
+                self.table_model.sort_children(layer_name, "slice")
         elif action == ButtonActions.DEL:
             self.table_model.remove_group(layer_name)
         elif action == ButtonActions.UPDATE:

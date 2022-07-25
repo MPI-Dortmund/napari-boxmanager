@@ -68,9 +68,6 @@ class GroupModel(QStandardItemModel):
         self.set_value(
             root_idx.parent().row(), root_idx.row(), "name", new_name
         )
-        self.set_value(
-            root_idx.parent().row(), root_idx.row(), "slice", new_name
-        )
         self.blockSignals(prev_status)
         self.layoutChanged.emit()
         return old_name

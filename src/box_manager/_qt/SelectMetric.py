@@ -408,9 +408,18 @@ class SelectMetricWidget(QWidget):
         self.settings_area = QHBoxLayout()
         self.hide_dim = QComboBox(self)
         self.hide_dim.currentTextChanged.connect(self.update_hist)
-        self.hide_dim.addItems(["Show only", "Enhance", "Nothing"])
+        self.hide_dim.addItems(
+            [
+                "Selected",
+                "Opacity 0.5",
+                "Opacity 0.2",
+                "Opacity 0.1",
+                "Opacity 0.05",
+                "All",
+            ]
+        )
 
-        self.settings_area.addWidget(QLabel("Highlight:", self))
+        self.settings_area.addWidget(QLabel("Show:", self))
         self.settings_area.addWidget(self.hide_dim)
 
         self.setLayout(QVBoxLayout())
@@ -894,20 +903,22 @@ class SelectMetricWidget(QWidget):
                 layer.metadata["prev_visible"] = layer.visible
             layer.events.opacity.disconnect(self._update_opacity)
             layer.events.visible.disconnect(self._update_visible)
-            if self.hide_dim.currentText() == "Show only":
+            if self.hide_dim.currentText() == "Selected":
                 if layer in valid_layers:
                     layer.visible = True
                     layer.opacity = layer.metadata["prev_opacity"]
                 else:
                     layer.visible = False
-            elif self.hide_dim.currentText() == "Enhance":
+            elif self.hide_dim.currentText().startswith("Opacity"):
                 if layer in valid_layers:
                     layer.opacity = 1
                     layer.visible = True
                 else:
-                    layer.opacity = 0.05
+                    layer.opacity = float(
+                        self.hide_dim.currentText().removeprefix("Opacity ")
+                    )
                     layer.visible = layer.metadata["prev_visible"]
-            elif self.hide_dim.currentText() == "Nothing":
+            elif self.hide_dim.currentText() == "All":
                 layer.opacity = layer.metadata["prev_opacity"]
                 layer.visible = layer.metadata["prev_visible"]
             else:

@@ -411,16 +411,15 @@ class SelectMetricWidget(QWidget):
         self.hide_dim.addItems(
             [
                 "Selected",
-                "Opacity 0.5",
-                "Opacity 0.2",
-                "Opacity 0.1",
-                "Opacity 0.05",
+                "All (Opacity 0.5)",
+                "All (Opacity 0.2)",
+                "All (Opacity 0.1)",
                 "All",
             ]
         )
 
         self.settings_area.addWidget(QLabel("Show:", self))
-        self.settings_area.addWidget(self.hide_dim)
+        self.settings_area.addWidget(self.hide_dim, stretch=1)
 
         self.setLayout(QVBoxLayout())
         self.layout().addLayout(self.settings_area, stretch=0)  # type: ignore
@@ -909,13 +908,15 @@ class SelectMetricWidget(QWidget):
                     layer.opacity = layer.metadata["prev_opacity"]
                 else:
                     layer.visible = False
-            elif self.hide_dim.currentText().startswith("Opacity"):
+            elif self.hide_dim.currentText().startswith("All (Opacity"):
                 if layer in valid_layers:
                     layer.opacity = 1
                     layer.visible = True
                 else:
                     layer.opacity = float(
-                        self.hide_dim.currentText().removeprefix("Opacity ")
+                        self.hide_dim.currentText()
+                        .removeprefix("All (Opacity ")
+                        .removesuffix(")")
                     )
                     layer.visible = layer.metadata["prev_visible"]
             elif self.hide_dim.currentText() == "All":

@@ -660,6 +660,15 @@ class SelectMetricWidget(QWidget):
         else:
             assert False, layer.data
 
+        label_data = (
+            pd.DataFrame(layer.metadata)
+            .loc[
+                :,
+                [entry for entry in layer.metadata if isinstance(entry, int)],
+            ]
+            .T
+        )
+
         features_copy["shown"] = layer.shown
         for identifier, ident_df in features_copy.groupby(
             "identifier", sort=False
@@ -674,7 +683,7 @@ class SelectMetricWidget(QWidget):
                     ident_df,
                     cur_name,
                     identifier,
-                    layer.metadata,
+                    label_data,
                 )
             )
 
@@ -699,7 +708,7 @@ class SelectMetricWidget(QWidget):
         return output_list
 
     def _prepare_columns(
-        self, size, features, name, slice_idx, metadata
+        self, size, features, name, slice_idx, label_data
     ) -> dict:
         output_dict = {}
         output_dict["name"] = name
@@ -719,29 +728,23 @@ class SelectMetricWidget(QWidget):
 
                 label_min = f"{col_name}_min"
                 label_max = f"{col_name}_max"
-                label_data = (
-                    pd.DataFrame(metadata)
-                    .loc[
-                        [label_min, label_max],
-                        [
-                            entry
-                            for entry in metadata
-                            if isinstance(entry, int)
-                        ],
-                    ]
-                    .T
-                )
 
-                if slice_idx in metadata and label_min in metadata[slice_idx]:
-                    val = metadata[slice_idx][label_min]
+                if (
+                    slice_idx in label_data.index
+                    and label_min in label_data.columns
+                ):
+                    val = label_data.loc[slice_idx, label_min]
                 else:
                     val = general.get_min_floor(label_data[label_min])
                     if not np.all(val == label_data[label_min].dropna()):
                         val = general.get_min_floor(features[col_name])
                 output_dict[label_min] = str(val)
 
-                if slice_idx in metadata and label_max in metadata[slice_idx]:
-                    val = metadata[slice_idx][label_max]
+                if (
+                    slice_idx in label_data.index
+                    and label_max in label_data.columns
+                ):
+                    val = label_data.loc[slice_idx, label_max]
                 else:
                     val = general.get_max_floor(label_data[label_max])
                     if not np.all(val == label_data[label_max].dropna()):

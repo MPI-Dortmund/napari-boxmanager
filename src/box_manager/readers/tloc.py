@@ -6,6 +6,7 @@ import matplotlib.cm as mcm
 import numpy as np
 import pandas as pd
 
+from .._utils import general
 from . import _MAX_LAYER_NAME
 
 if typing.TYPE_CHECKING:
@@ -90,13 +91,13 @@ def to_napari(
             int(cluster_df[["x", "y", "z"]].max().max().round(0)) + 1
         ):
             metadata[idx] = {"path": file_name, "name": f"slice {idx}"}
-            idx_view_df = cluster_df[cluster_df["x"] == idx]
+            idx_view_df = cluster_df.loc[cluster_df["x"].round(0) == idx, :]
             metadata[idx].update(
                 {
-                    f"{entry}_{func.__name__}": func(
-                        idx_view_df[entry], default=0
+                    f"{entry}_{'min' if 'min' in func.__name__ else 'max'}": func(
+                        idx_view_df[entry]
                     )
-                    for func in [min, max]
+                    for func in [general.get_min_floor, general.get_max_floor]
                     for entry in _get_meta_idx()
                 }
             )

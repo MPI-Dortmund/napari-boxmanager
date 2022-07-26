@@ -28,16 +28,10 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from .._utils import general
+
 if typing.TYPE_CHECKING:
     import napari
-
-
-def _get_min_floor(vals, step=1000):
-    return np.round(np.floor(np.min(vals) * step) / step, 3)
-
-
-def _get_max_floor(vals, step=1000):
-    return np.round(np.ceil(np.max(vals) * step) / step, 3)
 
 
 class DimensionAxis(enum.Enum):
@@ -248,10 +242,11 @@ class GroupModel(QStandardItemModel):
                 col_item = first_item or QStandardItem()
                 col_item.setEditable(False)
             else:
-                col_item = QStandardItem(
-                    columns[cur_label] if cur_label in columns else "-"
+                text = columns[cur_label] if cur_label in columns else "-"
+                col_item = QStandardItem(text)
+                col_item.setEditable(
+                    cur_label not in self.read_only and text != "-"
                 )
-                col_item.setEditable(cur_label not in self.read_only)
             root_element.setChild(row_idx, col_idx, col_item)
 
     def append_element_to_group(self, group_name, columns):
@@ -452,6 +447,8 @@ class SelectMetricWidget(QWidget):
             layer_vals = float(
                 self.table_model.get_value(parent_idx, rows_idx[0], col_name)
             )
+            for z_slice in slice_idx:
+                layer.metadata[z_slice][col_name] = layer_vals
 
             if layer.data.shape[1] == 3:
                 mask_dimension = np.isin(
@@ -677,6 +674,7 @@ class SelectMetricWidget(QWidget):
                     ident_df,
                     cur_name,
                     identifier,
+                    layer.metadata,
                 )
             )
 
@@ -694,12 +692,15 @@ class SelectMetricWidget(QWidget):
                     features,
                     cur_name,
                     identifier,
+                    layer.metadata,
                 )
             )
 
         return output_list
 
-    def _prepare_columns(self, size, features, name, slice_idx) -> dict:
+    def _prepare_columns(
+        self, size, features, name, slice_idx, metadata
+    ) -> dict:
         output_dict = {}
         output_dict["name"] = name
         output_dict["slice"] = str(slice_idx)
@@ -708,16 +709,52 @@ class SelectMetricWidget(QWidget):
         output_dict["boxsize"] = (
             "0" if size.empty else str(int(size.mean().mean()))
         )
-        for col_name in features.columns:
-            if col_name in self.ignore_idx:
-                continue
+        if (
+            self.napari_viewer.dims.order[0] == 0
+            and self.napari_viewer.dims.ndim == 3
+        ):
+            for col_name in features.columns:
+                if col_name in self.ignore_idx:
+                    continue
 
-            output_dict[f"{col_name}_min"] = str(
-                _get_min_floor(features[col_name])
-            )
-            output_dict[f"{col_name}_max"] = str(
-                _get_max_floor(features[col_name])
-            )
+                label_min = f"{col_name}_min"
+                label_max = f"{col_name}_max"
+                label_data = (
+                    pd.DataFrame(metadata)
+                    .loc[
+                        [label_min, label_max],
+                        [
+                            entry
+                            for entry in metadata
+                            if isinstance(entry, int)
+                        ],
+                    ]
+                    .T
+                )
+
+                if slice_idx in metadata and label_min in metadata[slice_idx]:
+                    val = metadata[slice_idx][label_min]
+                else:
+                    val = general.get_min_floor(label_data[label_min])
+                    if not np.all(val == label_data[label_min].dropna()):
+                        val = general.get_min_floor(features[col_name])
+                output_dict[label_min] = str(val)
+
+                if slice_idx in metadata and label_max in metadata[slice_idx]:
+                    val = metadata[slice_idx][label_max]
+                else:
+                    val = general.get_max_floor(label_data[label_max])
+                    if not np.all(val == label_data[label_max].dropna()):
+                        val = general.get_max_floor(features[col_name])
+                output_dict[label_max] = str(val)
+
+        else:
+            for col_name in features.columns:
+                if col_name in self.ignore_idx:
+                    continue
+
+                output_dict[f"{col_name}_min"] = "-"
+                output_dict[f"{col_name}_max"] = "-"
         return output_dict
 
     def _add_remove_table(self, layer, action: "ButtonActions"):
@@ -930,7 +967,10 @@ class SelectMetricWidget(QWidget):
         metric_done = []
         self.metric_dict["boxsize"].setVisible(True)
         for label in self.table_model.label_dict:
-            if label in self.ignore_idx:
+            if label in self.ignore_idx or (
+                self.napari_viewer.dims.order[0] != 0
+                and self.napari_viewer.dims.ndim == 3
+            ):
                 continue
 
             metric_name, _ = self.trim_suffix(label)
@@ -1022,8 +1062,8 @@ class HistogramMinMaxView(QWidget):
         self.canvas.draw_idle()
 
     def set_data(self, label_data, cur_val_min=None, cur_val_max=None):
-        val_min = _get_min_floor(label_data.min())
-        val_max = _get_max_floor(label_data.max())
+        val_min = general.get_min_floor(label_data.min())
+        val_max = general.get_max_floor(label_data.max())
         self.slider_min.set_range(val_min, val_max)
         self.slider_max.set_range(val_min, val_max)
 

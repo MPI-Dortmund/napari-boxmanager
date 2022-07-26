@@ -830,6 +830,7 @@ class SelectMetricWidget(QWidget):
         layer_mask = {}
         min_max_vals = {}
         valid_layers = []
+        slice_indices = []
         for parent_idx, rows_idx in layer_dict.items():
             layer_name = self.table_model.get_value(-1, parent_idx, "name")
             layer = self.napari_viewer.layers[layer_name]  # type: ignore
@@ -840,6 +841,7 @@ class SelectMetricWidget(QWidget):
                     self.table_model.get_values(parent_idx, rows_idx, "slice"),
                 )
             )
+            slice_indices.extend(slice_idx)
 
             if layer.data.shape[1] == 3:
                 mask = np.isin(np.round(layer.data[:, 0], 0), slice_idx)
@@ -921,6 +923,9 @@ class SelectMetricWidget(QWidget):
             )
 
             metric_done.append(metric_name)
+
+        if len(set(slice_indices)) == 1:
+            self.napari_viewer.dims.set_point([0], (slice_indices[0],))
 
 
 class HistogramMinMaxView(QWidget):

@@ -40,6 +40,12 @@ def _get_max_floor(vals, step=1000):
     return np.round(np.ceil(np.max(vals) * step) / step, 3)
 
 
+class DimensionAxis(enum.Enum):
+    Z = 0
+    Y = 1
+    X = 2
+
+
 class ButtonActions(enum.Enum):
     ADD = 0
     DEL = 1
@@ -370,6 +376,7 @@ class SelectMetricWidget(QWidget):
         self.metric_dict: dict = {}
         self.prev_valid_layers = {}
         self._plugin_view_update = False
+        self._cur_slice_dim = DimensionAxis.Z.value
 
         self.loadable_layers = (napari.layers.Points,)
         self.read_only = [
@@ -388,6 +395,7 @@ class SelectMetricWidget(QWidget):
         self.napari_viewer.layers.events.reordered.connect(self._order_table)
         self.napari_viewer.layers.events.inserted.connect(self._sync_table)
         self.napari_viewer.layers.events.removed.connect(self._sync_table)
+        self.napari_viewer.dims.events.order.connect(self._set_current_slice)
 
         self.table_model = GroupModel(self.read_only, self)
         self.table_widget = GroupView(self.table_model, self)
@@ -399,8 +407,9 @@ class SelectMetricWidget(QWidget):
 
         self.settings_area = QHBoxLayout()
         self.hide_dim = QComboBox(self)
-        self.hide_dim.addItems(["Show only", "Enhance", "Nothing"])
         self.hide_dim.currentTextChanged.connect(self.update_hist)
+        self.hide_dim.addItems(["Show only", "Enhance", "Nothing"])
+
         self.settings_area.addWidget(QLabel("Highlight:", self))
         self.settings_area.addWidget(self.hide_dim)
 
@@ -409,6 +418,11 @@ class SelectMetricWidget(QWidget):
         self.layout().addWidget(self.table_widget, stretch=1)
         self.layout().addLayout(self.metric_area, stretch=0)  # type: ignore
 
+        self._sync_table(select_first=True)
+
+    def _set_current_slice(self, event):
+        self._cur_slice_dim = event.source.order[0]
+        self._clear_table()
         self._sync_table(select_first=True)
 
     @Slot(dict, str)
@@ -433,7 +447,7 @@ class SelectMetricWidget(QWidget):
 
             if layer.data.shape[1] == 3:
                 mask_dimension = np.isin(
-                    np.round(layer.data[:, 0], 0), slice_idx
+                    np.round(layer.data[:, self._cur_slice_dim], 0), slice_idx
                 )
             elif layer.data.shape[1] == 2:
                 mask_dimension = np.ones(layer.data.shape[0], dtype=bool)
@@ -474,7 +488,8 @@ class SelectMetricWidget(QWidget):
                     for idx, row in enumerate(rows_idx):
                         if layer.data.shape[1] == 3:
                             slice_mask = (
-                                np.round(layer.data[:, 0], 0) == slice_idx[idx]
+                                np.round(layer.data[:, self._cur_slice_dim], 0)
+                                == slice_idx[idx]
                             )
                         elif layer.data.shape[1] == 2:
                             slice_mask = np.ones(
@@ -588,6 +603,11 @@ class SelectMetricWidget(QWidget):
             if select_first:
                 self.table_widget.select_first()
 
+    def _clear_table(self):
+        for layer, _ in self.prev_valid_layers.values():
+            self._add_remove_table(layer, ButtonActions.DEL)
+        self.prev_valid_layers = {}
+
     def _update_opacity(self, event):
         layer = event.source
         layer.metadata["prev_opacity"] = layer.opacity
@@ -626,7 +646,9 @@ class SelectMetricWidget(QWidget):
             features_copy["identifier"] = (
                 ""
                 if name is not None
-                else np.round(layer.data[:, 0], 0).astype(int)
+                else np.round(layer.data[:, self._cur_slice_dim], 0).astype(
+                    int
+                )
             )
         elif layer.data.shape[1] == 2:
             features_copy["identifier"] = "" if name is not None else 0
@@ -844,7 +866,9 @@ class SelectMetricWidget(QWidget):
             slice_indices.extend(slice_idx)
 
             if layer.data.shape[1] == 3:
-                mask = np.isin(np.round(layer.data[:, 0], 0), slice_idx)
+                mask = np.isin(
+                    np.round(layer.data[:, self._cur_slice_dim], 0), slice_idx
+                )
             elif layer.data.shape[1] == 2:
                 mask = np.ones(layer.data.shape[0], dtype=bool)
             else:
@@ -925,7 +949,9 @@ class SelectMetricWidget(QWidget):
             metric_done.append(metric_name)
 
         if len(set(slice_indices)) == 1:
-            self.napari_viewer.dims.set_point([0], (slice_indices[0],))
+            self.napari_viewer.dims.set_point(
+                [self._cur_slice_dim], (slice_indices[0],)
+            )
 
 
 class HistogramMinMaxView(QWidget):

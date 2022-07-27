@@ -1022,11 +1022,21 @@ class HistogramMinMaxView(QWidget):
 
         self.canvas = FigureCanvas()
         self.canvas.setMaximumHeight(100)
-        self.axis = self.canvas.figure.subplots()
-        self.axis.get_yaxis().set_visible(False)
-        self.axis.set_position([0.01, 0.25, 0.98, 0.73])
-        self.line_min = self.axis.axvline(0, color="k")
-        self.line_max = self.axis.axvline(0, color="orange")
+
+        axis = self.canvas.figure.subplots(1, 3, sharey=True)
+        self.axis_dict = {}
+        for idx, entry in enumerate(
+            ["left_outlier", "center", "right_outlier"]
+        ):
+            axis[idx].get_yaxis().set_visible(False)
+
+            line_min = axis[idx].axvline(0, color="k")
+            line_max = axis[idx].axvline(0, color="orange")
+            self.axis_dict[entry] = {
+                "axis": axis[idx],
+                "line_min": line_min,
+                "line_max": line_max,
+            }
 
         self.slider_min = SliderView(
             QRegularExpressionValidator(
@@ -1058,10 +1068,12 @@ class HistogramMinMaxView(QWidget):
         self.layout().setContentsMargins(0, 0, 0, 0)
 
     def adjust_line(self, value, is_max):
-        if is_max:
-            self.line_max.set_data([value, value], [0, 1])
-        else:
-            self.line_min.set_data([value, value], [0, 1])
+        for entry in self.axis_dict.values():
+            if is_max:
+                line = entry["line_max"]
+            else:
+                line = entry["line_min"]
+            line.set_data([value, value], [0, 1])
         self.canvas.draw_idle()
 
     def set_data(self, label_data, cur_val_min=None, cur_val_max=None):
@@ -1077,13 +1089,96 @@ class HistogramMinMaxView(QWidget):
 
         self.slider_min.set_value(cur_val_min)
         self.slider_max.set_value(cur_val_max)
-        self.line_min.set_data([cur_val_min, cur_val_min], [0, 1])
-        self.line_max.set_data([cur_val_max, cur_val_max], [0, 1])
 
-        self.axis.clear()
-        self.axis.hist(label_data, 100)
-        self.axis.add_artist(self.line_min)
-        self.axis.add_artist(self.line_max)
+        outlier = 0.05
+        quantile_upper = np.quantile(label_data, 1 - outlier / 2)
+        quantile_lower = np.quantile(label_data, outlier / 2)
+        data_tmp = label_data[
+            (quantile_lower <= label_data) & (label_data <= quantile_upper)
+        ]
+        median = np.median(data_tmp)
+        val = np.maximum(
+            np.abs(np.max(data_tmp) - median),
+            np.abs(np.min(data_tmp) - median),
+        )
+
+        quantile_upper += val / 2
+        quantile_lower -= val / 2
+
+        data_lower = label_data[label_data < quantile_lower]
+        data_center = label_data[
+            (quantile_lower <= label_data) & (label_data <= quantile_upper)
+        ]
+        data_upper = label_data[label_data > quantile_upper]
+        data_list = [data_lower, data_center, data_upper]
+        n_data = len([entry for entry in data_list if not entry.empty])
+
+        axis_idx = -1
+        cum_width = 0
+        for idx, entry in enumerate(self.axis_dict.values()):
+            if data_list[idx].empty:
+                entry["axis"].set_position([0, 0, 0, 0])
+                continue
+            axis_idx += 1
+
+            entry["line_min"].set_data([cur_val_min, cur_val_min], [0, 1])
+            entry["line_max"].set_data([cur_val_max, cur_val_max], [0, 1])
+            entry["axis"].clear()
+            entry["axis"].hist(data_list[idx], 100)
+            entry["axis"].ticklabel_format(useOffset=False, style="plain")
+            if n_data != 1:
+                for tick in entry["axis"].get_xticklabels():
+                    tick.set_rotation(-12)
+                    tick.set_verticalalignment("top")
+                    tick.set_horizontalalignment("left")
+            if n_data != 1:
+                height = 0.35
+            else:
+                height = 0.25
+
+            if n_data == 1:
+                space = 0
+                width = 0.98
+            elif n_data == 2:
+                space = 0.98 - 0.3 - 0.65
+                if idx in (0, 2):
+                    width = 0.3
+                elif idx == 1:
+                    width = 0.65
+                else:
+                    assert False, (n_data, axis_idx)
+            elif n_data == 3:
+                space = (0.98 - 0.3 - 0.65) / 2
+                if idx in (0, 2):
+                    width = 0.15
+                elif idx == 1:
+                    width = 0.65
+                else:
+                    assert False, (n_data, axis_idx)
+            else:
+                assert False, (n_data, axis_idx)
+
+            if n_data == 1:
+                entry["axis"].spines["left"].set_visible(True)
+                entry["axis"].spines["right"].set_visible(True)
+            elif axis_idx == 0:
+                entry["axis"].spines["left"].set_visible(True)
+                entry["axis"].spines["right"].set_visible(False)
+            elif axis_idx == n_data - 1:
+                entry["axis"].spines["left"].set_visible(False)
+                entry["axis"].spines["right"].set_visible(True)
+            elif 0 < axis_idx < n_data - 1:
+                entry["axis"].spines["right"].set_visible(False)
+                entry["axis"].spines["left"].set_visible(False)
+            else:
+                assert False, (axis_idx, n_data)
+
+            entry["axis"].add_artist(entry["line_min"])
+            entry["axis"].add_artist(entry["line_max"])
+            entry["axis"].set_position(
+                [0.01 + cum_width, height, width, 1 - height - 0.02]
+            )
+            cum_width += width + space
         self.canvas.draw_idle()
 
     def set_col_min(self, col_min):

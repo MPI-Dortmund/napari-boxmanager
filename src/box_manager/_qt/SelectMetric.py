@@ -5,7 +5,15 @@ import napari.layers
 import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_qt5agg import FigureCanvas
-from qtpy.QtCore import QModelIndex, QRegularExpression, Qt, Signal, Slot
+from qtpy.QtCore import (
+    QItemSelection,
+    QItemSelectionModel,
+    QModelIndex,
+    QRegularExpression,
+    Qt,
+    Signal,
+    Slot,
+)
 from qtpy.QtGui import (
     QRegularExpressionValidator,
     QStandardItem,
@@ -313,6 +321,20 @@ class GroupView(QTreeView):
         value = self.model.get_value(parent_idx, row_idx, col_name)
         self.update_elements(value, col_idx)
 
+    def restore_selection(self, prev_selection):
+        columns = self.model.columnCount() - 1
+        selection = QItemSelection()
+        flag = QItemSelectionModel.Select
+        for parent_idx, row_idx in prev_selection:
+            start = self.model.index(row_idx, 0)
+            end = self.model.index(row_idx, columns)
+            if selection.indexes():
+                selection.merge(QItemSelection(start, end), flag)
+            else:
+                selection.select(start, end)
+        self.selectionModel().clear()
+        self.selectionModel().select(selection, flag)
+
     def get_row_candidates(self):
         return {
             (entry.parent().row(), entry.row())
@@ -425,8 +447,18 @@ class SelectMetricWidget(QWidget):
 
     def _set_current_slice(self, event):
         self._cur_slice_dim = event.source.order[0]
-        self._clear_table()
-        self._sync_table(select_first=True)
+        self.table_widget.selectionModel().selectionChanged.disconnect(
+            self.update_hist
+        )
+        prev_selection = self._clear_table()
+        self._sync_table()
+        self.table_widget.restore_selection(prev_selection)
+        self.table_widget.selectionModel().selectionChanged.connect(
+            self.update_hist
+        )
+        self.table_widget.selectionModel().selectionChanged.emit(
+            QItemSelection(), QItemSelection()
+        )
 
     @Slot(dict, str)
     def _update_view(self, layer_dict, col_name):
@@ -609,7 +641,11 @@ class SelectMetricWidget(QWidget):
                 self.table_widget.select_first()
 
     def _clear_table(self):
-        prev_selection = self.table_widget.selectedIndexes()
+        prev_selection = {
+            entry
+            for entry in self.table_widget.get_row_candidates()
+            if entry[0] == -1
+        }
         for layer, _ in self.prev_valid_layers.values():
             self._add_remove_table(layer, ButtonActions.DEL)
         self.prev_valid_layers = {}
@@ -1081,6 +1117,8 @@ class HistogramMinMaxView(QWidget):
     def set_data(self, label_data, cur_val_min=None, cur_val_max=None):
         val_min = general.get_min_floor(label_data.min())
         val_max = general.get_max_floor(label_data.max())
+        val_min = val_min if not np.isnan(val_min) else 0
+        val_max = val_max if not np.isnan(val_max) else 0
         self.slider_min.set_range(val_min, val_max)
         self.slider_max.set_range(val_min, val_max)
 
@@ -1280,7 +1318,10 @@ class SliderView(QWidget):
             self.label.setText(str(value / self.step_size))
 
     def set_range(self, val_min, val_max):
-        self.slider.valueChanged.disconnect(self.mouse_move)
+        try:
+            self.slider.valueChanged.disconnect(self.mouse_move)
+        except TypeError:
+            pass
         self.slider.setRange(
             int(self.step_size * val_min) - 1,
             int(self.step_size * val_max) + 1,

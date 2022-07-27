@@ -609,9 +609,11 @@ class SelectMetricWidget(QWidget):
                 self.table_widget.select_first()
 
     def _clear_table(self):
+        prev_selection = self.table_widget.selectedIndexes()
         for layer, _ in self.prev_valid_layers.values():
             self._add_remove_table(layer, ButtonActions.DEL)
         self.prev_valid_layers = {}
+        return prev_selection
 
     def _update_opacity(self, event):
         layer = event.source
@@ -1126,11 +1128,46 @@ class HistogramMinMaxView(QWidget):
             entry["axis"].clear()
             entry["axis"].hist(data_list[idx], 100)
             entry["axis"].ticklabel_format(useOffset=False, style="plain")
+
+            if n_data == 1:
+                entry["axis"].spines["left"].set_visible(True)
+                entry["axis"].spines["right"].set_visible(True)
+            elif axis_idx == 0:
+                entry["axis"].spines["left"].set_visible(True)
+                entry["axis"].spines["right"].set_visible(False)
+            elif axis_idx == n_data - 1:
+                entry["axis"].spines["left"].set_visible(False)
+                entry["axis"].spines["right"].set_visible(True)
+                ticks = entry["axis"].get_xticks()
+            elif 0 < axis_idx < n_data - 1:
+                entry["axis"].spines["right"].set_visible(False)
+                entry["axis"].spines["left"].set_visible(False)
+            else:
+                assert False, (axis_idx, n_data)
+
             if n_data != 1:
                 for tick in entry["axis"].get_xticklabels():
                     tick.set_rotation(-12)
                     tick.set_verticalalignment("top")
                     tick.set_horizontalalignment("left")
+
+            ticks = entry["axis"].get_xticks()
+            ticks = np.round(
+                np.linspace(np.min(data_list[idx]), np.max(data_list[idx]), 3),
+                1,
+            )
+            if np.all(ticks == ticks[0]):
+                ticks[0] -= 1
+                ticks[1] += 1
+            entry["axis"].set_xticks(ticks)
+
+            if idx == 1:
+                new_step_size = int(
+                    self.step_size * np.abs(ticks[-1] - ticks[0]) / 20
+                )
+                self.slider_min.setSingleStep(new_step_size)
+                self.slider_max.setSingleStep(new_step_size)
+
             if n_data != 1:
                 height = 0.35
             else:
@@ -1157,21 +1194,6 @@ class HistogramMinMaxView(QWidget):
                     assert False, (n_data, axis_idx)
             else:
                 assert False, (n_data, axis_idx)
-
-            if n_data == 1:
-                entry["axis"].spines["left"].set_visible(True)
-                entry["axis"].spines["right"].set_visible(True)
-            elif axis_idx == 0:
-                entry["axis"].spines["left"].set_visible(True)
-                entry["axis"].spines["right"].set_visible(False)
-            elif axis_idx == n_data - 1:
-                entry["axis"].spines["left"].set_visible(False)
-                entry["axis"].spines["right"].set_visible(True)
-            elif 0 < axis_idx < n_data - 1:
-                entry["axis"].spines["right"].set_visible(False)
-                entry["axis"].spines["left"].set_visible(False)
-            else:
-                assert False, (axis_idx, n_data)
 
             entry["axis"].add_artist(entry["line_min"])
             entry["axis"].add_artist(entry["line_max"])
@@ -1267,3 +1289,6 @@ class SliderView(QWidget):
 
     def set_col(self, col):
         self.col_idx = col
+
+    def setSingleStep(self, value):
+        self.slider.setSingleStep(value)

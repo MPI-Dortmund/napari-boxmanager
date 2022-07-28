@@ -1186,9 +1186,8 @@ class HistogramMinMaxView(QWidget):
             margin = (upper_lim - lower_lim) * 0.05
             axdict["axis"].set_xlim(lower_lim - margin, upper_lim + margin)
 
-            xmin, xmax = axdict["axis"].xaxis.get_view_interval()
             data = axdict["axis"].get_children()[0].get_xy()
-            mask = (xmin <= data[:, 0]) & (data[:, 0] <= xmax)
+            mask = (lower_lim <= data[:, 0]) & (data[:, 0] <= upper_lim)
             y_lim = np.max(data[mask, 1]) or 1
 
             axdict["axis"].set_ylim(0, y_lim * 1.05)
@@ -1247,6 +1246,7 @@ class HistogramMinMaxView(QWidget):
             axis_idx = -1
             cum_width = 0
             for idx, entry in enumerate(self.axis_list):
+                entry["axis"].autoscale()
                 if data_list[idx].empty:
                     entry["axis"].set_position([0, 0, 0, 0])
                     continue

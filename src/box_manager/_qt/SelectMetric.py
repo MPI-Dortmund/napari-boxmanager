@@ -1064,6 +1064,7 @@ class HistogramMinMaxView(QWidget):
 
         self.canvas = FigureCanvas()
         self.canvas.setMaximumHeight(100)
+        self.canvas.mpl_connect("button_press_event", self._on_canvas_click)
 
         axis = self.canvas.figure.subplots(1, 3, sharey=True)
         self.axis_list = []
@@ -1107,6 +1108,23 @@ class HistogramMinMaxView(QWidget):
         self.layout().addWidget(mode)
         self.layout().addWidget(self.canvas, stretch=0)
         self.layout().setContentsMargins(0, 0, 0, 0)
+
+    @Slot(object)
+    def _on_canvas_click(self, event):
+        if event.button not in (1, 3):
+            return
+        value = event.xdata
+        if value is None:
+            return
+
+        if event.button == 3:
+            slider = self.slider_max
+        elif event.button == 1:
+            slider = self.slider_min
+        else:
+            assert False, event
+
+        slider.set_value(value, emit_signal=True)
 
     @Slot(object, float, int)
     def _handle_value_changed(self, slider, value, col_idx):
@@ -1411,8 +1429,9 @@ class SliderView(QWidget):
         self.label.setText(str(value / self.step_size))
         self.value_changed.emit(self, value / self.step_size, self.col_idx)
 
-    def set_value(self, value=None):
-        emit_signal = True if value is None else False
+    def set_value(self, value=None, emit_signal=None):
+        if emit_signal is None:
+            emit_signal = True if value is None else False
         value = value if value is not None else float(self.label.text())
         value = int(self.step_size * value)
 

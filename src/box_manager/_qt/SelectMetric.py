@@ -1069,7 +1069,6 @@ class HistogramMinMaxView(QWidget):
         axis = self.canvas.figure.subplots(1, 3, sharey=True)
         self.axis_list = []
         for idx in range(3):
-            axis[idx].get_yaxis().set_visible(False)
 
             line_min = axis[idx].axvline(0, color="k")
             line_max = axis[idx].axvline(0, color="orange")
@@ -1156,9 +1155,20 @@ class HistogramMinMaxView(QWidget):
                 line = entry["line_max"]
             else:
                 line = entry["line_min"]
+            line.set_visible(True)
             line.set_data([value, value], [0, 1])
 
-        if self._mode == "Zoom":
+        if self._mode == "Separate":
+            lower_limit, upper_limit = self.axis_list[1]["axis"].get_xlim()
+            for idx, entry in enumerate(self.axis_list):
+                if is_max:
+                    line = entry["line_max"]
+                else:
+                    line = entry["line_min"]
+                if lower_limit <= value <= upper_limit and idx not in (1,):
+                    line.set_visible(False)
+
+        elif self._mode == "Zoom":
             axdict = self.axis_list[0]
 
             data_min = np.min(self._central_data)
@@ -1175,6 +1185,19 @@ class HistogramMinMaxView(QWidget):
 
             margin = (upper_lim - lower_lim) * 0.05
             axdict["axis"].set_xlim(lower_lim - margin, upper_lim + margin)
+
+            xmin, xmax = axdict["axis"].xaxis.get_view_interval()
+            data = axdict["axis"].get_children()[0].get_xy()
+            mask = (xmin <= data[:, 0]) & (data[:, 0] <= xmax)
+            y_lim = np.max(data[mask, 1]) or 1
+
+            axdict["axis"].set_ylim(0, y_lim * 1.05)
+
+            for tick in axdict["axis"].get_yticklabels():
+                tick.set_rotation(90)
+                tick.set_verticalalignment("top")
+                tick.set_horizontalalignment("right")
+
         self.canvas.draw_idle()
 
     def set_data(self, label_data=None, cur_val_min=None, cur_val_max=None):
@@ -1229,10 +1252,9 @@ class HistogramMinMaxView(QWidget):
                     continue
                 axis_idx += 1
 
-                entry["line_min"].set_data([cur_val_min, cur_val_min], [0, 1])
-                entry["line_max"].set_data([cur_val_max, cur_val_max], [0, 1])
+                entry["axis"].get_yaxis().set_visible(False)
                 entry["axis"].clear()
-                entry["axis"].hist(data_list[idx], 100)
+                entry["axis"].hist(data_list[idx], 100, histtype="step")
                 entry["axis"].ticklabel_format(useOffset=False, style="plain")
 
                 if n_data == 1:
@@ -1317,6 +1339,10 @@ class HistogramMinMaxView(QWidget):
                     [0.01 + cum_width, height, width, 1 - height - 0.02]
                 )
                 cum_width += width + space
+
+            self.adjust_line(cur_val_min, False)
+            self.adjust_line(cur_val_max, True)
+
         elif self._mode == "Zoom":
             outlier = 0.05
             quantile_upper = np.quantile(label_data, 1 - outlier / 2)
@@ -1341,6 +1367,7 @@ class HistogramMinMaxView(QWidget):
                     continue
 
             axdict = self.axis_list[0]
+            axdict["axis"].get_yaxis().set_visible(True)
 
             _, bins = np.histogram(self._central_data, 100)
             bin_width = bins[1] - bins[0]
@@ -1350,7 +1377,7 @@ class HistogramMinMaxView(QWidget):
             )
 
             height = 0.25
-            width = 0.98
+            start = 0.04
             axdict["axis"].clear()
             axdict["axis"].hist(label_data, bins, histtype="step")
             axdict["axis"].spines["left"].set_visible(True)
@@ -1358,14 +1385,13 @@ class HistogramMinMaxView(QWidget):
             axdict["axis"].add_artist(axdict["line_min"])
             axdict["axis"].add_artist(axdict["line_max"])
             axdict["axis"].set_position(
-                [0.01, height, width, 1 - height - 0.02]
+                [start, height, 1 - start - 0.01, 1 - height - 0.02]
             )
             self.adjust_line(cur_val_min, is_max=False)
             self.adjust_line(cur_val_max, is_max=True)
 
         else:
             assert False, self._mode
-        self.canvas.draw_idle()
 
     def set_col_min(self, col_min):
         self.slider_min.set_col(col_min)

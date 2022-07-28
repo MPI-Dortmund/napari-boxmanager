@@ -1057,24 +1057,28 @@ class HistogramMinMaxView(QWidget):
         self.col_min = -1
         self.col_max = -1
         self.step_size = 1000
+        _modes = ["Separate", "Zoom"]
+        self._mode = _modes[0]
+        self._label_data = None
+        self._central_data = None
 
         self.canvas = FigureCanvas()
         self.canvas.setMaximumHeight(100)
 
         axis = self.canvas.figure.subplots(1, 3, sharey=True)
-        self.axis_dict = {}
-        for idx, entry in enumerate(
-            ["left_outlier", "center", "right_outlier"]
-        ):
+        self.axis_list = []
+        for idx in range(3):
             axis[idx].get_yaxis().set_visible(False)
 
             line_min = axis[idx].axvline(0, color="k")
             line_max = axis[idx].axvline(0, color="orange")
-            self.axis_dict[entry] = {
-                "axis": axis[idx],
-                "line_min": line_min,
-                "line_max": line_max,
-            }
+            self.axis_list.append(
+                {
+                    "axis": axis[idx],
+                    "line_min": line_min,
+                    "line_max": line_max,
+                }
+            )
 
         self.slider_min = SliderView(
             QRegularExpressionValidator(
@@ -1101,20 +1105,59 @@ class HistogramMinMaxView(QWidget):
         layout.addRow(f"{label_name} min", self.slider_min)
         layout.addRow(f"{label_name} max", self.slider_max)
 
+        mode = QComboBox(self)
+        mode.addItems(_modes)
+        mode.currentTextChanged.connect(self._change_mode)
+
         self.layout().addLayout(layout)
+        self.layout().addWidget(mode)
         self.layout().addWidget(self.canvas, stretch=0)
         self.layout().setContentsMargins(0, 0, 0, 0)
 
+    @Slot(str)
+    def _change_mode(self, value):
+        self._mode = value
+        val_min, val_max = self._get_min_max()
+        self.set_data(cur_val_min=val_min, cur_val_max=val_max)
+
+    def _get_min_max(self):
+        return (
+            self.slider_min.value() / self.step_size,
+            self.slider_max.value() / self.step_size,
+        )
+
     def adjust_line(self, value, is_max):
-        for entry in self.axis_dict.values():
+        for entry in self.axis_list:
             if is_max:
                 line = entry["line_max"]
             else:
                 line = entry["line_min"]
             line.set_data([value, value], [0, 1])
+
+        if self._mode == "Zoom":
+            axdict = self.axis_list[0]
+
+            data_min = np.min(self._central_data)
+            data_max = np.max(self._central_data)
+
+            upper_lim = axdict["line_max"].get_data()[0][0]
+            lower_lim = axdict["line_min"].get_data()[0][0]
+
+            if data_min - 0.01 <= upper_lim <= data_max + 0.01:
+                upper_lim = np.maximum(upper_lim, data_max)
+
+            if data_min - 0.01 <= lower_lim <= data_max + 0.01:
+                lower_lim = np.minimum(lower_lim, data_min)
+
+            margin = (upper_lim - lower_lim) * 0.025
+            axdict["axis"].set_xlim(lower_lim - margin, upper_lim + margin)
         self.canvas.draw_idle()
 
-    def set_data(self, label_data, cur_val_min=None, cur_val_max=None):
+    def set_data(self, label_data=None, cur_val_min=None, cur_val_max=None):
+        if label_data is None:
+            label_data = self._label_data
+        else:
+            self._label_data = label_data
         val_min = general.get_min_floor(label_data.min())
         val_max = general.get_max_floor(label_data.max())
         val_min = val_min if not np.isnan(val_min) else 0
@@ -1130,115 +1173,166 @@ class HistogramMinMaxView(QWidget):
         self.slider_min.set_value(cur_val_min)
         self.slider_max.set_value(cur_val_max)
 
-        outlier = 0.05
-        quantile_upper = np.quantile(label_data, 1 - outlier / 2)
-        quantile_lower = np.quantile(label_data, outlier / 2)
-        data_tmp = label_data[
-            (quantile_lower <= label_data) & (label_data <= quantile_upper)
-        ]
-        median = np.median(data_tmp)
-        val = np.maximum(
-            np.abs(np.max(data_tmp) - median),
-            np.abs(np.min(data_tmp) - median),
-        )
+        if self._mode == "Separate":
+            outlier = 0.05
+            quantile_upper = np.quantile(label_data, 1 - outlier / 2)
+            quantile_lower = np.quantile(label_data, outlier / 2)
+            data_tmp = label_data[
+                (quantile_lower <= label_data) & (label_data <= quantile_upper)
+            ]
+            median = np.median(data_tmp)
+            val = np.maximum(
+                np.abs(np.max(data_tmp) - median),
+                np.abs(np.min(data_tmp) - median),
+            )
 
-        quantile_upper += val / 2
-        quantile_lower -= val / 2
+            quantile_upper += val / 2
+            quantile_lower -= val / 2
 
-        data_lower = label_data[label_data < quantile_lower]
-        data_center = label_data[
-            (quantile_lower <= label_data) & (label_data <= quantile_upper)
-        ]
-        data_upper = label_data[label_data > quantile_upper]
-        data_list = [data_lower, data_center, data_upper]
-        n_data = len([entry for entry in data_list if not entry.empty])
+            data_lower = label_data[label_data < quantile_lower]
+            data_center = label_data[
+                (quantile_lower <= label_data) & (label_data <= quantile_upper)
+            ]
+            data_upper = label_data[label_data > quantile_upper]
+            data_list = [data_lower, data_center, data_upper]
+            n_data = len([entry for entry in data_list if not entry.empty])
 
-        axis_idx = -1
-        cum_width = 0
-        for idx, entry in enumerate(self.axis_dict.values()):
-            if data_list[idx].empty:
-                entry["axis"].set_position([0, 0, 0, 0])
-                continue
-            axis_idx += 1
+            axis_idx = -1
+            cum_width = 0
+            for idx, entry in enumerate(self.axis_list):
+                if data_list[idx].empty:
+                    entry["axis"].set_position([0, 0, 0, 0])
+                    continue
+                axis_idx += 1
 
-            entry["line_min"].set_data([cur_val_min, cur_val_min], [0, 1])
-            entry["line_max"].set_data([cur_val_max, cur_val_max], [0, 1])
-            entry["axis"].clear()
-            entry["axis"].hist(data_list[idx], 100)
-            entry["axis"].ticklabel_format(useOffset=False, style="plain")
+                entry["line_min"].set_data([cur_val_min, cur_val_min], [0, 1])
+                entry["line_max"].set_data([cur_val_max, cur_val_max], [0, 1])
+                entry["axis"].clear()
+                entry["axis"].hist(data_list[idx], 100)
+                entry["axis"].ticklabel_format(useOffset=False, style="plain")
 
-            if n_data == 1:
-                entry["axis"].spines["left"].set_visible(True)
-                entry["axis"].spines["right"].set_visible(True)
-            elif axis_idx == 0:
-                entry["axis"].spines["left"].set_visible(True)
-                entry["axis"].spines["right"].set_visible(False)
-            elif axis_idx == n_data - 1:
-                entry["axis"].spines["left"].set_visible(False)
-                entry["axis"].spines["right"].set_visible(True)
+                if n_data == 1:
+                    entry["axis"].spines["left"].set_visible(True)
+                    entry["axis"].spines["right"].set_visible(True)
+                elif axis_idx == 0:
+                    entry["axis"].spines["left"].set_visible(True)
+                    entry["axis"].spines["right"].set_visible(False)
+                elif axis_idx == n_data - 1:
+                    entry["axis"].spines["left"].set_visible(False)
+                    entry["axis"].spines["right"].set_visible(True)
+                    ticks = entry["axis"].get_xticks()
+                elif 0 < axis_idx < n_data - 1:
+                    entry["axis"].spines["right"].set_visible(False)
+                    entry["axis"].spines["left"].set_visible(False)
+                else:
+                    assert False, (axis_idx, n_data)
+
+                if n_data != 1:
+                    for tick in entry["axis"].get_xticklabels():
+                        tick.set_rotation(-12)
+                        tick.set_verticalalignment("top")
+                        tick.set_horizontalalignment("left")
+
                 ticks = entry["axis"].get_xticks()
-            elif 0 < axis_idx < n_data - 1:
-                entry["axis"].spines["right"].set_visible(False)
-                entry["axis"].spines["left"].set_visible(False)
-            else:
-                assert False, (axis_idx, n_data)
-
-            if n_data != 1:
-                for tick in entry["axis"].get_xticklabels():
-                    tick.set_rotation(-12)
-                    tick.set_verticalalignment("top")
-                    tick.set_horizontalalignment("left")
-
-            ticks = entry["axis"].get_xticks()
-            ticks = np.round(
-                np.linspace(np.min(data_list[idx]), np.max(data_list[idx]), 3),
-                1,
-            )
-            if np.all(ticks == ticks[0]):
-                ticks[0] -= 1
-                ticks[1] += 1
-            entry["axis"].set_xticks(ticks)
-
-            if idx == 1:
-                new_step_size = int(
-                    self.step_size * np.abs(ticks[-1] - ticks[0]) / 20
+                ticks = np.round(
+                    np.linspace(
+                        np.min(data_list[idx]), np.max(data_list[idx]), 3
+                    ),
+                    1,
                 )
-                self.slider_min.setSingleStep(new_step_size)
-                self.slider_max.setSingleStep(new_step_size)
+                if np.all(ticks == ticks[0]):
+                    ticks[0] -= 1
+                    ticks[1] += 1
+                entry["axis"].set_xticks(ticks)
 
-            if n_data != 1:
-                height = 0.35
-            else:
-                height = 0.25
+                if idx == 1:
+                    new_step_size = int(
+                        self.step_size * np.abs(ticks[-1] - ticks[0]) / 20
+                    )
+                    self.slider_min.setSingleStep(new_step_size)
+                    self.slider_max.setSingleStep(new_step_size)
 
-            if n_data == 1:
-                space = 0
-                width = 0.98
-            elif n_data == 2:
-                space = 0.98 - 0.3 - 0.65
-                if idx in (0, 2):
-                    width = 0.3
-                elif idx == 1:
-                    width = 0.65
+                if n_data != 1:
+                    height = 0.35
+                else:
+                    height = 0.25
+
+                if n_data == 1:
+                    space = 0
+                    width = 0.98
+                elif n_data == 2:
+                    space = 0.98 - 0.3 - 0.65
+                    if idx in (0, 2):
+                        width = 0.3
+                    elif idx == 1:
+                        width = 0.65
+                    else:
+                        assert False, (n_data, axis_idx)
+                elif n_data == 3:
+                    space = (0.98 - 0.3 - 0.65) / 2
+                    if idx in (0, 2):
+                        width = 0.15
+                    elif idx == 1:
+                        width = 0.65
+                    else:
+                        assert False, (n_data, axis_idx)
                 else:
                     assert False, (n_data, axis_idx)
-            elif n_data == 3:
-                space = (0.98 - 0.3 - 0.65) / 2
-                if idx in (0, 2):
-                    width = 0.15
-                elif idx == 1:
-                    width = 0.65
-                else:
-                    assert False, (n_data, axis_idx)
-            else:
-                assert False, (n_data, axis_idx)
 
-            entry["axis"].add_artist(entry["line_min"])
-            entry["axis"].add_artist(entry["line_max"])
-            entry["axis"].set_position(
-                [0.01 + cum_width, height, width, 1 - height - 0.02]
+                entry["axis"].add_artist(entry["line_min"])
+                entry["axis"].add_artist(entry["line_max"])
+                entry["axis"].set_position(
+                    [0.01 + cum_width, height, width, 1 - height - 0.02]
+                )
+                cum_width += width + space
+        elif self._mode == "Zoom":
+            outlier = 0.05
+            quantile_upper = np.quantile(label_data, 1 - outlier / 2)
+            quantile_lower = np.quantile(label_data, outlier / 2)
+            data_tmp = label_data[
+                (quantile_lower <= label_data) & (label_data <= quantile_upper)
+            ]
+            median = np.median(data_tmp)
+            val = np.maximum(
+                np.abs(np.max(data_tmp) - median),
+                np.abs(np.min(data_tmp) - median),
             )
-            cum_width += width + space
+
+            quantile_upper += val / 2
+            quantile_lower -= val / 2
+            self._central_data = label_data[
+                (quantile_lower <= label_data) & (label_data <= quantile_upper)
+            ]
+            for idx, entry in enumerate(self.axis_list):
+                if idx != 0:
+                    entry["axis"].set_position([0, 0, 0, 0])
+                    continue
+
+            axdict = self.axis_list[0]
+
+            _, bins = np.histogram(self._central_data, 100)
+            bin_width = bins[1] - bins[0]
+            total_range = (np.max(label_data) - np.min(label_data)) / bin_width
+            bins = np.arange(np.ceil(total_range) + 1) * bin_width + np.min(
+                label_data
+            )
+
+            self.adjust_line(cur_val_min, is_max=False)
+            self.adjust_line(cur_val_max, is_max=True)
+
+            height = 0.25
+            width = 0.98
+            axdict["axis"].clear()
+            axdict["axis"].hist(label_data, bins, histtype="step")
+            axdict["axis"].spines["left"].set_visible(True)
+            axdict["axis"].spines["right"].set_visible(True)
+            axdict["axis"].add_artist(axdict["line_min"])
+            axdict["axis"].add_artist(axdict["line_max"])
+            axdict["axis"].set_position(
+                [0.01, height, width, 1 - height - 0.02]
+            )
+        else:
+            assert False, self._mode
         self.canvas.draw_idle()
 
     def set_col_min(self, col_min):
@@ -1327,6 +1421,9 @@ class SliderView(QWidget):
             int(self.step_size * val_max) + 1,
         )
         self.slider.valueChanged.connect(self.mouse_move)
+
+    def value(self):
+        return self.slider.value()
 
     def set_col(self, col):
         self.col_idx = col

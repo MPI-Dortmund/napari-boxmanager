@@ -1086,20 +1086,14 @@ class HistogramMinMaxView(QWidget):
             ),
             self,
         )
-        self.slider_min.value_changed.connect(self.value_changed.emit)
-        self.slider_min.value_changed.connect(
-            lambda x, _, is_max=False: self.adjust_line(x, is_max)
-        )
+        self.slider_min.value_changed.connect(self._handle_value_changed)
         self.slider_max = SliderView(
             QRegularExpressionValidator(
                 QRegularExpression(r"-?[0-9]*\.?[0-9]*")
             ),
             self,
         )
-        self.slider_max.value_changed.connect(self.value_changed.emit)
-        self.slider_max.value_changed.connect(
-            lambda x, _, is_max=True: self.adjust_line(x, is_max)
-        )
+        self.slider_max.value_changed.connect(self._handle_value_changed)
 
         layout = QFormLayout()
         layout.addRow(f"{label_name} min", self.slider_min)
@@ -1114,6 +1108,18 @@ class HistogramMinMaxView(QWidget):
         self.layout().addWidget(self.canvas, stretch=0)
         self.layout().setContentsMargins(0, 0, 0, 0)
 
+    @Slot(object, float, int)
+    def _handle_value_changed(self, slider, value, col_idx):
+        is_max = slider == self.slider_max
+        if is_max:
+            val = np.maximum(value, self.slider_min.value())
+        else:
+            val = np.minimum(value, self.slider_max.value())
+
+        self.adjust_line(val, is_max)
+        slider.set_value(val)
+        self.value_changed.emit(val, col_idx)
+
     @Slot(str)
     def _change_mode(self, value):
         self._mode = value
@@ -1122,8 +1128,8 @@ class HistogramMinMaxView(QWidget):
 
     def _get_min_max(self):
         return (
-            self.slider_min.value() / self.step_size,
-            self.slider_max.value() / self.step_size,
+            self.slider_min.value(),
+            self.slider_max.value(),
         )
 
     def adjust_line(self, value, is_max):
@@ -1149,7 +1155,7 @@ class HistogramMinMaxView(QWidget):
             if data_min - 0.01 <= lower_lim <= data_max + 0.01:
                 lower_lim = np.minimum(lower_lim, data_min)
 
-            margin = (upper_lim - lower_lim) * 0.025
+            margin = (upper_lim - lower_lim) * 0.05
             axdict["axis"].set_xlim(lower_lim - margin, upper_lim + margin)
         self.canvas.draw_idle()
 
@@ -1220,7 +1226,6 @@ class HistogramMinMaxView(QWidget):
                 elif axis_idx == n_data - 1:
                     entry["axis"].spines["left"].set_visible(False)
                     entry["axis"].spines["right"].set_visible(True)
-                    ticks = entry["axis"].get_xticks()
                 elif 0 < axis_idx < n_data - 1:
                     entry["axis"].spines["right"].set_visible(False)
                     entry["axis"].spines["left"].set_visible(False)
@@ -1231,19 +1236,28 @@ class HistogramMinMaxView(QWidget):
                     for tick in entry["axis"].get_xticklabels():
                         tick.set_rotation(-12)
                         tick.set_verticalalignment("top")
-                        tick.set_horizontalalignment("left")
+                        tick.set_horizontalalignment("center")
 
-                ticks = entry["axis"].get_xticks()
                 ticks = np.round(
                     np.linspace(
                         np.min(data_list[idx]), np.max(data_list[idx]), 3
                     ),
-                    1,
+                    3,
                 )
                 if np.all(ticks == ticks[0]):
                     ticks[0] -= 1
                     ticks[1] += 1
+                    margin = 1.5
+                else:
+                    margin = (
+                        np.max(data_list[idx]) - np.min(data_list[idx])
+                    ) * 0.05
+
                 entry["axis"].set_xticks(ticks)
+                entry["axis"].set_xlim(
+                    np.min(data_list[idx]) - margin,
+                    np.max(data_list[idx]) + margin,
+                )
 
                 if idx == 1:
                     new_step_size = int(
@@ -1317,9 +1331,6 @@ class HistogramMinMaxView(QWidget):
                 label_data
             )
 
-            self.adjust_line(cur_val_min, is_max=False)
-            self.adjust_line(cur_val_max, is_max=True)
-
             height = 0.25
             width = 0.98
             axdict["axis"].clear()
@@ -1331,6 +1342,9 @@ class HistogramMinMaxView(QWidget):
             axdict["axis"].set_position(
                 [0.01, height, width, 1 - height - 0.02]
             )
+            self.adjust_line(cur_val_min, is_max=False)
+            self.adjust_line(cur_val_max, is_max=True)
+
         else:
             assert False, self._mode
         self.canvas.draw_idle()
@@ -1369,7 +1383,7 @@ class EditView(QWidget):
 
 
 class SliderView(QWidget):
-    value_changed = Signal(float, int)
+    value_changed = Signal(object, float, int)
 
     def __init__(self, validator=None, parent=None):
         super().__init__(parent)
@@ -1395,7 +1409,7 @@ class SliderView(QWidget):
 
     def mouse_move(self, value):
         self.label.setText(str(value / self.step_size))
-        self.value_changed.emit(value / self.step_size, self.col_idx)
+        self.value_changed.emit(self, value / self.step_size, self.col_idx)
 
     def set_value(self, value=None):
         emit_signal = True if value is None else False
@@ -1423,7 +1437,7 @@ class SliderView(QWidget):
         self.slider.valueChanged.connect(self.mouse_move)
 
     def value(self):
-        return self.slider.value()
+        return self.slider.value() / self.step_size
 
     def set_col(self, col):
         self.col_idx = col

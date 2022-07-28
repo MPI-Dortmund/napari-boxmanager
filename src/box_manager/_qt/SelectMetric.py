@@ -1272,22 +1272,23 @@ class HistogramMinMaxView(QWidget):
                 else:
                     assert False, (axis_idx, n_data)
 
-                if n_data != 1:
-                    for tick in entry["axis"].get_xticklabels():
-                        tick.set_rotation(-12)
-                        tick.set_verticalalignment("top")
-                        tick.set_horizontalalignment("center")
+                if n_data in (1, 2) or idx == 1:
+                    n_ticks = 3
+                elif n_data == 3:
+                    n_ticks = 2
+                else:
+                    assert False, n_data
 
                 ticks = np.round(
                     np.linspace(
-                        np.min(data_list[idx]), np.max(data_list[idx]), 3
+                        np.min(data_list[idx]), np.max(data_list[idx]), n_ticks
                     ),
                     3,
                 )
                 if np.all(ticks == ticks[0]):
                     ticks[0] -= 1
-                    ticks[1] += 1
-                    margin = 1.5
+                    ticks[-1] += 1
+                    margin = 1.2
                 else:
                     margin = (
                         np.max(data_list[idx]) - np.min(data_list[idx])
@@ -1298,6 +1299,21 @@ class HistogramMinMaxView(QWidget):
                     np.min(data_list[idx]) - margin,
                     np.max(data_list[idx]) + margin,
                 )
+
+                if n_data != 1:
+                    if n_data == 2 or idx == 1:
+                        label = ["left", "center", "right"]
+                    elif n_data == 3:
+                        label = ["left", "right"]
+                    else:
+                        assert False, n_data
+
+                    for orient, tick in zip(
+                        label, entry["axis"].get_xticklabels()
+                    ):
+                        tick.set_rotation(-12)
+                        tick.set_verticalalignment("top")
+                        tick.set_horizontalalignment(orient)
 
                 if idx == 1:
                     new_step_size = int(

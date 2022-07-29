@@ -600,14 +600,18 @@ class SelectMetricWidget(QWidget):
                         for entry in self.table_model.get_values(
                             parent_idx, rows_idx, f"{metric_name}_min"
                         )
-                        if entry.replace(".", "", 1).isdigit()
+                        if entry.replace(".", "", 1)
+                        .removeprefix("-")
+                        .isdigit()
                     )
                     max_val = max(
                         float(entry)
                         for entry in self.table_model.get_values(
                             parent_idx, rows_idx, f"{metric_name}_max"
                         )
-                        if entry.replace(".", "", 1).isdigit()
+                        if entry.replace(".", "", 1)
+                        .removeprefix("-")
+                        .isdigit()
                     )
                     mask_metric = (
                         mask_metric

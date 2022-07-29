@@ -906,7 +906,7 @@ class SelectMetricWidget(QWidget):
                 else:
                     try:
                         write_val = label_data.loc[slice_idx, "write"]
-                        if write_val is not None:
+                        if write_val is not None and not np.isnan(write_val):
                             output_dict["write"] = write_val
                         else:
                             output_dict["write"] = not features.empty

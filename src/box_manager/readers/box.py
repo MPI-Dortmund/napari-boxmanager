@@ -129,6 +129,7 @@ def _prepare_df(
         metadata[idx] = {}
         metadata[idx]["path"] = entry
         metadata[idx]["name"] = os.path.basename(entry)
+        metadata[idx]["write"] = True
         metadata[idx].update(
             {
                 f"{entry}_{func.__name__}": func(data_df[idx][entry])

@@ -55,9 +55,10 @@ class ButtonActions(enum.Enum):
 
 
 class GroupModel(QStandardItemModel):
-    def __init__(self, read_only, parent=None):
+    def __init__(self, read_only, check_box, parent=None):
         super().__init__(parent)
         self.read_only = read_only
+        self.check_box = check_box
         self.group_items = {}
         self.label_dict = {}
         self.label_dict_rev = {}
@@ -208,6 +209,22 @@ class GroupModel(QStandardItemModel):
             str(value)
         )
 
+    def get_checkstates(self, parent_idx, rows_idx, col_name):
+        return [
+            self.get_checkstate(parent_idx, row, col_name) for row in rows_idx
+        ]
+
+    def get_checkstate(self, parent_idx, row_idx, col_name):
+        root_element = self.invisibleRootItem()
+        if parent_idx == -1:
+            child_item = root_element
+        else:
+            child_item = root_element.child(parent_idx, 0)
+        return (
+            child_item.child(row_idx, self.label_dict[col_name]).checkState()
+            == Qt.Checked
+        )
+
     def get_values(self, parent_idx, rows_idx, col_name):
         return [self.get_value(parent_idx, row, col_name) for row in rows_idx]
 
@@ -252,9 +269,16 @@ class GroupModel(QStandardItemModel):
             else:
                 text = columns[cur_label] if cur_label in columns else "-"
                 col_item = QStandardItem(text)
-                col_item.setEditable(
-                    cur_label not in self.read_only and text != "-"
-                )
+                if isinstance(text, bool):
+                    col_item.setEditable(True)
+                    col_item.setCheckable(True)
+                    col_item.setCheckState(
+                        Qt.Checked if text else Qt.Unchecked
+                    )
+                else:
+                    col_item.setEditable(
+                        cur_label not in self.read_only and text != "-"
+                    )
             root_element.setChild(row_idx, col_idx, col_item)
 
     def append_element_to_group(self, group_name, columns):
@@ -283,6 +307,7 @@ class GroupDelegate(QStyledItemDelegate):
 
 class GroupView(QTreeView):
     elementsUpdated = Signal(dict, str)
+    checkbox_updated = Signal(str, int, str, bool)
 
     def __init__(self, model, parent=None):
         super().__init__(parent)
@@ -315,7 +340,13 @@ class GroupView(QTreeView):
         row_idx = idx.row()
         col_idx = idx.column()
         col_name = self.model.label_dict_rev[col_idx]
-        if col_name in self.model.read_only:
+        if col_name in self.model.check_box:
+            layer_name = self.model.get_value(-1, parent_idx, "name")
+            value = self.model.get_checkstate(parent_idx, row_idx, col_name)
+            slice_idx = int(self.model.get_value(parent_idx, row_idx, "slice"))
+            self.checkbox_updated.emit(layer_name, slice_idx, col_name, value)
+            return
+        elif col_name in self.model.read_only:
             return
 
         value = self.model.get_value(parent_idx, row_idx, col_name)
@@ -325,7 +356,7 @@ class GroupView(QTreeView):
         columns = self.model.columnCount() - 1
         selection = QItemSelection()
         flag = QItemSelectionModel.Select
-        for parent_idx, row_idx in prev_selection:
+        for _, row_idx in prev_selection:
             start = self.model.index(row_idx, 0)
             end = self.model.index(row_idx, columns)
             if selection.indexes():
@@ -393,9 +424,12 @@ class SelectMetricWidget(QWidget):
         self.metric_dict: dict = {}
         self.prev_valid_layers = {}
         self._plugin_view_update = False
-        self._cur_slice_dim = DimensionAxis.Z.value
+        self._cur_slice_dim = self.napari_viewer.dims.order[0]
 
         self.loadable_layers = (napari.layers.Points,)
+        self.check_box = [
+            "write",
+        ]
         self.read_only = [
             "",
             "identifier",
@@ -404,7 +438,7 @@ class SelectMetricWidget(QWidget):
             "boxes",
             "name",
             "slice",
-        ]
+        ] + self.check_box
         self.ignore_idx = [
             "boxsize",
         ] + self.read_only
@@ -412,11 +446,12 @@ class SelectMetricWidget(QWidget):
         self.napari_viewer.layers.events.reordered.connect(self._order_table)
         self.napari_viewer.layers.events.inserted.connect(self._sync_table)
         self.napari_viewer.layers.events.removed.connect(self._sync_table)
-        self.napari_viewer.dims.events.order.connect(self._set_current_slice)
+        self.napari_viewer.dims.events.order.connect(self._update_sync)
 
-        self.table_model = GroupModel(self.read_only, self)
+        self.table_model = GroupModel(self.read_only, self.check_box, self)
         self.table_widget = GroupView(self.table_model, self)
         self.table_widget.elementsUpdated.connect(self._update_view)
+        self.table_widget.checkbox_updated.connect(self._update_check_state)
         self.table_widget.selectionModel().selectionChanged.connect(
             self.update_hist
         )
@@ -435,8 +470,20 @@ class SelectMetricWidget(QWidget):
             ]
         )
 
+        self.show_mode = QComboBox(self)
+        self.show_mode.addItems(
+            [
+                "Occupied",
+                "All",
+            ]
+        )
+        self.show_mode.currentTextChanged.connect(self._update_sync)
+        self._show_mode = self.show_mode.currentText()
+
         self.settings_area.addWidget(QLabel("Show:", self))
         self.settings_area.addWidget(self.hide_dim, stretch=1)
+        self.settings_area.addWidget(QLabel("Slices:", self))
+        self.settings_area.addWidget(self.show_mode, stretch=1)
 
         self.setLayout(QVBoxLayout())
         self.layout().addLayout(self.settings_area, stretch=0)  # type: ignore
@@ -445,8 +492,15 @@ class SelectMetricWidget(QWidget):
 
         self._sync_table(select_first=True)
 
-    def _set_current_slice(self, event):
-        self._cur_slice_dim = event.source.order[0]
+    @Slot(str, int, str, bool)
+    def _update_check_state(self, layer_name, slice_idx, attr_name, value):
+        self.napari_viewer.layers[layer_name].metadata[slice_idx][
+            attr_name
+        ] = value
+
+    def _update_sync(self, *_):
+        self._show_mode = self.show_mode.currentText()
+        self._cur_slice_dim = self.napari_viewer.dims.order[0]
         self.table_widget.selectionModel().selectionChanged.disconnect(
             self.update_hist
         )
@@ -722,6 +776,7 @@ class SelectMetricWidget(QWidget):
                     cur_name,
                     identifier,
                     label_data,
+                    name is not None,
                 )
             )
 
@@ -740,13 +795,14 @@ class SelectMetricWidget(QWidget):
                     cur_name,
                     identifier,
                     layer.metadata,
+                    name is not None,
                 )
             )
 
         return output_list
 
     def _prepare_columns(
-        self, size, features, name, slice_idx, label_data
+        self, size, features, name, slice_idx, label_data, is_main_group
     ) -> dict:
         output_dict = {}
         output_dict["name"] = name
@@ -760,6 +816,11 @@ class SelectMetricWidget(QWidget):
             self.napari_viewer.dims.order[0] == 0
             and self.napari_viewer.dims.ndim == 3
         ):
+            if self._show_mode == "All":
+                if is_main_group:
+                    output_dict["write"] = "-"
+                else:
+                    output_dict["write"] = label_data.loc[slice_idx, "write"]
             for col_name in features.columns:
                 if col_name in self.ignore_idx:
                     continue
@@ -790,6 +851,7 @@ class SelectMetricWidget(QWidget):
                 output_dict[label_max] = str(val)
 
         else:
+            output_dict["write"] = "-"
             for col_name in features.columns:
                 if col_name in self.ignore_idx:
                     continue

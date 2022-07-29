@@ -90,7 +90,11 @@ def to_napari(
         for idx in range(
             int(cluster_df[["x", "y", "z"]].max().max().round(0)) + 1
         ):
-            metadata[idx] = {"path": file_name, "name": f"slice {idx}"}
+            metadata[idx] = {
+                "path": file_name,
+                "name": f"slice {idx}",
+                "write": True,
+            }
             idx_view_df = cluster_df.loc[cluster_df["x"].round(0) == idx, :]
             metadata[idx].update(
                 {

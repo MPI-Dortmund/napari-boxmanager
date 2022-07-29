@@ -898,6 +898,7 @@ class SelectMetricWidget(QWidget):
         self, size, features, name, slice_idx, label_data, is_main_group
     ) -> dict:
         output_dict = {}
+        output_dict["write"] = ""
         output_dict["name"] = name
         output_dict["slice"] = str(slice_idx)
         output_dict["boxes"] = str(len(features))

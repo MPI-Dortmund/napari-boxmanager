@@ -4,6 +4,7 @@ import typing
 import napari.layers
 import numpy as np
 import pandas as pd
+import tqdm
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from qtpy.QtCore import (
     QItemSelection,
@@ -40,6 +41,13 @@ from .._utils import general
 
 if typing.TYPE_CHECKING:
     import napari
+
+
+# def debug(func):
+#     def inner(*args, **kwargs):
+#         print(func.__name__)
+#         return func(*args, **kwargs)
+#     return inner
 
 
 class DimensionAxis(enum.Enum):
@@ -715,7 +723,7 @@ class SelectMetricWidget(QWidget):
         if sorted(valid_layers, key=lambda x: x.name) != sorted(
             prev_layers, key=lambda x: x.name
         ):
-            for layer in prev_layers + valid_layers:
+            for layer in tqdm.tqdm(set(prev_layers + valid_layers)):
                 if layer in valid_layers:
                     self._add_remove_table(layer, ButtonActions.ADD)
                     if not layer.features.empty:
@@ -827,7 +835,7 @@ class SelectMetricWidget(QWidget):
         if name is None and self._show_mode == "All":
             loop_var = range_list
         else:
-            loop_var = features_copy["identifier"]
+            loop_var = np.unique(features_copy["identifier"])
 
         features_copy["shown"] = layer.shown
         slice_dict = {
@@ -901,9 +909,10 @@ class SelectMetricWidget(QWidget):
                         if write_val is not None:
                             output_dict["write"] = write_val
                         else:
-                            output_dict["write"] = bool(len(features))
+                            output_dict["write"] = not features.empty
                     except KeyError:
-                        output_dict["write"] = bool(len(features))
+                        output_dict["write"] = not features.empty
+
             for col_name in features.columns:
                 if col_name in self.ignore_idx:
                     continue

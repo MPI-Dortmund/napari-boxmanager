@@ -1197,6 +1197,7 @@ class SelectMetricWidget(QWidget):
                 self.metric_dict[metric_name].setVisible(False)
             else:
                 self.metric_dict[metric_name].setVisible(True)
+
             if labels_data.empty:
                 labels_data = pd.Series([0], dtype=int)
                 self.metric_dict[metric_name].setVisible(False)
@@ -1399,6 +1400,8 @@ class HistogramMinMaxView(QWidget):
             data_tmp = label_data[
                 (quantile_lower <= label_data) & (label_data <= quantile_upper)
             ]
+            if data_tmp.empty:
+                data_tmp = label_data
             median = np.median(data_tmp)
             val = np.maximum(
                 np.abs(np.max(data_tmp) - median),
@@ -1539,6 +1542,8 @@ class HistogramMinMaxView(QWidget):
             data_tmp = label_data[
                 (quantile_lower <= label_data) & (label_data <= quantile_upper)
             ]
+            if data_tmp.empty:
+                data_tmp = label_data
             median = np.median(data_tmp)
             val = np.maximum(
                 np.abs(np.max(data_tmp) - median),

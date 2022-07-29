@@ -55,6 +55,8 @@ class ButtonActions(enum.Enum):
 
 
 class GroupModel(QStandardItemModel):
+    checkbox_updated = Signal(str, int, str, object)
+
     def __init__(self, read_only, check_box, parent=None):
         super().__init__(parent)
         self.read_only = read_only
@@ -261,6 +263,7 @@ class GroupModel(QStandardItemModel):
         del self.group_items[group_name]
 
     def append_to_row(self, root_element, columns, row_idx, first_item=None):
+        combo_items = []
         for col_idx in range(self.columnCount()):
             cur_label = self.horizontalHeaderItem(col_idx).text()
             if col_idx == 0:
@@ -270,6 +273,7 @@ class GroupModel(QStandardItemModel):
                 text = columns[cur_label] if cur_label in columns else "-"
                 col_item = QStandardItem(text)
                 if isinstance(text, bool):
+                    combo_items.append((col_item, cur_label))
                     col_item.setEditable(True)
                     col_item.setCheckable(True)
                     col_item.setCheckState(
@@ -280,6 +284,12 @@ class GroupModel(QStandardItemModel):
                         cur_label not in self.read_only and text != "-"
                     )
             root_element.setChild(row_idx, col_idx, col_item)
+        for combo_item, col_name in combo_items:
+            parent_idx = combo_item.index().parent().row()
+            idx = combo_item.index().row()
+            layer_name = self.get_value(-1, parent_idx, "name")
+            slice_idx = int(self.get_value(parent_idx, idx, "slice"))
+            self.checkbox_updated.emit(layer_name, slice_idx, col_name, None)
 
     def append_element_to_group(self, group_name, columns):
         group_item = self.group_items[group_name]
@@ -307,7 +317,7 @@ class GroupDelegate(QStyledItemDelegate):
 
 class GroupView(QTreeView):
     elementsUpdated = Signal(dict, str)
-    checkbox_updated = Signal(str, int, str, bool)
+    checkbox_updated = Signal(str, int, str, object)
 
     def __init__(self, model, parent=None):
         super().__init__(parent)
@@ -323,6 +333,15 @@ class GroupView(QTreeView):
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
         self.model.dataChanged.connect(self.update_by_edit)
+        self.model.checkbox_updated.connect(self.checkbox_updated.emit)
+
+    def get_row_selection(self):
+        prev_selection = {
+            self.model.get_value(-1, entry[1], "name")
+            for entry in self.get_row_candidates()
+            if entry[0] == -1
+        }
+        return prev_selection
 
     @Slot(QModelIndex)
     def on_clicked(self, index):
@@ -353,10 +372,18 @@ class GroupView(QTreeView):
         self.update_elements(value, col_idx)
 
     def restore_selection(self, prev_selection):
+
         columns = self.model.columnCount() - 1
         selection = QItemSelection()
         flag = QItemSelectionModel.Select
-        for _, row_idx in prev_selection:
+        for name in prev_selection:
+            for idx in range(self.model.invisibleRootItem().rowCount()):
+                if self.model.get_value(-1, idx, "name") == name:
+                    row_idx = idx
+                    break
+            else:
+                continue
+
             start = self.model.index(row_idx, 0)
             end = self.model.index(row_idx, columns)
             if selection.indexes():
@@ -444,8 +471,8 @@ class SelectMetricWidget(QWidget):
         ] + self.read_only
 
         self.napari_viewer.layers.events.reordered.connect(self._order_table)
-        self.napari_viewer.layers.events.inserted.connect(self._sync_table)
-        self.napari_viewer.layers.events.removed.connect(self._sync_table)
+        self.napari_viewer.layers.events.inserted.connect(self._update_sync)
+        self.napari_viewer.layers.events.removed.connect(self._update_sync)
         self.napari_viewer.dims.events.order.connect(self._update_sync)
 
         self.table_model = GroupModel(self.read_only, self.check_box, self)
@@ -492,8 +519,17 @@ class SelectMetricWidget(QWidget):
 
         self._sync_table(select_first=True)
 
-    @Slot(str, int, str, bool)
+    @Slot(str, int, str, object)
     def _update_check_state(self, layer_name, slice_idx, attr_name, value):
+        try:
+            old_val = self.napari_viewer.layers[
+                layer_name
+            ].metadata.setdefault(slice_idx, {})[attr_name]
+        except KeyError:
+            old_val = None
+
+        if value is None and old_val is not None:
+            value = old_val
         self.napari_viewer.layers[layer_name].metadata[slice_idx][
             attr_name
         ] = value
@@ -505,7 +541,7 @@ class SelectMetricWidget(QWidget):
             self.update_hist
         )
         prev_selection = self._clear_table()
-        self._sync_table()
+        self._sync_table(do_selection=False)
         self.table_widget.restore_selection(prev_selection)
         self.table_widget.selectionModel().selectionChanged.connect(
             self.update_hist
@@ -547,25 +583,23 @@ class SelectMetricWidget(QWidget):
 
             if is_min_max:
                 old_shown = layer.shown.copy()
-                mask_metric = np.ones(mask_dimension.shape)
+                mask_metric = np.ones(mask_dimension.shape, dtype=bool)
                 for metric_name in layer.features.columns:
                     if metric_name in self.ignore_idx:
                         continue
                     min_val = min(
-                        map(
-                            float,
-                            self.table_model.get_values(
-                                parent_idx, rows_idx, f"{metric_name}_min"
-                            ),
+                        float(entry)
+                        for entry in self.table_model.get_values(
+                            parent_idx, rows_idx, f"{metric_name}_min"
                         )
+                        if entry.replace(".", "", 1).isdigit()
                     )
                     max_val = max(
-                        map(
-                            float,
-                            self.table_model.get_values(
-                                parent_idx, rows_idx, f"{metric_name}_max"
-                            ),
+                        float(entry)
+                        for entry in self.table_model.get_values(
+                            parent_idx, rows_idx, f"{metric_name}_max"
                         )
+                        if entry.replace(".", "", 1).isdigit()
                     )
                     mask_metric = (
                         mask_metric
@@ -637,16 +671,32 @@ class SelectMetricWidget(QWidget):
         return metric_name, min_max
 
     @Slot(object)
-    def _order_table(self, event=None):
+    def _order_table(self, event=None, do_selection=True):
         valid_names: list[str] = [
             entry.name
             for entry in self.napari_viewer.layers
             if isinstance(entry, self.loadable_layers)
         ]
+
+        if do_selection:
+            prev_selection = self.table_widget.get_row_selection()
+            self.table_widget.selectionModel().selectionChanged.disconnect(
+                self.update_hist
+            )
         self.table_model.sort(valid_names)
+        if do_selection:
+            self.table_widget.restore_selection(prev_selection)
+            self.table_widget.selectionModel().selectionChanged.connect(
+                self.update_hist
+            )
+            self.table_widget.selectionModel().selectionChanged.emit(
+                QItemSelection(), QItemSelection()
+            )
 
     @Slot(object)
-    def _sync_table(self, event=None, *, select_first=False):
+    def _sync_table(
+        self, event=None, *, select_first=False, do_selection=True
+    ):
         valid_layers: list[napari.layers.Layer] = [
             entry
             for entry in self.napari_viewer.layers
@@ -689,17 +739,13 @@ class SelectMetricWidget(QWidget):
                     self.prev_valid_layers[layer.name] = [layer, layer.data]
                 else:
                     self._add_remove_table(layer, ButtonActions.DEL)
-            self._order_table()
+            self._order_table(do_selection=do_selection)
             self._update_slider()
             if select_first:
                 self.table_widget.select_first()
 
     def _clear_table(self):
-        prev_selection = {
-            entry
-            for entry in self.table_widget.get_row_candidates()
-            if entry[0] == -1
-        }
+        prev_selection = self.table_widget.get_row_selection()
         for layer, _ in self.prev_valid_layers.values():
             self._add_remove_table(layer, ButtonActions.DEL)
         self.prev_valid_layers = {}
@@ -729,7 +775,20 @@ class SelectMetricWidget(QWidget):
                 layer.data, self.prev_valid_layers[layer.name][1]
             ):
                 self.prev_valid_layers[layer.name][1] = layer.data
+
+                prev_selection = self.table_widget.get_row_selection()
+                self.table_widget.selectionModel().selectionChanged.disconnect(
+                    self.update_hist
+                )
                 self._add_remove_table(layer, ButtonActions.UPDATE)
+                self._order_table(do_selection=False)
+                self.table_widget.restore_selection(prev_selection)
+                self.table_widget.selectionModel().selectionChanged.connect(
+                    self.update_hist
+                )
+                self.table_widget.selectionModel().selectionChanged.emit(
+                    QItemSelection(), QItemSelection()
+                )
 
     def _update_editable(self, event):
         layer = event.source
@@ -752,19 +811,35 @@ class SelectMetricWidget(QWidget):
         else:
             assert False, layer.data
 
-        label_data = (
-            pd.DataFrame(layer.metadata)
-            .loc[
-                :,
-                [entry for entry in layer.metadata if isinstance(entry, int)],
-            ]
-            .T
-        )
+        range_list = [
+            entry for entry in layer.metadata if isinstance(entry, int)
+        ]
+        full_range = np.arange(
+            *self.napari_viewer.dims.range[0], dtype=int
+        ).tolist()
+        if range_list:
+            label_data = pd.DataFrame(layer.metadata).loc[:, range_list].T
+        else:
+            label_data = pd.DataFrame()
+        range_list.extend(full_range)
+        range_list = sorted(list(set(range_list)))
+
+        if name is None and self._show_mode == "All":
+            loop_var = range_list
+        else:
+            loop_var = features_copy["identifier"]
 
         features_copy["shown"] = layer.shown
-        for identifier, ident_df in features_copy.groupby(
-            "identifier", sort=False
-        ):
+        slice_dict = {
+            e1: e2
+            for e1, e2 in features_copy.groupby("identifier", sort=False)
+        }
+
+        for identifier in loop_var:
+            try:
+                ident_df = slice_dict[identifier]
+            except KeyError:
+                ident_df = pd.DataFrame(columns=features_copy.columns)
             try:
                 cur_name = name or layer.metadata[identifier]["name"]
             except KeyError:
@@ -794,7 +869,7 @@ class SelectMetricWidget(QWidget):
                     features,
                     cur_name,
                     identifier,
-                    layer.metadata,
+                    label_data,
                     name is not None,
                 )
             )
@@ -809,6 +884,7 @@ class SelectMetricWidget(QWidget):
         output_dict["slice"] = str(slice_idx)
         output_dict["boxes"] = str(len(features))
         output_dict["selected"] = str(np.count_nonzero(features["shown"]))
+
         output_dict["boxsize"] = (
             "0" if size.empty else str(int(size.mean().mean()))
         )
@@ -820,7 +896,14 @@ class SelectMetricWidget(QWidget):
                 if is_main_group:
                     output_dict["write"] = "-"
                 else:
-                    output_dict["write"] = label_data.loc[slice_idx, "write"]
+                    try:
+                        write_val = label_data.loc[slice_idx, "write"]
+                        if write_val is not None:
+                            output_dict["write"] = write_val
+                        else:
+                            output_dict["write"] = bool(len(features))
+                    except KeyError:
+                        output_dict["write"] = bool(len(features))
             for col_name in features.columns:
                 if col_name in self.ignore_idx:
                     continue
@@ -837,7 +920,10 @@ class SelectMetricWidget(QWidget):
                     val = general.get_min_floor(label_data[label_min])
                     if not np.all(val == label_data[label_min].dropna()):
                         val = general.get_min_floor(features[col_name])
-                output_dict[label_min] = str(val)
+                if not np.isnan(val):
+                    output_dict[label_min] = str(val)
+                else:
+                    output_dict[label_min] = "-"
 
                 if (
                     slice_idx in label_data.index
@@ -848,7 +934,10 @@ class SelectMetricWidget(QWidget):
                     val = general.get_max_floor(label_data[label_max])
                     if not np.all(val == label_data[label_max].dropna()):
                         val = general.get_max_floor(features[col_name])
-                output_dict[label_max] = str(val)
+                if not np.isnan(val):
+                    output_dict[label_max] = str(val)
+                else:
+                    output_dict[label_max] = "-"
 
         else:
             output_dict["write"] = "-"
@@ -876,7 +965,6 @@ class SelectMetricWidget(QWidget):
         elif action == ButtonActions.UPDATE:
             self._add_remove_table(layer, ButtonActions.DEL)
             self._add_remove_table(layer, ButtonActions.ADD)
-            self._order_table()
 
     def _get_all_data(self, metric_name, layer_mask=None):
 
@@ -1090,6 +1178,10 @@ class SelectMetricWidget(QWidget):
                 self.metric_dict[metric_name].setVisible(False)
             else:
                 self.metric_dict[metric_name].setVisible(True)
+            if labels_data.empty:
+                labels_data = pd.Series([0], dtype=int)
+                self.metric_dict[metric_name].setVisible(False)
+                continue
 
             min_val = None
             max_val = None

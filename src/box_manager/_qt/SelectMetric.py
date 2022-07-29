@@ -830,12 +830,22 @@ class SelectMetricWidget(QWidget):
         else:
             label_data = pd.DataFrame()
         range_list.extend(full_range)
-        range_list = sorted(list(set(range_list)))
 
         if name is None and self._show_mode == "All":
-            loop_var = range_list
+            loop_var = sorted(list(set(range_list)))
         else:
-            loop_var = np.unique(features_copy["identifier"])
+            idents = np.unique(features_copy["identifier"]).tolist()
+            write_slices = [
+                key
+                for key, value in layer.metadata.items()
+                if isinstance(value, dict)
+                and "write" in value
+                and value["write"]
+            ]
+            try:
+                loop_var = sorted(list(set(idents + write_slices)))
+            except TypeError:
+                loop_var = idents
 
         features_copy["shown"] = layer.shown
         slice_dict = {
@@ -900,18 +910,17 @@ class SelectMetricWidget(QWidget):
             self.napari_viewer.dims.order[0] == 0
             and self.napari_viewer.dims.ndim == 3
         ):
-            if self._show_mode == "All":
-                if is_main_group:
-                    output_dict["write"] = "-"
-                else:
-                    try:
-                        write_val = label_data.loc[slice_idx, "write"]
-                        if write_val is not None and not np.isnan(write_val):
-                            output_dict["write"] = write_val
-                        else:
-                            output_dict["write"] = not features.empty
-                    except KeyError:
+            if is_main_group:
+                output_dict["write"] = "-"
+            else:
+                try:
+                    write_val = label_data.loc[slice_idx, "write"]
+                    if write_val is not None and not np.isnan(write_val):
+                        output_dict["write"] = write_val
+                    else:
                         output_dict["write"] = not features.empty
+                except KeyError:
+                    output_dict["write"] = not features.empty
 
             for col_name in features.columns:
                 if col_name in self.ignore_idx:

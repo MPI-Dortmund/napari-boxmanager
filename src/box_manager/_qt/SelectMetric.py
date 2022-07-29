@@ -1475,8 +1475,8 @@ class HistogramMinMaxView(QWidget):
 
                 entry["axis"].set_xticks(ticks)
                 entry["axis"].set_xlim(
-                    np.min(data_list[idx]) - margin,
-                    np.max(data_list[idx]) + margin,
+                    np.min(data_list[idx]) - max(margin, 0.002),
+                    np.max(data_list[idx]) + max(margin, 0.002),
                 )
 
                 if n_data != 1:

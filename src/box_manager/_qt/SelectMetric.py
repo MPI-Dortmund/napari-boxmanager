@@ -1234,7 +1234,6 @@ class HistogramMinMaxView(QWidget):
         self.setLayout(QVBoxLayout())
         self.col_min = -1
         self.col_max = -1
-        self.step_size = 1000
         _modes = ["Separate", "Zoom"]
         self._mode = _modes[0]
         self._label_data = None
@@ -1496,9 +1495,7 @@ class HistogramMinMaxView(QWidget):
                         tick.set_horizontalalignment(orient)
 
                 if idx == 1:
-                    new_step_size = int(
-                        self.step_size * np.abs(ticks[-1] - ticks[0]) / 20
-                    )
+                    new_step_size = int(np.abs(ticks[-1] - ticks[0]) / 20)
                     self.slider_min.setSingleStep(new_step_size)
                     self.slider_max.setSingleStep(new_step_size)
 
@@ -1686,4 +1683,4 @@ class SliderView(QWidget):
         self.col_idx = col
 
     def setSingleStep(self, value):
-        self.slider.setSingleStep(value)
+        self.slider.setSingleStep(self.step_size * value)

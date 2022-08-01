@@ -482,6 +482,7 @@ class SelectMetricWidget(QWidget):
         self.napari_viewer.layers.events.inserted.connect(self._update_sync)
         self.napari_viewer.layers.events.removed.connect(self._update_sync)
         self.napari_viewer.dims.events.order.connect(self._update_sync)
+        self.napari_viewer.events.theme.connect(self._set_color)
 
         self.table_model = GroupModel(self.read_only, self.check_box, self)
         self.table_widget = GroupView(self.table_model, self)
@@ -526,6 +527,7 @@ class SelectMetricWidget(QWidget):
         self.layout().addLayout(self.metric_area, stretch=0)  # type: ignore
 
         self._sync_table(select_first=True)
+        self._set_color()
 
     @Slot(str, int, str, object)
     def _update_check_state(self, layer_name, slice_idx, attr_name, value):
@@ -541,6 +543,40 @@ class SelectMetricWidget(QWidget):
         self.napari_viewer.layers[layer_name].metadata[slice_idx][
             attr_name
         ] = value
+
+    def _set_color(self):
+        if self.napari_viewer.theme == "dark":
+            self.table_widget.setStyleSheet(
+                """
+                QAbstractItemView::indicator {
+                    border: 1px solid white;
+                    background-color: transparent
+                }
+
+                QAbstractItemView::indicator:checked {
+                    background-color: darkgrey
+                }
+                QAbstractItemView::indicator:unchecked {
+                    background-color: transparent
+                }
+                """
+            )
+        else:
+            self.table_widget.setStyleSheet(
+                """
+                QAbstractItemView::indicator {
+                    border: 1px solid black;
+                    background-color: transparent
+                }
+
+                QAbstractItemView::indicator:checked {
+                    background-color: lightgrey
+                }
+                QAbstractItemView::indicator:unchecked {
+                    background-color: transparent
+                }
+                """
+            )
 
     def _update_sync(self, *_):
         self._show_mode = self.show_mode.currentText()

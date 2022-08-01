@@ -13,6 +13,9 @@ contributions:
       title: Save image data with Box Manager
 
     # Widgets
+    - id: napari-boxmanager.organize_box
+      python_name: box_manager._qt.OrganizeBox:OrganizeBoxWidget
+      title: Organize box files to the respective mrc
     - id: napari-boxmanager.select_metric
       python_name: box_manager._qt.SelectMetric:SelectMetricWidget
       title: Select box metrics
@@ -33,7 +36,9 @@ contributions:
       display_name: metric_selection
     - command: napari-boxmanager.bandpass_filter
       autogenerate: true
-      display_name: Bandpass filter
+      display_name: bandpass_filter
+    - command: napari-boxmanager.organize_box
+      display_name: organize_box
 
 
       #contributions:

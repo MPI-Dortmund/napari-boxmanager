@@ -6,6 +6,8 @@ import mrcfile
 import numpy as np
 import pandas as pd
 
+from . import _MAX_LAYER_NAME
+
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
@@ -13,12 +15,32 @@ if typing.TYPE_CHECKING:
 def to_napari(
     path: os.PathLike | list[os.PathLike],
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
+    original_path = path
     if not isinstance(path, list):
+        if "*" in path:
+            original_path = path
+            name = "mrcfiles"
+        else:
+            if len(path) >= _MAX_LAYER_NAME + 3:
+                name = f"...{path[0][-_MAX_LAYER_NAME:]}"  # type: ignore
+            else:
+                name = path  # type: ignore
         path = glob.glob(path)  # type: ignore
+    elif len(path[0]) >= _MAX_LAYER_NAME + 3:
+        name = f"...{path[0][-_MAX_LAYER_NAME:]}"  # type: ignore
+    else:
+        name = path[0]  # type: ignore
 
     arrays = []
     voxel_size = 1
-    for file_name in path:
+    metadata: dict = {
+        "pixel_spacing": voxel_size,
+        "original_path": original_path,
+    }
+    for idx, file_name in enumerate(path):
+        metadata[idx] = {}
+        metadata[idx]["path"] = file_name
+        metadata[idx]["name"] = os.path.basename(file_name)
         with mrcfile.open(file_name, permissive=True) as mrc:
             data = mrc.data
             voxel_size = mrc.voxel_size.x
@@ -27,7 +49,7 @@ def to_napari(
     # stack arrays into single array
     data = np.squeeze(np.stack(arrays))
 
-    add_kwargs = {"metadata": {"pixel_spacing": voxel_size}}
+    add_kwargs = {"metadata": metadata, "name": name}
 
     layer_type = "image"  # optional, default is "image"
     return [(data, add_kwargs, layer_type)]

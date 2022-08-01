@@ -46,7 +46,10 @@ def to_napari(
     name: str
     features: dict[str, typing.Any]
 
+    original_path = path
     if not isinstance(path, list):
+        if "*" in path:
+            original_path = path
         path = glob.glob(path)  # type: ignore
 
     if isinstance(path, list) and len(path) > 1:
@@ -63,6 +66,7 @@ def to_napari(
     input_df, metadata = _prepare_df(
         path if isinstance(path, list) else [path]
     )
+    metadata["original_path"] = original_path
 
     features = {
         entry: input_df[entry].to_numpy()

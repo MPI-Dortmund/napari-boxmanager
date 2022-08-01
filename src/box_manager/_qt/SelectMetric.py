@@ -1,4 +1,6 @@
 import enum
+import os
+import pathlib
 import typing
 
 import napari.layers
@@ -41,6 +43,9 @@ from .._utils import general
 
 if typing.TYPE_CHECKING:
     import napari
+
+
+ICON_DIR = pathlib.Path(os.path.dirname(__file__), "_icons")
 
 
 # def debug(func):
@@ -546,35 +551,29 @@ class SelectMetricWidget(QWidget):
 
     def _set_color(self):
         if self.napari_viewer.theme == "dark":
+            icon = pathlib.Path(ICON_DIR, "checkmark_white.png")
             self.table_widget.setStyleSheet(
-                """
-                QAbstractItemView::indicator {
+                f"""
+                QAbstractItemView::indicator {{
                     border: 1px solid white;
-                    background-color: transparent
-                }
+                }}
 
-                QAbstractItemView::indicator:checked {
-                    background-color: darkgrey
-                }
-                QAbstractItemView::indicator:unchecked {
-                    background-color: transparent
-                }
+                QAbstractItemView::indicator:checked {{
+                    image: url({icon})
+                }}
                 """
             )
         else:
+            icon = pathlib.Path(ICON_DIR, "checkmark_black.png")
             self.table_widget.setStyleSheet(
-                """
-                QAbstractItemView::indicator {
+                f"""
+                QAbstractItemView::indicator {{
                     border: 1px solid black;
-                    background-color: transparent
-                }
+                }}
 
-                QAbstractItemView::indicator:checked {
-                    background-color: lightgrey
-                }
-                QAbstractItemView::indicator:unchecked {
-                    background-color: transparent
-                }
+                QAbstractItemView::indicator:checked {{
+                    image: url({icon})
+                }}
                 """
             )
 

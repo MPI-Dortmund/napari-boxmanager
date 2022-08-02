@@ -33,12 +33,12 @@ contributions:
   sample_data: []
   widgets:
     - command: napari-boxmanager.select_metric
-      display_name: metric_selection
+      display_name: boxmanager
     - command: napari-boxmanager.bandpass_filter
       autogenerate: true
       display_name: bandpass_filter
     - command: napari-boxmanager.organize_box
-      display_name: organize_box
+      display_name: match_mics
 
 
       #contributions:

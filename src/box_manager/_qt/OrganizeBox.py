@@ -5,7 +5,7 @@ from copy import deepcopy
 import napari.layers
 import numpy as np
 from napari.layers.base.base import Layer
-from qtpy.QtCore import Qt
+from qtpy.QtCore import Qt, Signal, Slot
 from qtpy.QtWidgets import (
     QComboBox,
     QFormLayout,
@@ -22,6 +22,8 @@ if typing.TYPE_CHECKING:
 
 
 class PrefixSuffixCount(QWidget):
+    editingFinished = Signal()
+
     def __init__(self, name, parent=None):
         super().__init__(parent)
 
@@ -30,7 +32,9 @@ class PrefixSuffixCount(QWidget):
 
         self.combo = QComboBox(self)
         self.prefix_edit = QLineEdit(self)
+        self.prefix_edit.editingFinished.connect(self.editingFinished.emit)
         self.suffix_edit = QLineEdit(self)
+        self.suffix_edit.editingFinished.connect(self.editingFinished.emit)
 
         self.layout().addRow(f"{name} layers", self.combo)
         self.layout().addRow(f"{name} prefix", self.prefix_edit)
@@ -83,7 +87,13 @@ class OrganizeBoxWidget(QWidget):
         self.coord_layer = PrefixSuffixCount("coords", self)
 
         self.image_layer.currentTextChanged.connect(self._update_combo)
+        self.image_layer.editingFinished.connect(
+            lambda: self._update_table(create_layer=False)
+        )
         self.coord_layer.currentTextChanged.connect(self._update_combo)
+        self.coord_layer.editingFinished.connect(
+            lambda: self._update_table(create_layer=False)
+        )
 
         self.table_widget = QTableWidget(self)
         button = QPushButton("Create layer")
@@ -102,6 +112,8 @@ class OrganizeBoxWidget(QWidget):
         if self.image_layer.count() == 1 and self.coord_layer.count() == 1:
             self._update_table()
 
+    @Slot(object)
+    @Slot(str)
     def _update_combo(self, *_):
 
         for widget, valid_types in (
@@ -223,7 +235,9 @@ class OrganizeBoxWidget(QWidget):
 
         new_state = {}
         for key, value in old_state.items():
-            if key == "name":
+            if key == "visible":
+                new_state[key] = True
+            elif key == "name":
                 new_state[key] = f"{layer_coord.name} reordered"
             elif key == "metadata":
                 new_state[key] = new_meta
@@ -248,6 +262,7 @@ class OrganizeBoxWidget(QWidget):
             self.napari_viewer.layers.insert(
                 self.napari_viewer.layers.index(layer_coord) + 1, new
             )
+            self.coord_layer.setCurrentText(new.name)
 
         self.table_widget.setColumnCount(2)
         self.table_widget.setRowCount(len(table_list))
@@ -257,3 +272,4 @@ class OrganizeBoxWidget(QWidget):
                 item = QTableWidgetItem(value)
                 item.setFlags(Qt.ItemIsSelectable)
                 self.table_widget.setItem(row_idx, col_idx, item)
+        self.table_widget.resizeColumnsToContents()

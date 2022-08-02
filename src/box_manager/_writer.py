@@ -1,3 +1,23 @@
+import os
+import typing
+
+from . import readers as bm_readers
+
+if typing.TYPE_CHECKING:
+    pass
+
+
+def napari_get_writer(
+    path: os.PathLike, data: list[tuple[typing.Any, dict, str]]
+):
+    load_type = os.path.splitext(path)[-1][1:]
+    writer = bm_readers.get_writer(load_type)
+    if not writer:
+        return None
+    else:
+        return writer(path, data)
+
+
 # """
 # This module is an example of a barebones writer plugin for napari.
 #

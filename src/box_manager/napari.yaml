@@ -2,16 +2,44 @@ name: napari-boxmanager
 display_name: Box Manager
 contributions:
   commands:
+    # Reader
     - id: napari-boxmanager.get_reader
       python_name: box_manager._reader:napari_get_reader
       title: Open data with Box Manager
+
+    # Writer
+    - id: napari-boxmanager.get_writer
+      python_name: box_manager._writer:napari_get_writer
+      title: Save image data with Box Manager
+
+    # Widgets
+    - id: napari-boxmanager.organize_box
+      python_name: box_manager._qt.OrganizeBox:OrganizeBoxWidget
+      title: Organize box files to the respective mrc
+    - id: napari-boxmanager.select_metric
+      python_name: box_manager._qt.SelectMetric:SelectMetricWidget
+      title: Select box metrics
+    - id: napari-boxmanager.bandpass_filter
+      python_name: box_manager._widget:filter_layer
+      title: Filter image layer
   readers:
     - command: napari-boxmanager.get_reader
       accepts_directories: false
-      filename_patterns: ['*.pkl', '*.tlpkl', '*.tepkl', '*.tmpkl', '*.cbox', '*.box', '*.star']
-  writers: []
+      filename_patterns: ['*.tloc', '*.temb', '*.tmap', '*.cbox', '*.box', '*.star', '*.mrc', "*.mrcs", "*.st"]
+  writers:
+    - command: napari-boxmanager.get_writer
+      layer_types: ['points*', 'image*']
+      filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star', '.mrc', '.mrcs', '.st']
   sample_data: []
-  widgets: []
+  widgets:
+    - command: napari-boxmanager.select_metric
+      display_name: metric_selection
+    - command: napari-boxmanager.bandpass_filter
+      autogenerate: true
+      display_name: bandpass_filter
+    - command: napari-boxmanager.organize_box
+      display_name: organize_box
+
 
       #contributions:
       #  commands:

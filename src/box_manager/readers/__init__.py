@@ -1,44 +1,45 @@
 import glob
 import importlib
-import inspect
 import os
 import typing
+from collections.abc import Callable
 
-from . import interface
-from .interface import to_napari
+import pandas as pd
 
-__all__ = ["to_napari"]
+from .interface import ReaderInterface
+
+__all__ = ["get_reader", "ReaderInterface"]
 
 if typing.TYPE_CHECKING:
-    pass
+    import numpy.typing as npt
 
+_IGNORE_LIST = ["interface.py", os.path.basename(__file__)]
+_MAX_LAYER_NAME = 30
 
-class ReaderMissingToNapariFunction(Warning):
-    pass
-
-
-_ignore_list = ["interface.py", os.path.basename(__file__)]
-
-valid_readers: dict[
+_VALID_READERS: dict[
     str,
-    "list[interface.ReaderInterface]",
+    ReaderInterface,
 ] = {}
 for module in glob.iglob(f"{os.path.dirname(__file__)}/*.py"):
-    if os.path.basename(module) in _ignore_list:
+    if os.path.basename(module) in _IGNORE_LIST:
         continue
 
-    _name: str = f".{os.path.basename(os.path.splitext(module)[0])}"
-    _package: interface.ReaderInterface = importlib.import_module(
-        f"box_manager.readers{_name}"
+    _name: str = (
+        f"box_manager.readers.{os.path.basename(os.path.splitext(module)[0])}"
     )
+    package: ReaderInterface = importlib.import_module(_name)  # type:ignore
 
-    if all(
-        [
-            hasattr(_package, name)
-            for name, _ in inspect.getmembers(
-                interface.ReaderInterface, predicate=inspect.isfunction
-            )
-            if not name.startswith("__")
-        ]
-    ):
-        valid_readers[_name] = _package
+    for extension in package.get_valid_extensions():
+        _VALID_READERS[extension] = package
+
+
+def get_reader(
+    key: str,
+) -> "Callable[[os.PathLike | list[os.PathLike] | pd.DataFrame], list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]] | None":
+    return _VALID_READERS[key].to_napari if key in _VALID_READERS else None
+
+
+def get_writer(
+    key: str,
+) -> "Callable[[os.PathLike | list[os.PathLike], list, dict]], None":
+    return _VALID_READERS[key].from_napari if key in _VALID_READERS else None

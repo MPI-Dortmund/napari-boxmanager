@@ -49,7 +49,7 @@ def to_napari(
     features: dict[str, typing.Any]
 
     if not isinstance(path, list):
-        path = glob.glob(path)  # type: ignore
+        path = sorted(glob.glob(path))  # type: ignore
 
     output_dfs = []
     for file_name in path:  # type: ignore

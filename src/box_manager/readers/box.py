@@ -50,7 +50,7 @@ def to_napari(
     if not isinstance(path, list):
         if "*" in path:
             original_path = path
-        path = glob.glob(path)  # type: ignore
+        path = sorted(glob.glob(path))  # type: ignore
 
     if isinstance(path, list) and len(path) > 1:
         idx_func: Callable[[], list[str]] = _get_3d_coords_idx

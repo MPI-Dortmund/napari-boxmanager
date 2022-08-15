@@ -697,6 +697,7 @@ class SelectMetricWidget(QWidget):
             elif metric_name == "boxsize":
                 do_update = True
                 layer.size[mask_dimension] = layer_vals
+                layer.current_size = layer_vals
             else:
                 assert False
 

@@ -1149,7 +1149,7 @@ class SelectMetricWidget(QWidget):
         slice_indices = []
         for parent_idx, rows_idx in layer_dict.items():
             layer_name = self.table_model.get_value(-1, parent_idx, "name")
-            layer = self.napari_viewer.layers[layer_name]  # type: ignore
+            layer = [entry for entry in self.napari_viewer.layers if entry.name == layer_name][0]  # type: ignore
             valid_layers.append(layer)
             slice_idx = list(
                 map(
@@ -1212,6 +1212,10 @@ class SelectMetricWidget(QWidget):
                 assert False, self.hide_dim.currentText()
             layer.events.opacity.connect(self._update_opacity)
             layer.events.visible.connect(self._update_visible)
+
+        self.napari_viewer.layers.selection.clear()
+        for layer in valid_layers:
+            self.napari_viewer.layers.selection.add(layer)
 
         metric_done = []
         self.metric_dict["boxsize"].setVisible(True)

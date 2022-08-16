@@ -124,7 +124,9 @@ class OrganizeBoxWidget(QWidget):
                 (
                     entry
                     for entry in self.napari_viewer.layers
-                    if isinstance(entry, valid_types) and entry.ndim == 3
+                    if isinstance(entry, valid_types)
+                    and entry.ndim == 3
+                    and "original_path" in entry.metadata
                 ),
                 key=lambda x: x.name,
             )

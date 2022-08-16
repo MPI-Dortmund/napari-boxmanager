@@ -15,21 +15,21 @@ if typing.TYPE_CHECKING:
 def to_napari(
     path: os.PathLike | list[os.PathLike],
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
-    original_path = path
     if not isinstance(path, list):
+        original_path = path
         if "*" in path:
-            original_path = path
             name = "mrcfiles"
+        elif len(path) >= _MAX_LAYER_NAME + 3:
+            name = f"...{path[0][-_MAX_LAYER_NAME:]}"  # type: ignore
         else:
-            if len(path) >= _MAX_LAYER_NAME + 3:
-                name = f"...{path[0][-_MAX_LAYER_NAME:]}"  # type: ignore
-            else:
-                name = path  # type: ignore
-        path = glob.glob(path)  # type: ignore
+            name = path  # type: ignore
+        path = sorted(glob.glob(path))  # type: ignore
     elif len(path[0]) >= _MAX_LAYER_NAME + 3:
+        original_path = path[0]
         name = f"...{path[0][-_MAX_LAYER_NAME:]}"  # type: ignore
     else:
         name = path[0]  # type: ignore
+        original_path = path[0]
 
     arrays = []
     voxel_size = 1

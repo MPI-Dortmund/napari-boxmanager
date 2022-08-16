@@ -46,11 +46,11 @@ def to_napari(
     name: str
     features: dict[str, typing.Any]
 
-    original_path = path
     if not isinstance(path, list):
-        if "*" in path:
-            original_path = path
+        original_path = path
         path = sorted(glob.glob(path))  # type: ignore
+    else:
+        original_path = path[0]
 
     if isinstance(path, list) and len(path) > 1:
         idx_func: Callable[[], list[str]] = _get_3d_coords_idx

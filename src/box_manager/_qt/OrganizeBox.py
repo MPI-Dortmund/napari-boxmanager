@@ -139,6 +139,9 @@ class OrganizeBoxWidget(QWidget):
                 widget.setCurrentText(prev_text)
                 widget.currentTextChanged.connect(self._update_combo)
 
+            if widget.currentIndex() == -1:
+                return
+
             layer = valid_layers[widget.currentIndex()]
             layer_metadata = layer.metadata
             if (

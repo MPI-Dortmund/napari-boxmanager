@@ -124,7 +124,7 @@ class OrganizeBoxWidget(QWidget):
                 (
                     entry
                     for entry in self.napari_viewer.layers
-                    if isinstance(entry, valid_types)
+                    if isinstance(entry, valid_types) and entry.ndim == 3
                 ),
                 key=lambda x: x.name,
             )
@@ -146,7 +146,7 @@ class OrganizeBoxWidget(QWidget):
             layer_metadata = layer.metadata
             if (
                 "original_path" in layer_metadata
-                and layer_metadata["original_path"] is not None
+                and "*" in layer_metadata["original_path"]
             ):
                 dirname = os.path.dirname(layer_metadata["original_path"])
                 prefix, suffix = os.path.basename(

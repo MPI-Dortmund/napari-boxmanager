@@ -1126,6 +1126,7 @@ class SelectMetricWidget(QWidget):
             metric_done = []
             if "boxsize" in self.metric_dict:
                 self.metric_dict["boxsize"].setVisible(False)
+
             for label in self.table_model.label_dict:
                 if label in self.ignore_idx:
                     continue
@@ -1221,7 +1222,14 @@ class SelectMetricWidget(QWidget):
             self.napari_viewer.layers.selection.add(layer)
 
         metric_done = []
-        self.metric_dict["boxsize"].setVisible(True)
+        if "boxsize" in self.metric_dict:
+            labels_data = self._get_all_data("boxsize", layer_mask)
+            if np.all(labels_data == labels_data[0]):
+                self.metric_dict["boxsize"].set_value(int(labels_data[0]))
+            else:
+                self.metric_dict["boxsize"].set_value(-1)
+            self.metric_dict["boxsize"].setVisible(True)
+
         for label in self.table_model.label_dict:
             if label in self.ignore_idx or (
                 self.napari_viewer.dims.order[0] != 0

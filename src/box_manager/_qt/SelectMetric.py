@@ -698,6 +698,7 @@ class SelectMetricWidget(QWidget):
                 do_update = True
                 layer.size[mask_dimension] = layer_vals
                 layer.current_size = layer_vals
+                layer.events.size()
             else:
                 assert False
 

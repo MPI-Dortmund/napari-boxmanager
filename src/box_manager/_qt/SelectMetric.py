@@ -698,6 +698,7 @@ class SelectMetricWidget(QWidget):
                 do_update = True
                 layer.size[mask_dimension] = layer_vals
                 layer.current_size = layer_vals
+                # TODO: Eventually remove after potential event fix: https://github.com/napari/napari/pull/4951
                 layer.events.size()
             else:
                 assert False

@@ -22,6 +22,9 @@ contributions:
     - id: napari-boxmanager.bandpass_filter
       python_name: box_manager._qt.FilterImage:FilterImageWidget
       title: Filter image layer
+    - id: napari-boxmanager.add_layer
+      python_name: box_manager._qt.AddLayer:AddLayerWidget
+      title: Add new layers with default values
   readers:
     - command: napari-boxmanager.get_reader
       accepts_directories: false
@@ -38,6 +41,8 @@ contributions:
       display_name: bandpass_filter
     - command: napari-boxmanager.organize_box
       display_name: match_mics
+    - command: napari-boxmanager.add_layer
+      display_name: add_layer
 
 
       #contributions:

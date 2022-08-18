@@ -49,7 +49,7 @@ class AddLayerWidget(QWidget):
         kwargs = {
             "edge_color": "red",
             "face_color": "transparent",
-            "symbol": "square",
+            "symbol": "disc",
             "edge_width": 2,
             "edge_width_is_relative": False,
             "size": 128,

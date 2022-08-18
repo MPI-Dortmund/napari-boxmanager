@@ -20,7 +20,7 @@ def to_napari(
         if "*" in path:
             name = "mrcfiles"
         elif len(path) >= _MAX_LAYER_NAME + 3:
-            name = f"...{path[0][-_MAX_LAYER_NAME:]}"  # type: ignore
+            name = f"...{path[-_MAX_LAYER_NAME:]}"  # type: ignore
         else:
             name = path  # type: ignore
         path = sorted(glob.glob(path))  # type: ignore
@@ -43,7 +43,9 @@ def to_napari(
         metadata[idx]["name"] = os.path.basename(file_name)
         with mrcfile.open(file_name, permissive=True) as mrc:
             data = mrc.data
-            voxel_size = mrc.voxel_size.x
+            metadata["pixel_spacing"] = (
+                mrc.voxel_size.x if mrc.voxel_size.x != 0 else 1
+            )
         arrays.append(data)
 
     # stack arrays into single array

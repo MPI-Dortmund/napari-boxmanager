@@ -20,7 +20,7 @@ contributions:
       python_name: box_manager._qt.SelectMetric:SelectMetricWidget
       title: Select box metrics
     - id: napari-boxmanager.bandpass_filter
-      python_name: box_manager._widget:filter_layer
+      python_name: box_manager._qt.FilterImage:FilterImageWidget
       title: Filter image layer
   readers:
     - command: napari-boxmanager.get_reader
@@ -35,7 +35,6 @@ contributions:
     - command: napari-boxmanager.select_metric
       display_name: boxmanager
     - command: napari-boxmanager.bandpass_filter
-      autogenerate: true
       display_name: bandpass_filter
     - command: napari-boxmanager.organize_box
       display_name: match_mics

@@ -8,10 +8,14 @@ def bandpass_filter(
     lp_filter_resolution_ang: float,
     hp_filter_resolution_ang: float,
     pixel_size: float,
+    log=print,
 ):
 
-    if lp_filter_resolution_ang >= hp_filter_resolution_ang:
-        print(
+    if (
+        lp_filter_resolution_ang >= hp_filter_resolution_ang
+        and hp_filter_resolution_ang != 0
+    ):
+        log(
             f"{lp_filter_resolution_ang} cannot be greater than {hp_filter_resolution_ang}"
         )
         return None
@@ -19,7 +23,6 @@ def bandpass_filter(
     input_data = np.array(input_data)
 
     lp_filter_frequency = pixel_size / lp_filter_resolution_ang
-    hp_filter_frequency = pixel_size / hp_filter_resolution_ang
 
     old_shape = input_data.shape
     new_shape = np.max(old_shape)
@@ -33,9 +36,13 @@ def bandpass_filter(
         ** 2,
         axis=0,
     )
-    mask = ((new_shape // 2 * 2 * hp_filter_frequency) ** 2 <= mesh_dist) & (
-        mesh_dist <= (new_shape // 2 * 2 * lp_filter_frequency) ** 2
-    )
+    mask = mesh_dist <= (new_shape // 2 * 2 * lp_filter_frequency) ** 2
+
+    if hp_filter_resolution_ang != 0:
+        hp_filter_frequency = pixel_size / hp_filter_resolution_ang
+        mask = (
+            (new_shape // 2 * 2 * hp_filter_frequency) ** 2 <= mesh_dist
+        ) & mask
 
     pad_list = []
     for shape_i in old_shape:

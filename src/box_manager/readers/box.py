@@ -16,15 +16,18 @@ if typing.TYPE_CHECKING:
 class BoxFileNumberOfColumnsError(pd.errors.IntCastingNaNError):
     pass
 
+class UnknownFormatException(Exception):
+    ...
+
 class DataConverter(Protocol):
     def __call__(self, input_df: pd.DataFrame, **kwargs) -> pd.DataFrame: ...
 
 DEFAULT_BOXSIZE: int = 10
 
+
 def get_valid_extensions():
 
     return ["box", "coords"]
-
 
 def read(path: "os.PathLike") -> pd.DataFrame:
     names =["x", "y", "box_x", "box_y"]
@@ -57,6 +60,14 @@ def is_3d(pth: list[os.PathLike]):
         return True
     else:
         return False
+
+def get_data_prepare(pth: os.PathLike) -> Callable:
+    if os.path.splitext(pth)[1] == ".coords":
+        return _prepare_napari_coords
+    elif os.path.splitext(pth)[1] == ".box":
+        return _prepare_napari_box
+    else:
+        raise UnknownFormatException(f"{os.path.splitext(pth[0])[1]} is not supported.")
 
 def to_napari(
     path: os.PathLike | list[os.PathLike],
@@ -94,7 +105,7 @@ def to_napari(
             converters.append(_prepare_napari_coords)
 
     input_df, metadata = _prepare_df(
-        path,converters
+        path
     )
     metadata["original_path"] = original_path
 
@@ -172,13 +183,12 @@ def _prepare_napari_coords(
 
 def _prepare_df(
     path: list[os.PathLike],
-    data_converters: list[DataConverter]
 ) -> tuple[pd.DataFrame, dict[int, os.PathLike]]:
     data_df: list[pd.DataFrame] = []
     metadata: dict = {}
     for idx, entry in enumerate(path):
-        print(data_converters)
-        conv = data_converters[idx]
+
+        conv = get_data_prepare(entry)
         data_df.append(conv(read(entry), entry_index=idx))
         metadata[idx] = {}
         metadata[idx]["path"] = entry
@@ -194,9 +204,12 @@ def _prepare_df(
 
     return pd.concat(data_df, ignore_index=True), metadata
 
+def _write_box():
+
 
 def from_napari(
-    path: os.PathLike, layer_data: list[tuple[typing.Any, dict, str]]
+    path: os.PathLike,
+    layer_data: list[tuple[typing.Any, dict, str]]
 ):
     dirname = os.path.dirname(path)
     basename, extension = os.path.splitext(os.path.dirname(path))

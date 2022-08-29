@@ -6,8 +6,6 @@ from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
-from typing import Protocol
-
 from . import _MAX_LAYER_NAME
 
 if typing.TYPE_CHECKING:
@@ -18,9 +16,6 @@ class BoxFileNumberOfColumnsError(pd.errors.IntCastingNaNError):
 
 class UnknownFormatException(Exception):
     ...
-
-class DataConverter(Protocol):
-    def __call__(self, input_df: pd.DataFrame, **kwargs) -> pd.DataFrame: ...
 
 DEFAULT_BOXSIZE: int = 10
 
@@ -86,7 +81,7 @@ def to_napari(
 
     if isinstance(path, list) and len(path) > 1:
         idx_func: Callable[[], list[str]] = _get_3d_coords_idx # TODO: WHen does this happen?
-        name = "boxfiles"
+        name = "Coordinates"
     elif isinstance(path, list):
         idx_func: Callable[[], list[str]] = get_idx_func(path)
         if len(path[0]) >= _MAX_LAYER_NAME + 3:
@@ -97,12 +92,6 @@ def to_napari(
         assert False, path
 
     path = path if isinstance(path, list) else [path]
-    converters: list[DataConverter] = []
-    for p in path:
-        if os.path.splitext(p)[1] == ".box":
-            converters.append(_prepare_napari_box)
-        elif os.path.splitext(p)[1] == ".coords":
-            converters.append(_prepare_napari_coords)
 
     input_df, metadata = _prepare_df(
         path
@@ -204,8 +193,19 @@ def _prepare_df(
 
     return pd.concat(data_df, ignore_index=True), metadata
 
-def _write_box():
-    ...
+def _write_box(data: dict[str,dict]):
+    for filename in data:
+        df = pd.DataFrame(data[filename])
+        df['x'] = df['x'] - df['boxsize'] // 2
+        df['y'] = df['y'] - df['boxsize'] // 2
+        df[['x','y','boxsize','boxsize']].to_csv(filename,sep = " ", index=None,header=None)
+
+
+def _write_coords(data: dict[str,dict]):
+    for filename in data:
+        df = pd.DataFrame(data[filename])
+        df[['x','y','z']].to_csv(filename,sep=' ', header=None, index=None)
+
 
 
 def from_napari(
@@ -222,15 +222,21 @@ def from_napari(
 
         if data.shape[1] == 2:
             data = np.insert(data, 0, 0, axis=1)
-        else:
-            assert False, data
 
-        output_lines = {}
+        export_data = {}
         for (z, y, x), boxsize, file_name in zip(
             data[meta["shown"]],
             meta["features"]["boxsize"][meta["shown"]],
             meta["features"]["identifier"][meta["shown"]],
         ):
+            if file_name not in export_data:
+                export_data[file_name] = {
+                    "x": [],
+                    "y": [],
+                    "z": [],
+                    "boxsize": []
+                }
+
             if len(layer_data) == 1:
                 output_file = path
             else:
@@ -238,13 +244,10 @@ def from_napari(
                 output_file = pathlib.Path(
                     dirname, basename, file_base, extension
                 )
-
-            output_lines.setdefault(output_file, []).append(
-                f"{x-boxsize//2}  {y-boxsize//2}  {boxsize}  {boxsize}\n"
-            )
-
-        for file_name, box_line in output_lines.items():
-            with open(file_name, "w") as write:
-                write.writelines(box_line)
+            export_data[output_file] ["x"].append(x)
+            export_data[output_file] ["y"].append(y)
+            export_data[output_file] ["z"].append(z)
+            export_data[output_file] ["boxsize"].append(boxsize)
+        _write_coords(export_data)
 
     return path

@@ -205,6 +205,7 @@ def _prepare_df(
     return pd.concat(data_df, ignore_index=True), metadata
 
 def _write_box():
+    ...
 
 
 def from_napari(

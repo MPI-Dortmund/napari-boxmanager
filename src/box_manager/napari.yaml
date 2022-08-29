@@ -32,7 +32,7 @@ contributions:
   writers:
     - command: napari-boxmanager.get_writer
       layer_types: ['points*', 'image*']
-      filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star', '.mrc', '.mrcs', '.st','*.coords']
+      filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star', '.mrc', '.mrcs', '.st','.coords']
   sample_data: []
   widgets:
     - command: napari-boxmanager.select_metric

@@ -193,27 +193,9 @@ def _prepare_df(
 
     return pd.concat(data_df, ignore_index=True), metadata
 
-def _write_box(data: dict[str,dict]):
-    for filename in data:
-        df = pd.DataFrame(data[filename])
-        df['x'] = df['x'] - df['boxsize'] // 2
-        df['y'] = df['y'] - df['boxsize'] // 2
-        df[['x','y','boxsize','boxsize']].to_csv(filename,sep = " ", index=None,header=None)
-
-
-def _write_coords(data: dict[str,dict]):
-    for filename in data:
-        df = pd.DataFrame(data[filename])
-        df[['x','y','z']].to_csv(filename,sep=' ', header=None, index=None)
-
-
-
-def from_napari(
-    path: os.PathLike,
-    layer_data: list[tuple[typing.Any, dict, str]]
-):
+def _write_box(path : os.PathLike, layer_data : list[tuple[typing.Any, dict, str]]):
     dirname = os.path.dirname(path)
-    basename, extension = os.path.splitext(os.path.dirname(path))
+    basename, extension = os.path.splitext(os.path.basename(path))
     if not extension:
         basename, extension = extension, basename
 
@@ -224,11 +206,11 @@ def from_napari(
             data = np.insert(data, 0, 0, axis=1)
 
         export_data = {}
-        for (z, y, x), boxsize, file_name in zip(
-            data[meta["shown"]],
-            meta["features"]["boxsize"][meta["shown"]],
-            meta["features"]["identifier"][meta["shown"]],
+        for (z, y, x), boxsize in zip(
+                data[meta["shown"]],
+                meta['size'][meta["shown"]],
         ):
+            file_name = meta['metadata'][z]['name']
             if file_name not in export_data:
                 export_data[file_name] = {
                     "x": [],
@@ -244,10 +226,53 @@ def from_napari(
                 output_file = pathlib.Path(
                     dirname, basename, file_base, extension
                 )
-            export_data[output_file] ["x"].append(x)
-            export_data[output_file] ["y"].append(y)
-            export_data[output_file] ["z"].append(z)
-            export_data[output_file] ["boxsize"].append(boxsize)
-        _write_coords(export_data)
+            export_data[output_file]["x"].append(x)
+            export_data[output_file]["y"].append(y)
+            export_data[output_file]["z"].append(z)
+            export_data[output_file]["boxsize"].append(boxsize)
+
+    for filename in export_data:
+        df = pd.DataFrame(data[filename])
+        df['x'] = df['x'] - df['boxsize'] // 2
+        df['y'] = df['y'] - df['boxsize'] // 2
+        df[['x','y','boxsize','boxsize']].to_csv(filename,sep = " ", index=None,header=None)
+
+
+def _write_coords(path : os.PathLike, layer_data: list[tuple[typing.Any, dict, str]]):
+
+    for data, meta, layer in layer_data:
+
+        export_data = {}
+        for (z, y, x), boxsize in zip(
+                data[meta["shown"]],
+                meta['size'][meta["shown"]],
+        ):
+            file_name = path
+            if file_name not in export_data:
+                export_data[file_name] = {
+                    "x": [],
+                    "y": [],
+                    "z": [],
+                    "boxsize": []
+                }
+
+
+            output_file = path
+
+            export_data[output_file]["x"].append(x)
+            export_data[output_file]["y"].append(y)
+            export_data[output_file]["z"].append(z)
+            export_data[output_file]["boxsize"].append(boxsize)
+
+    for filename in export_data:
+        df = pd.DataFrame(export_data[filename])
+        df[['x','y','z']].to_csv(filename,sep=' ', header=None, index=None)
+
+
+def from_napari(
+    path: os.PathLike,
+    layer_data: list[tuple[typing.Any, dict, str]]
+):
+    _write_coords(path, layer_data)
 
     return path

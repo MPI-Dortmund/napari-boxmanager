@@ -237,7 +237,6 @@ def from_napari(
         ext = os.path.splitext(path)[1]
         export_data = {}
         if ext==".coords":
-            output_file=path
             coords_writer=_write_coords
             export_data[path] = _make_df_data(coordinates, boxsize)
         elif ext==".box":

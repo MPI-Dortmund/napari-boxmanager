@@ -21,7 +21,9 @@ def to_napari(
         path = sorted(glob.glob(path))  # type: ignore
 
     for file_name in path:
-        pass
+        data_dict = read(file_name)
+        print(data_dict)
+        napari_df = _prepare_napari(data_dict)
 
 def get_valid_extensions() -> list[str]:
     return valid_extensions
@@ -31,8 +33,7 @@ def from_napari(
     data: typing.Any,
     meta: dict,
 ):
-    data_dict = read(path)
-    napari_df = _prepare_napari(data_dict)
+    pass
 
 
 def _prepare_napari(input_dict: typing.Dict) -> pd.DataFrame:
@@ -41,14 +42,14 @@ def _prepare_napari(input_dict: typing.Dict) -> pd.DataFrame:
         columns=_get_3d_coords_idx()
         + _get_meta_idx()
     )
-    cryolo_data = input_dict['cryolo']
+    cryolo_data = input_dict
 
     output_data['x'] = cryolo_data['_CoordinateZ']
     output_data['y'] = cryolo_data['_CoordinateY']
     output_data['z'] = cryolo_data['_CoordinateX']
     output_data["boxsize"] = (np.array(cryolo_data["_Width"]) + np.array(cryolo_data["_Height"]))/2
 
-    print(cryolo_data['_CoordinateZ'])
+
 
 def _get_3d_coords_idx():
     return coords_3d_idx

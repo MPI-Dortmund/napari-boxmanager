@@ -1674,7 +1674,7 @@ class EditView(QWidget):
         self.edit = QLineEdit(self)
         if validator is not None:
             self.edit.setValidator(validator)
-        self.edit.returnPressed.connect(self._emit_signal)
+        self.edit.editingFinished.connect(self._emit_signal)
         self.layout().addWidget(QLabel(label))
         self.layout().addWidget(self.edit, stretch=1)
         self.layout().setContentsMargins(0, 0, 0, 0)
@@ -1708,7 +1708,7 @@ class SliderView(QWidget):
         self.label = QLineEdit(str(self.slider.value() / self.step_size), self)
         if validator is not None:
             self.label.setValidator(validator)
-        self.label.returnPressed.connect(self.set_value)
+        self.label.editingFinished.connect(self.set_value)
 
         self.layout().addWidget(self.slider, stretch=1)
         self.layout().addWidget(self.label)

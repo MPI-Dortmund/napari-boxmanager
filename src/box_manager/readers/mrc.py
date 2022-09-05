@@ -59,7 +59,7 @@ def to_napari(
 
 
 def get_valid_extensions():
-    return ["mrc", "mrcs", "st"]
+    return ["mrc", "mrcs", "st", "rec"]
 
 
 def from_napari(

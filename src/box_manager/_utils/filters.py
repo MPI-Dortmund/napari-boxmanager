@@ -8,6 +8,7 @@ def bandpass_filter(
     lp_filter_resolution_ang: float,
     hp_filter_resolution_ang: float,
     pixel_size: float,
+    filter_z_slice: bool = False,
     log=print,
 ):
 
@@ -22,9 +23,16 @@ def bandpass_filter(
 
     input_data = np.array(input_data)
 
+    if input_data.ndim != 3:
+        log("Non 3D image detected! Disable z slice filtering.")
+        filter_z_slice = False
+
     lp_filter_frequency = pixel_size / lp_filter_resolution_ang
 
-    old_shape = input_data.shape
+    if filter_z_slice:
+        old_shape = input_data.shape[-2:]
+    else:
+        old_shape = input_data.shape
     new_shape = np.max(old_shape)
     box_range = np.arange(-new_shape // 2 + 1, 1 + new_shape // 2)
 
@@ -49,13 +57,25 @@ def bandpass_filter(
         diff_i = new_shape - shape_i
         pad_list.append([diff_i // 2, diff_i // 2 + diff_i % 2])
 
-    pad_image = np.pad(input_data, pad_list, "symmetric")
+    if filter_z_slice:
+        filtered_slices = []
+        for cur_slice in input_data[:]:
+            pad_slice = np.pad(cur_slice, pad_list, "symmetric")
+            pad_slice = fft.fftn(pad_slice)
+            pad_slice = fft.fftshift(pad_slice)
+            pad_slice *= mask
+            pad_slice = fft.ifftshift(pad_slice)
+            pad_slice = fft.ifftn(pad_slice)
+            filtered_slices.append(pad_slice)
+        pad_image = np.squeeze(np.stack(filtered_slices))
 
-    pad_image = fft.fftn(pad_image)
-    pad_image = fft.fftshift(pad_image)
-    pad_image *= mask
-    pad_image = fft.ifftshift(pad_image)
-    pad_image = fft.ifftn(pad_image)
+    else:
+        pad_image = np.pad(input_data, pad_list, "symmetric")
+        pad_image = fft.fftn(pad_image)
+        pad_image = fft.fftshift(pad_image)
+        pad_image *= mask
+        pad_image = fft.ifftshift(pad_image)
+        pad_image = fft.ifftn(pad_image)
 
     unpad_list = []
     for pad_i, shape_i in zip(pad_list, old_shape):

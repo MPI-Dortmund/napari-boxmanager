@@ -25,9 +25,23 @@ class FilterImageWidget(QWidget):
         self.napari_viewer = napari_viewer
         self._layer = QComboBox(self)
         self._lp_filter_resolution = QLineEdit("30", self)
+        self._lp_filter_resolution.setToolTip(
+            "Low-Pass filter value in angstrom. Set to 0 to disable low-pass filtering."
+        )
         self._hp_filter_resolution = QLineEdit("0", self)
+        self._hp_filter_resolution.setToolTip(
+            "High-Pass filter value in angstrom. Set to 0 to disable high-pass filtering."
+        )
         self._pixel_size = QLineEdit("-1", self)
+        self._hp_filter_resolution.setToolTip("Pixel size of the image.")
+        self._filter_2d = QCheckBox(self)
+        self._hp_filter_resolution.setToolTip(
+            "If the layer is 3D, filter slice-by-slice in z direction rather than the 3D volume."
+        )
         self._show_mask = QCheckBox(self)
+        self._hp_filter_resolution.setToolTip(
+            "Mainly for debugging. Visualizes the filter mask."
+        )
         self._run_btn = QPushButton("Run", self)
 
         float_validator = QRegularExpressionValidator(
@@ -42,6 +56,7 @@ class FilterImageWidget(QWidget):
         self.layout().addRow("lp resolution / A:", self._lp_filter_resolution)
         self.layout().addRow("hp resolution / A:", self._hp_filter_resolution)
         self.layout().addRow("pixel size / A/px:", self._pixel_size)
+        self.layout().addRow("Filter 2d slices", self._filter_2d)
         self.layout().addRow("show mask", self._show_mask)
         self.layout().addRow("", self._run_btn)
 
@@ -77,6 +92,7 @@ class FilterImageWidget(QWidget):
                 self.lp_filter_resolution,
                 self.hp_filter_resolution,
                 self.pixel_size,
+                self.filter_2d,
                 log=show_info,
             )
         except TypeError:
@@ -109,12 +125,19 @@ class FilterImageWidget(QWidget):
         else:
             self.pixel_size = pixel_spacing
 
+        try:
+            is_3d = layer.metadata["is_3d"]
+        except KeyError:
+            pass
+        else:
+            self.filter_2d = not is_3d
+
     @Slot(object)
     def _update_combo(self, *_):
         layer_names = sorted(
             entry.name
             for entry in self.napari_viewer.layers
-            if isinstance(entry, napari.layers.Layer)
+            if isinstance(entry, napari.layers.Image)
         )
         current_text = self._layer.currentText()
 
@@ -148,3 +171,11 @@ class FilterImageWidget(QWidget):
     @pixel_size.setter
     def pixel_size(self, value):
         self._pixel_size.setText(str(value))
+
+    @property
+    def filter_2d(self):
+        return self._filter_2d.isChecked()
+
+    @filter_2d.setter
+    def filter_2d(self, value):
+        return self._filter_2d.setChecked(value)

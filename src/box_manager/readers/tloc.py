@@ -86,6 +86,7 @@ def to_napari(
         metadata = {
             "input_attrs": attrs,
             "predicted_class": cluster_id,
+            "set_lock": True,
         }
         for idx in range(
             int(cluster_df[["x", "y", "z"]].max().max().round(0)) + 1

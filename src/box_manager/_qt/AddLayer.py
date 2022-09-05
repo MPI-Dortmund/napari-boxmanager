@@ -4,8 +4,16 @@ import pathlib
 import napari
 import napari.layers
 import numpy as np
+from qtpy.QtCore import Slot
 from qtpy.QtGui import QIcon
-from qtpy.QtWidgets import QHBoxLayout, QPushButton, QWidget
+from qtpy.QtWidgets import (
+    QComboBox,
+    QFormLayout,
+    QHBoxLayout,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 ICON_DIR = f"{os.path.dirname(napari.__file__)}/resources/icons"
 
@@ -24,12 +32,40 @@ class AddLayerWidget(QWidget):
         self._add_shape.clicked.connect(self._new_shapes)
         self._add_label.clicked.connect(self._new_labels)
 
-        self.setLayout(QHBoxLayout())
-        self.layout().addWidget(self._add_point)
-        self.layout().addWidget(self._add_shape)
-        self.layout().addWidget(self._add_label)
+        self._layer = QComboBox(self)
+
+        self.setLayout(QVBoxLayout())
+
+        layout = QFormLayout()
+        layout.addRow("Copy metadata from:", self._layer)
+        self.layout().addLayout(layout)
+
+        layout = QHBoxLayout()
+        layout.addWidget(self._add_point)
+        layout.addWidget(self._add_shape)
+        layout.addWidget(self._add_label)
+        self.layout().addLayout(layout)
+
+        self.layout().addStretch(True)
 
         self._apply_icons()
+
+        self.napari_viewer.layers.events.inserted.connect(self._update_combo)
+        self.napari_viewer.layers.events.removed.connect(self._update_combo)
+
+        self._update_combo()
+
+    @Slot(object)
+    def _update_combo(self, *_):
+        layer_names = sorted(
+            entry.name
+            for entry in self.napari_viewer.layers
+            if isinstance(entry, napari.layers.Image)
+        )
+        current_text = self._layer.currentText()
+        self._layer.clear()
+        self._layer.addItems(layer_names)
+        self._layer.setCurrentText(current_text)
 
     def _apply_icons(self, *_):
         theme_dir = pathlib.Path(
@@ -45,7 +81,27 @@ class AddLayerWidget(QWidget):
         point_icon = QIcon(os.path.join(theme_dir, "new_labels.svg"))
         self._add_label.setIcon(point_icon)
 
+    def _get_metadata(self):
+        layer_name = self._layer.currentText()
+        if not layer_name:
+            return {}
+        layer_meta = self.napari_viewer.layers[layer_name].metadata
+        metadata = {}
+        for key, value in layer_meta.items():
+            if isinstance(key, int):
+                metadata[key] = {}
+                metadata[key][
+                    "path"
+                ] = f"{os.path.splitext(value['path'])[0]}.box"
+                metadata[key][
+                    "name"
+                ] = f"{os.path.splitext(value['name'])[0]}.box"
+            elif key in ("original_path",):
+                metadata[key] = value
+        return metadata
+
     def _new_points(self):
+        metadata = self._get_metadata()
         kwargs = {
             "edge_color": "red",
             "face_color": "transparent",
@@ -55,6 +111,7 @@ class AddLayerWidget(QWidget):
             "size": 128,
             "out_of_slice_display": False,
             "opacity": 0.5,
+            "metadata": metadata,
         }
         layer = self.napari_viewer.add_points(
             ndim=max(self.napari_viewer.dims.ndim, 2),
@@ -64,6 +121,7 @@ class AddLayerWidget(QWidget):
         layer.events.size()
 
     def _new_labels(self):
+        metadata = self._get_metadata()
         layers_extent = self.napari_viewer.layers.extent
         extent = layers_extent.world
         scale = layers_extent.step
@@ -75,11 +133,17 @@ class AddLayerWidget(QWidget):
         ]
         empty_labels = np.zeros(shape, dtype=int)
         self.napari_viewer.add_labels(
-            empty_labels, translate=np.array(corner), scale=scale
+            empty_labels,
+            translate=np.array(corner),
+            scale=scale,
+            metadata=metadata,
         )
 
     def _new_shapes(self):
-        kwargs = {}
+        metadata = self._get_metadata()
+        kwargs = {
+            "metadata": metadata,
+        }
         self.napari_viewer.add_shapes(
             ndim=max(self.napari_viewer.dims.ndim, 2),
             scale=self.napari_viewer.layers.extent.step,

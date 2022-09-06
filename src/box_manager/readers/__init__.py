@@ -3,7 +3,6 @@ import importlib
 import os
 import typing
 from collections.abc import Callable
-
 import pandas as pd
 
 from .interface import ReaderInterface
@@ -13,8 +12,7 @@ __all__ = ["get_reader", "ReaderInterface"]
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
-_IGNORE_LIST = ["interface.py", os.path.basename(__file__)]
-_MAX_LAYER_NAME = 30
+_IGNORE_LIST = ["interface.py", 'coordinate_reader.py',os.path.basename(__file__)]
 
 _VALID_READERS: dict[
     str,
@@ -31,7 +29,6 @@ for module in glob.iglob(f"{os.path.dirname(__file__)}/*.py"):
 
     for extension in package.get_valid_extensions():
         _VALID_READERS[extension] = package
-
 
 def get_reader(
     key: str,

@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from .._utils import general
-from . import _MAX_LAYER_NAME
+from .coordinate_reader import _MAX_LAYER_NAME
 
 if typing.TYPE_CHECKING:
     import numpy.typing as npt

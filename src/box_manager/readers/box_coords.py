@@ -11,6 +11,9 @@ from . import _MAX_LAYER_NAME
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
+from .._qt import OrganizeBox as orgbox
+
+
 class BoxFileNumberOfColumnsError(pd.errors.IntCastingNaNError):
     pass
 
@@ -44,7 +47,11 @@ def read(path: "os.PathLike") -> pd.DataFrame:
 
     return box_data
 
-def get_idx_func(pth: list[os.PathLike]):
+def get_idx_func(pth: os.PathLike | list[os.PathLike]):
+
+    if isinstance(pth, list) and len(pth) > 1:
+        return _get_3d_coords_idx  # Happens for --stack option and '*.ext'
+
     if is_3d(pth):
         return _get_3d_coords_idx
     else:
@@ -64,6 +71,20 @@ def get_data_prepare(pth: os.PathLike) -> Callable:
     else:
         raise UnknownFormatException(f"{os.path.splitext(pth[0])[1]} is not supported.")
 
+
+def get_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
+    if isinstance(path, list) and len(path) > 1:
+        name = "Coordinates"
+    elif isinstance(path, list):
+        if len(path[0]) >= _MAX_LAYER_NAME + 3:
+            name = f"...{path[0][-_MAX_LAYER_NAME:]}"  # type: ignore
+        else:
+            name = path[0]  # type: ignore
+    else:
+        assert False, path
+
+    return name
+
 def to_napari(
     path: os.PathLike | list[os.PathLike],
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
@@ -77,43 +98,33 @@ def to_napari(
     else:
         original_path = path[0]
 
+
     is_3d_data = is_3d(path)
 
-    if isinstance(path, list) and len(path) > 1:
-        idx_func: Callable[[], list[str]] = _get_3d_coords_idx # TODO: WHen does this happen?
-        name = "Coordinates"
-    elif isinstance(path, list):
-        idx_func: Callable[[], list[str]] = get_idx_func(path)
-        if len(path[0]) >= _MAX_LAYER_NAME + 3:
-            name = f"...{path[0][-_MAX_LAYER_NAME:]}"  # type: ignore
-        else:
-            name = path[0]  # type: ignore
-    else:
-        assert False, path
-
-    path = path if isinstance(path, list) else [path]
 
     input_df, metadata = _prepare_df(
         path
     )
-    metadata["original_path"] = original_path
+    metadata.update(orgbox.get_metadata(path))
 
     features = {
         entry: input_df[entry].to_numpy()
         for entry in _get_meta_idx() + _get_hidden_meta_idx()
     }
-    out_of_slics = True if is_3d_data else False
-    symbol = "disc" if is_3d_data else "square"
+
+    layer_name = get_layer_name(path)
+    idx_func = get_idx_func(path)
+
     kwargs = {
         "edge_color": "blue",
         "face_color": "transparent",
-        "symbol": symbol,
+        "symbol": "disc" if is_3d_data else "square",
         "edge_width": 2,
         "edge_width_is_relative": False,
         "size": input_df["boxsize"],
-        "out_of_slice_display": out_of_slics,
+        "out_of_slice_display": True if is_3d_data else False,
         "opacity": 0.5,
-        "name": name,
+        "name": layer_name,
         "metadata": metadata,
         "features": features,
     }

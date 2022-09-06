@@ -47,7 +47,7 @@ def read(path: "os.PathLike") -> pd.DataFrame:
 
     return box_data
 
-def get_idx_func(pth: os.PathLike | list[os.PathLike]):
+def get_coords_idx_func(pth: os.PathLike | list[os.PathLike]):
 
     if isinstance(pth, list) and len(pth) > 1:
         return _get_3d_coords_idx  # Happens for --stack option and '*.ext'
@@ -93,14 +93,7 @@ def to_napari(
     features: dict[str, typing.Any]
 
     if not isinstance(path, list):
-        original_path = path
         path = sorted(glob.glob(path))  # type: ignore
-    else:
-        original_path = path[0]
-
-
-    is_3d_data = is_3d(path)
-
 
     input_df, metadata = _prepare_df(
         path
@@ -113,7 +106,9 @@ def to_napari(
     }
 
     layer_name = get_layer_name(path)
-    idx_func = get_idx_func(path)
+
+
+    is_3d_data = is_3d(path)
 
     kwargs = {
         "edge_color": "blue",
@@ -129,6 +124,7 @@ def to_napari(
         "features": features,
     }
 
+    idx_func = get_coords_idx_func(path)
     return [(input_df[idx_func()], kwargs, "points")]
 
 
@@ -189,7 +185,9 @@ def _prepare_df(
     for idx, entry in enumerate(path):
 
         conv = get_data_prepare(entry)
-        data_df.append(conv(read(entry), entry_index=idx))
+        input_data = read(entry)
+        data_df.append(conv(input_data, entry_index=idx))
+
         metadata[idx] = {}
         metadata[idx]["path"] = entry
         metadata[idx]["name"] = os.path.basename(entry)

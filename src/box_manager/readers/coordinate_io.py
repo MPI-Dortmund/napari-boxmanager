@@ -149,7 +149,7 @@ def from_napari(
                 mask = coordinates[:,0]==z
                 filename = meta['metadata'][z]['name']
                 output_file = _generate_output_filename(orignal_filename=filename,output_path=path)
-                export_data[output_file] = format_func(coordinates[mask,1:], boxsize[mask], meta['features'][z])
+                export_data[output_file] = format_func(coordinates[mask,1:], boxsize[mask], meta['features'].loc[mask,:])
         else:
             export_data[path] = format_func(coordinates, boxsize, meta['features'])
 

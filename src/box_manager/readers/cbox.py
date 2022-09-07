@@ -3,7 +3,7 @@ import typing
 from pyStarDB import sp_pystardb as star
 import pandas as pd
 import numpy as np
-from .coordinate_reader import to_napari_generic_coordinates
+from .coordinate_io import to_napari_generic_coordinates
 
 valid_extensions = ['cbox']
 coords_3d_idx = ["x", "y", "z"]

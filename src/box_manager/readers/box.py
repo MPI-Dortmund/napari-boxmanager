@@ -1,8 +1,6 @@
-import glob
 import os
 import pathlib
 import typing
-from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -11,8 +9,6 @@ from .coordinate_reader import to_napari_generic_coordinates
 
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
-
-from .._qt import OrganizeBox as orgbox
 
 
 class BoxFileNumberOfColumnsError(pd.errors.IntCastingNaNError):

@@ -49,23 +49,14 @@ def read(path: "os.PathLike") -> pd.DataFrame:
 def to_napari(
     path: os.PathLike | list[os.PathLike],
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
-
-    return to_napari_generic_coordinates(
+    r = to_napari_generic_coordinates(
         path=path,
         read_func=read,
         prepare_napari_func=_prepare_napari_box,
         meta_columns=_get_meta_idx(),
         feature_columns=_get_meta_idx() + _get_hidden_meta_idx()
     )
-
-
-def _get_3d_coords_idx():
-    return ["x", "y", "z"]
-
-
-def _get_2d_coords_idx():
-    return ["y", "z"]
-
+    return r
 
 def _get_meta_idx():
     return []
@@ -79,7 +70,7 @@ def _prepare_napari_box(
     input_df: pd.DataFrame,
 ) -> pd.DataFrame:
     output_data: pd.DataFrame = pd.DataFrame(
-        columns=_get_3d_coords_idx() + _get_meta_idx() + _get_hidden_meta_idx()
+        columns=["y", "z"] + _get_meta_idx() + _get_hidden_meta_idx()
     )
 
     output_data["z"] = input_df["x"] + input_df["box_x"] // 2

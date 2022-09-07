@@ -23,6 +23,7 @@ def _prepare_coords_df(
     for idx, entry in enumerate(path):
         input_data = read_func(entry)
         box_napari_data = prepare_napari_func(input_data)
+
         if 'x' not in box_napari_data:
             is_3d = False
             box_napari_data["x"] = idx
@@ -39,6 +40,7 @@ def _prepare_coords_df(
                 for entry in meta_columns
             }
         )
+
     return pd.concat(data_df, ignore_index=True), metadata, is_3d
 
 def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:

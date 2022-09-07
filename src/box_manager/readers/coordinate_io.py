@@ -4,6 +4,8 @@ from .._qt import OrganizeBox as orgbox
 from collections.abc import Callable
 import pandas as pd
 import glob
+import pathlib
+import numpy as np
 
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
@@ -57,7 +59,7 @@ def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
 
     return name
 
-def to_napari_generic_coordinates(
+def to_napari(
         path: os.PathLike | list[os.PathLike],
         read_func: Callable[[os.PathLike], pd.DataFrame],
         prepare_napari_func: Callable,
@@ -107,3 +109,67 @@ def to_napari_generic_coordinates(
         coord_columns = ["y", "z"]
 
     return [(input_df[coord_columns], kwargs, "points")]
+
+
+def _generate_output_filename(orignal_filename: str, output_path : os.PathLike):
+    dirname = os.path.dirname(output_path)
+    basename, extension = os.path.splitext(os.path.basename(output_path))
+    if not extension:  # in case '.box' is provided as output path.
+        basename, extension = extension, basename
+
+    file_base = os.path.splitext(os.path.basename(orignal_filename))[0]
+    output_file = pathlib.Path(
+        dirname, file_base + extension
+    )
+    return output_file
+
+def _make_df_data(coordinates, box_size: float) -> typing.Dict[str,typing.List]:
+    data = {
+        "x": [],
+        "y": [],
+        "z": [],
+        "boxsize": []
+    }
+    for (z, y, x), boxsize in zip(
+            coordinates,
+            box_size,
+    ):
+        data["x"].append(x)
+        data["y"].append(y)
+        data["z"].append(z)
+        data["boxsize"].append(boxsize)
+    return data
+
+def from_napari(
+    path: os.PathLike,
+    layer_data: list[tuple[typing.Any, dict, str]],
+    write_func: Callable[[os.PathLike, pd.DataFrame]],
+    is_2d_stacked: bool
+):
+
+    for data, meta, layer in layer_data:
+
+        if data.shape[1] == 2:
+            data = np.insert(data, 0, 0, axis=1)
+
+        coordinates = data[meta["shown"]]
+        boxsize = meta['size'][meta["shown"]][:,0]
+        export_data = {}
+
+        if is_2d_stacked:
+            for z in np.unique(coordinates[:,0]):
+                z = int(z)
+                mask = coordinates[:,0]==z
+                filename = meta['metadata'][z]['name']
+                output_file = _generate_output_filename(orignal_filename=filename,output_path=path)
+                export_data[output_file] = _make_df_data(coordinates[mask], boxsize[mask])
+        else:
+            export_data[path] = _make_df_data(coordinates, boxsize)
+
+
+        for outpth in export_data:
+            df = pd.DataFrame(export_data[outpth])
+            write_func(outpth,df)
+
+
+    return path

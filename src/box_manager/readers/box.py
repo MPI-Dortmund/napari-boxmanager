@@ -4,7 +4,7 @@ import typing
 
 import numpy as np
 import pandas as pd
-from .coordinate_io import to_napari_generic_coordinates
+from . import coordinate_io as coordsio
 
 
 if typing.TYPE_CHECKING:
@@ -45,7 +45,7 @@ def read(path: "os.PathLike") -> pd.DataFrame:
 def to_napari(
     path: os.PathLike | list[os.PathLike],
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
-    r = to_napari_generic_coordinates(
+    r = coordsio.to_napari(
         path=path,
         read_func=read,
         prepare_napari_func=_prepare_napari_box,
@@ -65,6 +65,17 @@ def _get_hidden_meta_idx():
 def _prepare_napari_box(
     input_df: pd.DataFrame,
 ) -> pd.DataFrame:
+    '''
+
+    Parameters
+    ----------
+    input_df Raw data from read function
+
+    Returns
+    -------
+    Dataframe with centered coordinates with box size.
+
+    '''
     output_data: pd.DataFrame = pd.DataFrame(
         columns=["y", "z"] + _get_meta_idx() + _get_hidden_meta_idx()
     )
@@ -79,22 +90,6 @@ def _prepare_napari_box(
 
     return output_data
 
-def _make_df_data(coordinates, box_size):
-    data = {
-        "x": [],
-        "y": [],
-        "z": [],
-        "boxsize": []
-    }
-    for (z, y, x), boxsize in zip(
-            coordinates,
-            box_size,
-    ):
-        data["x"].append(x)
-        data["y"].append(y)
-        data["z"].append(z)
-        data["boxsize"].append(boxsize)
-    return data
 
 def _write_box(path : os.PathLike, df: pd.DataFrame):
 
@@ -102,39 +97,16 @@ def _write_box(path : os.PathLike, df: pd.DataFrame):
     df['y'] = df['y'] - df['boxsize'] // 2
     df[['x','y','boxsize','boxsize']].to_csv(path,sep = " ", index=None,header=None)
 
+
 def from_napari(
     path: os.PathLike,
     layer_data: list[tuple[typing.Any, dict, str]]
 ):
-
-    for data, meta, layer in layer_data:
-
-        if data.shape[1] == 2:
-            data = np.insert(data, 0, 0, axis=1)
-
-        coordinates = data[meta["shown"]]
-        boxsize = meta['size'][meta["shown"]][:,0]
-        export_data = {}
-
-        for z in np.unique(coordinates[:,0]):
-            z = int(z)
-            mask = coordinates[:,0]==z
-            filename = meta['metadata'][z]['name']
-            dirname = os.path.dirname(path)
-            basename, extension = os.path.splitext(os.path.basename(path))
-            if not extension:
-                basename, extension = extension, basename
-
-            file_base = os.path.splitext(os.path.basename(filename))[0]
-            output_file = pathlib.Path(
-                dirname, file_base+extension
-            )
-            export_data[output_file] = _make_df_data(coordinates[mask], boxsize[mask])
-        coords_writer = _write_box
-
-        for outpth in export_data:
-            df = pd.DataFrame(export_data[outpth])
-            coords_writer(outpth,df)
-
+    path = coordsio.from_napari(
+        path=path,
+        layer_data=layer_data,
+        write_func=_write_box,
+        is_2d_stacked=True
+    )
 
     return path

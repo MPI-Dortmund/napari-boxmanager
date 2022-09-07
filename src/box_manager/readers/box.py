@@ -103,8 +103,8 @@ def _make_df_data(coordinates: pd.DataFrame, box_size: npt.ArrayLike, feature: p
             coordinates,
             box_size,
     ):
-        data["x"].append(x)
-        data["y"].append(y)
+        data["x"].append(x-boxsize/2)
+        data["y"].append(y-boxsize/2)
         data["boxsize"].append(boxsize)
     return pd.DataFrame(data)
 

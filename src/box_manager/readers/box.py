@@ -18,7 +18,6 @@ DEFAULT_BOXSIZE: int = 10
 
 
 def get_valid_extensions():
-
     return ["box"]
 
 def read(path: "os.PathLike") -> pd.DataFrame:
@@ -98,16 +97,14 @@ def _make_df_data(coordinates: pd.DataFrame, box_size: npt.ArrayLike, feature: p
     data = {
         "x": [],
         "y": [],
-        "z": [],
         "boxsize": []
     }
-    for (z, y, x), boxsize in zip(
+    for (y, x), boxsize in zip(
             coordinates,
             box_size,
     ):
         data["x"].append(x)
         data["y"].append(y)
-        data["z"].append(z)
         data["boxsize"].append(boxsize)
     return pd.DataFrame(data)
 

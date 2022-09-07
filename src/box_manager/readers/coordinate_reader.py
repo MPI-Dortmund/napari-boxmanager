@@ -3,6 +3,7 @@ import typing
 from .._qt import OrganizeBox as orgbox
 from collections.abc import Callable
 import pandas as pd
+import glob
 
 if typing.TYPE_CHECKING:
     import numpy.typing as npt

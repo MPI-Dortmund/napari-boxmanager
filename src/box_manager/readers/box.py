@@ -88,9 +88,6 @@ def _prepare_napari_box(
 
 
 def _write_box(path : os.PathLike, df: pd.DataFrame):
-
-    df['x'] = df['x'] - df['boxsize'] // 2
-    df['y'] = df['y'] - df['boxsize'] // 2
     df[['x','y','boxsize','boxsize']].to_csv(path,sep = " ", index=None,header=None)
 
 def _make_df_data(coordinates: pd.DataFrame, box_size: npt.ArrayLike, feature: pd.DataFrame) -> pd.DataFrame:

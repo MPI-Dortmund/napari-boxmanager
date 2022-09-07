@@ -5,10 +5,7 @@ import typing
 import numpy as np
 import pandas as pd
 from . import coordinate_io as coordsio
-
-
-if typing.TYPE_CHECKING:
-    import numpy.typing as npt
+import numpy.typing as npt
 
 
 class BoxFileNumberOfColumnsError(pd.errors.IntCastingNaNError):
@@ -97,6 +94,22 @@ def _write_box(path : os.PathLike, df: pd.DataFrame):
     df['y'] = df['y'] - df['boxsize'] // 2
     df[['x','y','boxsize','boxsize']].to_csv(path,sep = " ", index=None,header=None)
 
+def _make_df_data(coordinates: pd.DataFrame, box_size: npt.ArrayLike, feature: pd.DataFrame) -> pd.DataFrame:
+    data = {
+        "x": [],
+        "y": [],
+        "z": [],
+        "boxsize": []
+    }
+    for (z, y, x), boxsize in zip(
+            coordinates,
+            box_size,
+    ):
+        data["x"].append(x)
+        data["y"].append(y)
+        data["z"].append(z)
+        data["boxsize"].append(boxsize)
+    return pd.DataFrame(data)
 
 def from_napari(
     path: os.PathLike,
@@ -106,6 +119,7 @@ def from_napari(
         path=path,
         layer_data=layer_data,
         write_func=_write_box,
+        format_func=_make_df_data,
         is_2d_stacked=True
     )
 

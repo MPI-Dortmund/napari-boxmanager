@@ -6,11 +6,13 @@ import pandas as pd
 import glob
 import pathlib
 import numpy as np
-
-if typing.TYPE_CHECKING:
-    import numpy.typing as npt
+from typing import Protocol
+import numpy.typing as npt
 
 _MAX_LAYER_NAME = 30
+
+class FormatFunc(Protocol):
+    def __call__(self, coordinates: pd.DataFrame, boxsize: npt.ArrayLike, features: pd.DataFrame) -> pd.DataFrame: ...
 
 def _prepare_coords_df(
     path: list[os.PathLike],
@@ -123,27 +125,12 @@ def _generate_output_filename(orignal_filename: str, output_path : os.PathLike):
     )
     return output_file
 
-def _make_df_data(coordinates, box_size: float) -> typing.Dict[str,typing.List]:
-    data = {
-        "x": [],
-        "y": [],
-        "z": [],
-        "boxsize": []
-    }
-    for (z, y, x), boxsize in zip(
-            coordinates,
-            box_size,
-    ):
-        data["x"].append(x)
-        data["y"].append(y)
-        data["z"].append(z)
-        data["boxsize"].append(boxsize)
-    return data
 
 def from_napari(
     path: os.PathLike,
     layer_data: list[tuple[typing.Any, dict, str]],
-    write_func: Callable[[os.PathLike, pd.DataFrame]],
+    format_func: FormatFunc,
+    write_func: Callable[[os.PathLike, pd.DataFrame],typing.Any],
     is_2d_stacked: bool
 ):
 
@@ -162,13 +149,13 @@ def from_napari(
                 mask = coordinates[:,0]==z
                 filename = meta['metadata'][z]['name']
                 output_file = _generate_output_filename(orignal_filename=filename,output_path=path)
-                export_data[output_file] = _make_df_data(coordinates[mask], boxsize[mask])
+                export_data[output_file] = format_func(coordinates[mask,1:], boxsize[mask], meta['features'][z])
         else:
-            export_data[path] = _make_df_data(coordinates, boxsize)
+            export_data[path] = format_func(coordinates, boxsize, meta['features'])
 
 
         for outpth in export_data:
-            df = pd.DataFrame(export_data[outpth])
+            df = export_data[outpth]
             write_func(outpth,df)
 
 

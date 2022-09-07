@@ -12,7 +12,7 @@ __all__ = ["get_reader", "ReaderInterface"]
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
-_IGNORE_LIST = ["interface.py", 'coordinate_reader.py',os.path.basename(__file__)]
+_IGNORE_LIST = ["interface.py", 'coordinate_io.py',os.path.basename(__file__)]
 
 _VALID_READERS: dict[
     str,

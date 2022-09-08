@@ -45,7 +45,10 @@ class LoaderProxy(Array):
         return len(self.files)
 
     def __getitem__(self, key):
-        super()._validate_index(key, None)
+        try:
+            super()._validate_index(key, None)
+        except TypeError:
+            super()._validate_index(key)
         if isinstance(key, Array):
             key._array
         if isinstance(key[0], np.integer):

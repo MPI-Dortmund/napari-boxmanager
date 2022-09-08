@@ -1,15 +1,82 @@
 import glob
+import io
 import os
 import typing
 
+import matplotlib.pyplot as plt
 import mrcfile
 import numpy as np
 import pandas as pd
+from numpy.array_api._array_object import Array
 
 from .coordinate_io import _MAX_LAYER_NAME
 
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
+
+
+def load_mrc(path):
+    with mrcfile.open(path, "r") as mrc:
+        data = mrc.data
+    return data
+
+
+class LoaderProxy(Array):
+    def __init__(self, files, reader_func):
+        self.reader_func = reader_func
+        self.files = files
+        if len(self.files) == 0:
+            raise AttributeError("Cannot provide empty files list")
+        self.__array: Array = np.empty((0,))
+
+        self.load_image(0)
+        _len_x = len(self.files)
+        self._array = np.empty((_len_x, *self.__array.shape), dtype=bool)
+
+    def __new__(cls, *args, **kwargs):
+        obj = object.__new__(cls)
+        return obj
+
+    def load_image(self, index) -> Array:
+        self.__array = self.reader_func(self.files[index])
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, key):
+        super()._validate_index(key, None)
+        if isinstance(key, Array):
+            key._array
+        if isinstance(key[0], np.integer):
+            self.load_image(key[0])
+            return self.__array
+        else:
+            return self.get_dummy_image()
+
+    def get_dummy_image(self):
+        size = self.shape[-1]
+        fig = plt.figure(figsize=(size, size), dpi=1)
+        new_shape = (int(fig.bbox.bounds[3]), int(fig.bbox.bounds[2]), -1)
+        plt.text(
+            0.5,
+            0.5,
+            "\U00002639",
+            va="center_baseline",
+            ha="center",
+            fontsize=size * 50,
+        )
+        plt.axis("off")
+
+        io_buf = io.BytesIO()
+        fig.savefig(io_buf, format="raw")
+        io_buf.seek(0)
+        img_arr = np.reshape(
+            np.frombuffer(io_buf.getvalue(), dtype=np.uint8),
+            newshape=new_shape,
+        )[..., 0]
+        io_buf.close()
+        plt.close(fig)
+        return img_arr
 
 
 def to_napari(
@@ -31,7 +98,7 @@ def to_napari(
         name = path[0]  # type: ignore
         original_path = path[0]
 
-    arrays = []
+    # arrays = []
     voxel_size = 1
     metadata: dict = {
         "pixel_spacing": voxel_size,
@@ -46,13 +113,13 @@ def to_napari(
             metadata["pixel_spacing"] = (
                 mrc.voxel_size.x if mrc.voxel_size.x != 0 else 1
             )
-            data = (data-np.mean(data))/np.std(data)
-        arrays.append(data)
+            # data = (data-np.mean(data))/np.std(data)
+        # arrays.append(data)
 
     # stack arrays into single array
-    data = np.squeeze(np.stack(arrays))
+    data = LoaderProxy(path, load_mrc)
+    # data = np.squeeze(np.stack(arrays))
 
-    metadata["is_3d"] = len(path) == 1 and data.ndim == 3
     add_kwargs = {"metadata": metadata, "name": name}
 
     layer_type = "image"  # optional, default is "image"

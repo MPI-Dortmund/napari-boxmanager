@@ -109,6 +109,7 @@ class AddLayerWidget(QWidget):
             "edge_width": 4,
             "edge_width_is_relative": False,
             "size": 128,
+            "name": "coordinates",
             "out_of_slice_display": False,
             "opacity": 0.8,
             "metadata": metadata,

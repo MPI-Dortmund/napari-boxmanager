@@ -29,8 +29,7 @@ class LoaderProxy(Array):
             raise AttributeError("Cannot provide empty files list")
 
         _data = self.load_image(0)
-        _len_x = len(self.files)
-        self._array = np.empty((_len_x, *_data.shape), dtype=bool)
+        self._array = np.empty((len(self.files), *_data.shape), dtype=bool)
 
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
@@ -43,6 +42,9 @@ class LoaderProxy(Array):
     def __len__(self):
         return len(self.files)
 
+    def __iter__(self):
+        return (self[idx] for idx in range(len(self.files)))
+
     def __getitem__(self, key):
         try:
             super()._validate_index(key, None)
@@ -52,11 +54,13 @@ class LoaderProxy(Array):
         if isinstance(key, Array):
             key._array
 
-        if isinstance(key, np.integer):
-            key = [key]
+        try:
+            _key = key[0]
+        except TypeError:
+            _key = key
 
-        if isinstance(key[0], np.integer):
-            return self.load_image(key[0])
+        if isinstance(_key, (int, np.integer)):
+            return self.load_image(_key)
         else:
             return self.get_dummy_image()
 
@@ -123,6 +127,7 @@ def to_napari(
 
     if len(path) > 1:
         data = LoaderProxy(path, load_mrc)
+        print(LoaderProxy)
     else:
         with mrcfile.open(path[0], permissive=True) as mrc:
             data = mrc.data

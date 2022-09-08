@@ -21,7 +21,7 @@ def bandpass_filter(
         )
         return None
 
-    input_data = np.array(input_data)
+    # input_data = np.array(input_data)
 
     if input_data.ndim != 3:
         log("Non 3D image detected! Disable z slice filtering.")
@@ -59,7 +59,7 @@ def bandpass_filter(
 
     if filter_z_slice:
         filtered_slices = []
-        for cur_slice in input_data[:]:
+        for cur_slice in input_data:
             pad_slice = np.pad(cur_slice, pad_list, "symmetric")
             pad_slice = fft.fftn(pad_slice)
             pad_slice = fft.fftshift(pad_slice)

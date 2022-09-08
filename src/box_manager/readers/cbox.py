@@ -78,7 +78,7 @@ def _make_df_data(coordinates: pd.DataFrame,
         if len(coords) == 2:
             is_3d = False
             y,x = coords
-            z = None
+            z = np.nan
         else:
             z, y, x = coords
 
@@ -90,29 +90,29 @@ def _make_df_data(coordinates: pd.DataFrame,
         if is_3d:
             data["_Depth"].append(boxsize)
         else:
-            data["_Depth"].append(None)
+            data["_Depth"].append(np.nan)
 
         if 'size' in features:
             data["_EstWidth"].append(features['size'].iloc[i])
             data["_EstHeight"].append(features['size'].iloc[i])
         else:
-            data["_EstWidth"].append(None)
-            data["_EstHeight"].append(None)
+            data["_EstWidth"].append(np.nan)
+            data["_EstHeight"].append(np.nan)
 
         if 'confidence' in features:
             data["_Confidence"].append(features['confidence'].iloc[i])
         else:
-            data["_Confidence"].append(None)
+            data["_Confidence"].append(np.nan)
 
         if 'numboxes' in features:
             data["_NumBoxes"].append(features['numboxes'].iloc[i])
         else:
-            data["_NumBoxes"].append(None)
+            data["_NumBoxes"].append(np.nan)
 
         if 'angle' in features:
             data["_Angle"].append(features['angle'].iloc[i])
         else:
-            data["_Angle"].append(None)
+            data["_Angle"].append(np.nan)
 
     return pd.DataFrame(data)
 

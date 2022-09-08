@@ -108,18 +108,19 @@ def to_napari(
         metadata[idx] = {}
         metadata[idx]["path"] = file_name
         metadata[idx]["name"] = os.path.basename(file_name)
-        with mrcfile.open(file_name, permissive=True) as mrc:
+
+    with mrcfile.open(path[0], permissive=True, header_only=True) as mrc:
+        metadata["pixel_spacing"] = (
+            mrc.voxel_size.x if mrc.voxel_size.x != 0 else 1
+        )
+
+    if len(path) > 1:
+        data = LoaderProxy(path, load_mrc)
+    else:
+        with mrcfile.open(path[0], permissive=True) as mrc:
             data = mrc.data
-            metadata["pixel_spacing"] = (
-                mrc.voxel_size.x if mrc.voxel_size.x != 0 else 1
-            )
-            # data = (data-np.mean(data))/np.std(data)
-        # arrays.append(data)
 
-    # stack arrays into single array
-    data = LoaderProxy(path, load_mrc)
-    # data = np.squeeze(np.stack(arrays))
-
+    metadata["is_3d"] = len(path) == 1 and data.ndim == 3
     add_kwargs = {"metadata": metadata, "name": name}
 
     layer_type = "image"  # optional, default is "image"

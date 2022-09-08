@@ -106,11 +106,11 @@ class AddLayerWidget(QWidget):
             "edge_color": "red",
             "face_color": "transparent",
             "symbol": "disc",
-            "edge_width": 2,
+            "edge_width": 4,
             "edge_width_is_relative": False,
             "size": 128,
             "out_of_slice_display": False,
-            "opacity": 0.5,
+            "opacity": 0.8,
             "metadata": metadata,
         }
         layer = self.napari_viewer.add_points(

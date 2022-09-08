@@ -46,6 +46,7 @@ def to_napari(
             metadata["pixel_spacing"] = (
                 mrc.voxel_size.x if mrc.voxel_size.x != 0 else 1
             )
+            data = (data-np.mean(data))/np.std(data)
         arrays.append(data)
 
     # stack arrays into single array

@@ -51,6 +51,7 @@ def to_napari(
     # stack arrays into single array
     data = np.squeeze(np.stack(arrays))
 
+    metadata["is_3d"] = len(path) == 1 and data.ndim == 3
     add_kwargs = {"metadata": metadata, "name": name}
 
     layer_type = "image"  # optional, default is "image"
@@ -58,7 +59,7 @@ def to_napari(
 
 
 def get_valid_extensions():
-    return ["mrc", "mrcs", "st"]
+    return ["mrc", "mrcs", "st", "rec"]
 
 
 def from_napari(

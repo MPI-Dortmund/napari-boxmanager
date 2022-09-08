@@ -486,6 +486,14 @@ class SelectMetricWidget(QWidget):
         self.napari_viewer.layers.events.reordered.connect(self._order_table)
         self.napari_viewer.layers.events.inserted.connect(self._update_sync)
         self.napari_viewer.layers.events.removed.connect(self._update_sync)
+        try:
+            # TODO: Wait for https://github.com/napari/napari/pull/5010,
+            # try/except can be deleted afterwards.
+            self.napari_viewer.layers.events.duplicated.connect(
+                self._unlock_layer
+            )
+        except AttributeError:
+            pass
         self.napari_viewer.dims.events.order.connect(self._update_sync)
         self.napari_viewer.events.theme.connect(self._set_color)
 
@@ -533,6 +541,10 @@ class SelectMetricWidget(QWidget):
 
         self._sync_table(select_first=True)
         self._set_color()
+
+    @Slot(object)
+    def _unlock_layer(self, event):
+        event._kwargs["value"].metadata["set_lock"] = False
 
     @Slot(str, int, str, object)
     def _update_check_state(self, layer_name, slice_idx, attr_name, value):
@@ -768,7 +780,10 @@ class SelectMetricWidget(QWidget):
             for layer in tqdm.tqdm(set(prev_layers + valid_layers)):
                 if layer in valid_layers:
                     self._add_remove_table(layer, ButtonActions.ADD)
-                    if not layer.features.empty:
+                    if (
+                        "set_lock" in layer.metadata
+                        and layer.metadata["set_lock"]
+                    ):
                         layer.editable = False
 
                     layer.events.set_data.disconnect(self._update_on_data)
@@ -842,7 +857,11 @@ class SelectMetricWidget(QWidget):
 
     def _update_editable(self, event):
         layer = event.source
-        if not layer.features.empty and layer.editable:
+        if (
+            "set_lock" in layer.metadata
+            and layer.metadata["set_lock"]
+            and layer.editable
+        ):
             layer.editable = False
 
     def _prepare_entries(self, layer, name=None) -> list:
@@ -1655,7 +1674,7 @@ class EditView(QWidget):
         self.edit = QLineEdit(self)
         if validator is not None:
             self.edit.setValidator(validator)
-        self.edit.returnPressed.connect(self._emit_signal)
+        self.edit.editingFinished.connect(self._emit_signal)
         self.layout().addWidget(QLabel(label))
         self.layout().addWidget(self.edit, stretch=1)
         self.layout().setContentsMargins(0, 0, 0, 0)
@@ -1689,7 +1708,7 @@ class SliderView(QWidget):
         self.label = QLineEdit(str(self.slider.value() / self.step_size), self)
         if validator is not None:
             self.label.setValidator(validator)
-        self.label.returnPressed.connect(self.set_value)
+        self.label.editingFinished.connect(self.set_value)
 
         self.layout().addWidget(self.slider, stretch=1)
         self.layout().addWidget(self.label)

@@ -31,20 +31,21 @@ def to_napari(
     return r
 
 def write_cbox(path : os.PathLike, df: pd.DataFrame):
-    columns = []
-    columns.append('_CoordinateX')
-    columns.append('_CoordinateY')
-    columns.append('_CoordinateZ')
-    columns.append('_Width')
-    columns.append('_Height')
-    columns.append('_Depth')
-    columns.append('_EstWidth')
-    columns.append('_EstHeight')
-    columns.append('_Confidence')
-    columns.append('_NumBoxes')
-    columns.append('_Angle')
-    print("write write write")
-    #df = pd.DataFrame(coords, columns=columns)
+    sfile = star.StarFile(path)
+
+    version_df = pd.DataFrame([["1.0"]], columns=['_cbox_format_version'])
+    sfile.update('global', version_df, False)
+    print(df)
+    include_slices = []
+    if not df['_CoordinateZ'].isnull().values.any():
+        include_slices = [a for a in np.unique(df['_CoordinateZ']).tolist() if not np.isnan(a)]
+
+    sfile.update('cryolo', df, True)
+
+    include_df = pd.DataFrame(include_slices, columns=['_slice_index'])
+    sfile.update('cryolo_include', include_df, True)
+
+    sfile.write_star_file(overwrite=True, tags=['global', 'cryolo', 'cryolo_include'])
 
 
 
@@ -68,11 +69,10 @@ def _make_df_data(coordinates: pd.DataFrame,
         "_NumBoxes": [],
         "_Angle": []
     }
+    for i in range(len(coordinates)):
+        coords = coordinates[i]
+        boxsize = box_size[i]
 
-    for coords, boxsize in zip(
-            coordinates,
-            box_size,
-    ):
         is_3d = True
 
         if len(coords) == 2:
@@ -89,7 +89,32 @@ def _make_df_data(coordinates: pd.DataFrame,
         data["_Height"].append(boxsize)
         if is_3d:
             data["_Depth"].append(boxsize)
+        else:
+            data["_Depth"].append(None)
 
+        if 'size' in features:
+            data["_EstWidth"].append(features['size'].iloc[i])
+            data["_EstHeight"].append(features['size'].iloc[i])
+        else:
+            data["_EstWidth"].append(None)
+            data["_EstHeight"].append(None)
+
+        if 'confidence' in features:
+            data["_Confidence"].append(features['confidence'].iloc[i])
+        else:
+            data["_Confidence"].append(None)
+
+        if 'numboxes' in features:
+            data["_NumBoxes"].append(features['numboxes'].iloc[i])
+        else:
+            data["_NumBoxes"].append(None)
+
+        if 'angle' in features:
+            data["_Angle"].append(features['angle'].iloc[i])
+        else:
+            data["_Angle"].append(None)
+
+    return pd.DataFrame(data)
 
 
 def from_napari(

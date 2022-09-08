@@ -27,11 +27,10 @@ class LoaderProxy(Array):
         self.files = files
         if len(self.files) == 0:
             raise AttributeError("Cannot provide empty files list")
-        self.__array: Array = np.empty((0,))
 
-        self.load_image(0)
+        _data = self.load_image(0)
         _len_x = len(self.files)
-        self._array = np.empty((_len_x, *self.__array.shape), dtype=bool)
+        self._array = np.empty((_len_x, *_data.shape), dtype=bool)
 
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
@@ -39,7 +38,7 @@ class LoaderProxy(Array):
 
     def load_image(self, index) -> Array:
         data = self.reader_func(self.files[index])
-        self.__array = (data - np.mean(data)) / np.std(data)
+        return (data - np.mean(data)) / np.std(data)
 
     def __len__(self):
         return len(self.files)

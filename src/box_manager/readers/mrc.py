@@ -49,11 +49,15 @@ class LoaderProxy(Array):
             super()._validate_index(key, None)
         except TypeError:
             super()._validate_index(key)
+
         if isinstance(key, Array):
             key._array
+
+        if isinstance(key, np.integer):
+            key = [key]
+
         if isinstance(key[0], np.integer):
-            self.load_image(key[0])
-            return self.__array
+            return self.load_image(key[0])
         else:
             return self.get_dummy_image()
 

@@ -484,16 +484,8 @@ class SelectMetricWidget(QWidget):
         ] + self.read_only
 
         self.napari_viewer.layers.events.reordered.connect(self._order_table)
-        self.napari_viewer.layers.events.inserted.connect(self._update_sync)
+        self.napari_viewer.layers.events.inserted.connect(self._unlock_layer)
         self.napari_viewer.layers.events.removed.connect(self._update_sync)
-        try:
-            # TODO: Wait for https://github.com/napari/napari/pull/5010,
-            # try/except can be deleted afterwards.
-            self.napari_viewer.layers.events.duplicated.connect(
-                self._unlock_layer
-            )
-        except AttributeError:
-            pass
         self.napari_viewer.dims.events.order.connect(self._update_sync)
         self.napari_viewer.events.theme.connect(self._set_color)
 
@@ -544,7 +536,13 @@ class SelectMetricWidget(QWidget):
 
     @Slot(object)
     def _unlock_layer(self, event):
-        event._kwargs["value"].metadata["set_lock"] = False
+        try:
+            # TODO: Remove try/except after https://github.com/napari/napari/pull/5028
+            if event.value.source.parent is not None:
+                event.value.metadata["set_lock"] = False
+        except AttributeError:
+            pass
+        self._update_sync()
 
     @Slot(str, int, str, object)
     def _update_check_state(self, layer_name, slice_idx, attr_name, value):

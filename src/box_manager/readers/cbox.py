@@ -12,8 +12,11 @@ coords_2d_idx = ["y", "z"]
 meta_columns = []
 
 def read(path: os.PathLike) -> pd.DataFrame:
-    starfile = star.StarFile(path)
-    data_dict = starfile['cryolo']
+    try:
+        starfile = star.StarFile(path)
+        data_dict = starfile['cryolo']
+    except TypeError:
+        return None
     return pd.DataFrame(data_dict)
 
 

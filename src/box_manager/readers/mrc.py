@@ -2,12 +2,19 @@ import glob
 import io
 import os
 import typing
+import warnings
 
 import matplotlib.pyplot as plt
 import mrcfile
 import numpy as np
 import pandas as pd
-from numpy.array_api._array_object import Array
+
+with warnings.catch_warnings():
+    warnings.filterwarnings(
+        "ignore",
+        r"The numpy.array_api submodule is still experimental. See NEP 47.",
+    )
+    from numpy.array_api._array_object import Array
 
 from .coordinate_io import _MAX_LAYER_NAME, _PROXY_THRESHOLD_GB
 
@@ -63,6 +70,12 @@ class LoaderProxy(Array):
             return self.load_image(_key)
         else:
             return self.get_dummy_image()
+
+    def __copy__(self):
+        return LoaderProxy(self.files, self.reader_func)
+
+    def __deepcopy__(self, _):
+        return self.__copy__()
 
     def get_dummy_image(self):
         size = self.shape[-1]

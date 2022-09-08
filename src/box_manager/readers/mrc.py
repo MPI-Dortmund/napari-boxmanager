@@ -38,7 +38,8 @@ class LoaderProxy(Array):
         return obj
 
     def load_image(self, index) -> Array:
-        self.__array = self.reader_func(self.files[index])
+        data = self.reader_func(self.files[index])
+        self.__array = (data - np.mean(data)) / np.std(data)
 
     def __len__(self):
         return len(self.files)
@@ -119,6 +120,7 @@ def to_napari(
     else:
         with mrcfile.open(path[0], permissive=True) as mrc:
             data = mrc.data
+        data = (data - np.mean(data)) / np.std(data)
 
     metadata["is_3d"] = len(path) == 1 and data.ndim == 3
     add_kwargs = {"metadata": metadata, "name": name}

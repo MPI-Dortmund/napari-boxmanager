@@ -92,14 +92,14 @@ def to_napari(
     layer_name = get_coords_layer_name(path)
 
     kwargs = {
-        "edge_color": "blue",
+        "edge_color": "red",
         "face_color": "transparent",
         "symbol": "disc" if is_3d else "square",
-        "edge_width": 2,
+        "edge_width": 4,
         "edge_width_is_relative": False,
         "size": input_df["boxsize"],
         "out_of_slice_display": True if is_3d else False,
-        "opacity": 0.5,
+        "opacity": 0.8,
         "name": layer_name,
         "metadata": metadata,
         "features": features,

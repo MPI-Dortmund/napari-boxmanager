@@ -13,18 +13,20 @@ contributions:
       title: Save image data with Box Manager
 
     # Widgets
+
     - id: napari-boxmanager.organize_box
       python_name: box_manager._qt.OrganizeBox:OrganizeBoxWidget
       title: Organize box files to the respective mrc
-    - id: napari-boxmanager.select_metric
-      python_name: box_manager._qt.SelectMetric:SelectMetricWidget
-      title: Select box metrics
     - id: napari-boxmanager.bandpass_filter
       python_name: box_manager._qt.FilterImage:FilterImageWidget
       title: Filter image layer
     - id: napari-boxmanager.add_layer
       python_name: box_manager._qt.AddLayer:AddLayerWidget
       title: Add new layers with default values
+    - id: napari-boxmanager.select_metric
+      python_name: box_manager._qt.SelectMetric:SelectMetricWidget
+      title: Select box metrics
+
   readers:
     - command: napari-boxmanager.get_reader
       accepts_directories: false
@@ -35,14 +37,14 @@ contributions:
       filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star', '.mrc', '.mrcs', '.st','.coords','.rec']
   sample_data: []
   widgets:
-    - command: napari-boxmanager.select_metric
-      display_name: boxmanager
     - command: napari-boxmanager.bandpass_filter
       display_name: bandpass_filter
     - command: napari-boxmanager.organize_box
       display_name: match_mics
     - command: napari-boxmanager.add_layer
       display_name: add_layer
+    - command: napari-boxmanager.select_metric
+      display_name: boxmanager
 
 
       #contributions:

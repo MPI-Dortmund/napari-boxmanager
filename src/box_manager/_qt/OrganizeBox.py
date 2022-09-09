@@ -5,6 +5,7 @@ from copy import deepcopy
 import napari.layers
 import numpy as np
 from napari.layers.base.base import Layer
+from napari.utils.notifications import show_info
 from qtpy.QtCore import Qt, Signal, Slot
 from qtpy.QtWidgets import (
     QComboBox,
@@ -251,44 +252,38 @@ class OrganizeBoxWidget(QWidget):
 
         new_data = new_data[total_mask, :]
 
-        new_state = {}
-        for key, value in old_state.items():
-            if key == "visible":
-                new_state[key] = True
-            elif key == "name":
-                new_state[key] = f"{layer_coord.name} reordered"
-            elif key == "metadata":
-                new_state[key] = new_meta
-            elif key in (
-                "edge_width",
-                "face_color",
-                "edge_color",
-                "size",
-                "features",
-                "shown",
-            ):
-                try:
-                    new_state[key] = value[total_mask]
-                except TypeError:
+        if create_layer and new_data.size != 0:
+            new_state = {}
+            for key, value in old_state.items():
+                if key == "visible":
+                    new_state[key] = True
+                elif key == "name":
+                    new_state[key] = f"{layer_coord.name} reordered"
+                elif key == "metadata":
+                    new_state[key] = new_meta
+                elif key in (
+                    "edge_width",
+                    "face_color",
+                    "edge_color",
+                    "size",
+                    "features",
+                    "shown",
+                ):
+                    try:
+                        new_state[key] = value[total_mask]
+                    except TypeError:
+                        new_state[key] = value
+                else:
                     new_state[key] = value
-                try:
-                    Layer.create(new_data, new_state, old_type_str)
-                except ValueError:
-                    del new_state[key]
-            else:
-                new_state[key] = value
-                try:
-                    Layer.create(new_data, new_state, old_type_str)
-                except ValueError:
-                    del new_state[key]
 
-        if create_layer:
             layer_coord.visible = False
             new = Layer.create(new_data, new_state, old_type_str)
             self.napari_viewer.layers.insert(
                 self.napari_viewer.layers.index(layer_coord) + 1, new
             )
             self.coord_layer.setCurrentText(new.name)
+        elif create_layer:
+            show_info("No matching entries for match_mics plugin")
 
         self.table_widget.setColumnCount(2)
         self.table_widget.setRowCount(len(table_list))

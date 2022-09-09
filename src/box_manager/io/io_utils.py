@@ -99,6 +99,7 @@ def to_napari(
     meta_columns: typing.List[str] = [],
     feature_columns: typing.List[str] = [],
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
+
     input_df: pd.DataFrame
     features: dict[str, typing.Any]
 
@@ -107,12 +108,16 @@ def to_napari(
     if not isinstance(path, list):
         path = sorted(glob.glob(path))  # type: ignore
 
+
+
     input_df, metadata, is_3d = _prepare_coords_df(
         path,
         read_func=read_func,
         prepare_napari_func=prepare_napari_func,
         meta_columns=meta_columns,
     )
+
+    metadata["is_2d_stack"] = len(path) > 1
 
     metadata.update(orgbox_meta)
 
@@ -165,7 +170,6 @@ def from_napari(
     layer_data: list[tuple[typing.Any, dict, str]],
     format_func: FormatFunc,
     write_func: Callable[[os.PathLike, pd.DataFrame], typing.Any],
-    is_2d_stacked: bool,
 ):
 
     last_file = ""
@@ -177,7 +181,7 @@ def from_napari(
         coordinates = data[meta["shown"]]
         boxsize = meta["size"][meta["shown"]][:, 0]
         export_data = {}
-
+        is_2d_stacked = meta['metadata']["is_2d_stack"]
         if is_2d_stacked:
             for z in np.unique(coordinates[:, 0]):
                 z = int(z)

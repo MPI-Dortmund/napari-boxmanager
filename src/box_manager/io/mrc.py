@@ -65,6 +65,7 @@ def to_napari(
         data = (data - np.mean(data)) / np.std(data)
 
     metadata["is_3d"] = len(path) == 1 and data.ndim == 3
+    metadata["is_2d_stack"] = len(path) > 1
     add_kwargs = {"metadata": metadata, "name": name}
 
     layer_type = "image"  # optional, default is "image"

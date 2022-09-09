@@ -132,12 +132,12 @@ def from_napari(
     path: os.PathLike | list[os.PathLike] | pd.DataFrame,
     layer_data: list[tuple[typing.Any, dict, str]],
 ):
+
     output_path = coordsio.from_napari(
         path=path,
         layer_data=layer_data,
         write_func=write_cbox,
         format_func=_make_df_data,
-        is_2d_stacked=True,
     )
     return output_path
 

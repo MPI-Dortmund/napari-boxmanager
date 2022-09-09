@@ -51,7 +51,7 @@ def _prepare_coords_df(
     is_3d = True
     for idx, entry in enumerate(path):
         input_data = read_func(entry)
-        box_napari_data=pd.DataFrame(columns=meta_columns)
+        box_napari_data = pd.DataFrame(columns=meta_columns)
         if input_data is not None:
             box_napari_data = prepare_napari_func(input_data)
 
@@ -102,6 +102,8 @@ def to_napari(
     input_df: pd.DataFrame
     features: dict[str, typing.Any]
 
+    orgbox_meta = orgbox.get_metadata(path)
+
     if not isinstance(path, list):
         path = sorted(glob.glob(path))  # type: ignore
 
@@ -112,7 +114,7 @@ def to_napari(
         meta_columns=meta_columns,
     )
 
-    metadata.update(orgbox.get_metadata(path))
+    metadata.update(orgbox_meta)
 
     features = {
         entry: input_df[entry].to_numpy()

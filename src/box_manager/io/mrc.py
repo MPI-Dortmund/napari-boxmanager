@@ -23,19 +23,16 @@ def to_napari(
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
     if not isinstance(path, list):
         original_path = path
-        if "*" in path:
-            name = "mrcfiles"
-        elif len(path) >= MAX_LAYER_NAME + 3:
+        if len(path) >= MAX_LAYER_NAME + 3:
             name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
         else:
             name = path  # type: ignore
         path = sorted(glob.glob(path))  # type: ignore
-    elif len(path[0]) >= MAX_LAYER_NAME + 3:
-        original_path = path[0]
-        name = f"...{path[0][-MAX_LAYER_NAME:]}"  # type: ignore
+        if len(path) > 1:
+            name = "mrcfiles"
     else:
-        name = path[0]  # type: ignore
         original_path = path[0]
+        name = "mrcfiles"
 
     # arrays = []
     voxel_size = 1

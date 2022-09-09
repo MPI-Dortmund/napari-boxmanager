@@ -168,6 +168,7 @@ def from_napari(
     is_2d_stacked: bool,
 ):
 
+    last_file = ""
     for data, meta, layer in layer_data:
 
         if data.shape[1] == 2:
@@ -198,8 +199,9 @@ def from_napari(
         for outpth in export_data:
             df = export_data[outpth]
             write_func(outpth, df)
+        last_file = outpth
 
-    return path
+    return str(last_file)
 
 
 class LoaderProxy(Array):

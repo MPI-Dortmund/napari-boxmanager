@@ -1,37 +1,51 @@
-import os
-import typing
-from .._qt import OrganizeBox as orgbox
-from collections.abc import Callable
-import pandas as pd
 import glob
+import os
 import pathlib
-import numpy as np
+import typing
+from collections.abc import Callable
 from typing import Protocol
-import numpy.typing as npt
 
-_MAX_LAYER_NAME = 30
+import numpy as np
+import numpy.typing as npt
+import pandas as pd
+
+from .._qt import OrganizeBox as orgbox
+
+_MAX_LAYER_NAME: int = 30
+_PROXY_THRESHOLD_GB: float = (
+    float(os.environ["BOXMANAGER_PROXY_GB"])
+    if "BOXMANAGER_PROXY_GB" in os.environ
+    else 2
+)
+
 
 class FormatFunc(Protocol):
-    def __call__(self, coordinates: pd.DataFrame, boxsize: npt.ArrayLike, features: pd.DataFrame) -> pd.DataFrame: ...
+    def __call__(
+        self,
+        coordinates: pd.DataFrame,
+        boxsize: npt.ArrayLike,
+        features: pd.DataFrame,
+    ) -> pd.DataFrame:
+        ...
+
 
 def _prepare_coords_df(
     path: list[os.PathLike],
     read_func: Callable[[os.PathLike], pd.DataFrame],
     prepare_napari_func: Callable,
-    meta_columns: typing.List[str] = []
-
+    meta_columns: typing.List[str] = [],
 ) -> tuple[pd.DataFrame, dict[int, os.PathLike], bool]:
 
     data_df: list[pd.DataFrame] = []
     metadata: dict = {}
-    is_3d=True
+    is_3d = True
     for idx, entry in enumerate(path):
         input_data = read_func(entry)
         box_napari_data=pd.DataFrame(columns=meta_columns)
         if input_data is not None:
             box_napari_data = prepare_napari_func(input_data)
 
-            if 'x' not in box_napari_data:
+            if "x" not in box_napari_data:
                 is_3d = False
                 box_napari_data["x"] = idx
         data_df.append(box_napari_data)
@@ -53,6 +67,7 @@ def _prepare_coords_df(
 
     return pd.concat(data_df, ignore_index=True), metadata, is_3d
 
+
 def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
     if isinstance(path, list) and len(path) > 1:
         name = "Coordinates"
@@ -68,12 +83,11 @@ def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
 
 
 def to_napari(
-        path: os.PathLike | list[os.PathLike],
-        read_func: Callable[[os.PathLike], pd.DataFrame],
-        prepare_napari_func: Callable,
-        meta_columns: typing.List[str] = [],
-        feature_columns: typing.List[str] = [],
-
+    path: os.PathLike | list[os.PathLike],
+    read_func: Callable[[os.PathLike], pd.DataFrame],
+    prepare_napari_func: Callable,
+    meta_columns: typing.List[str] = [],
+    feature_columns: typing.List[str] = [],
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
     input_df: pd.DataFrame
     features: dict[str, typing.Any]
@@ -85,14 +99,14 @@ def to_napari(
         path,
         read_func=read_func,
         prepare_napari_func=prepare_napari_func,
-        meta_columns=meta_columns
+        meta_columns=meta_columns,
     )
 
     metadata.update(orgbox.get_metadata(path))
 
     features = {
         entry: input_df[entry].to_numpy()
-        for entry in feature_columns#_get_meta_idx() + _get_hidden_meta_idx()
+        for entry in feature_columns  # _get_meta_idx() + _get_hidden_meta_idx()
     }
 
     layer_name = get_coords_layer_name(path)
@@ -112,23 +126,25 @@ def to_napari(
     }
 
     if (isinstance(path, list) and len(path) > 1) or is_3d:
-        coord_columns = ["x", "y", "z"]  # Happens for --stack option and '*.ext'
+        coord_columns = [
+            "x",
+            "y",
+            "z",
+        ]  # Happens for --stack option and '*.ext'
     else:
         coord_columns = ["y", "z"]
 
     return [(input_df[coord_columns], kwargs, "points")]
 
 
-def _generate_output_filename(orignal_filename: str, output_path : os.PathLike):
+def _generate_output_filename(orignal_filename: str, output_path: os.PathLike):
     dirname = os.path.dirname(output_path)
     basename, extension = os.path.splitext(os.path.basename(output_path))
     if not extension:  # in case '.box' is provided as output path.
         basename, extension = extension, basename
 
     file_base = os.path.splitext(os.path.basename(orignal_filename))[0]
-    output_file = pathlib.Path(
-        dirname, file_base + extension
-    )
+    output_file = pathlib.Path(dirname, file_base + extension)
     return output_file
 
 
@@ -136,8 +152,8 @@ def from_napari(
     path: os.PathLike,
     layer_data: list[tuple[typing.Any, dict, str]],
     format_func: FormatFunc,
-    write_func: Callable[[os.PathLike, pd.DataFrame],typing.Any],
-    is_2d_stacked: bool
+    write_func: Callable[[os.PathLike, pd.DataFrame], typing.Any],
+    is_2d_stacked: bool,
 ):
 
     for data, meta, layer in layer_data:
@@ -146,23 +162,29 @@ def from_napari(
             data = np.insert(data, 0, 0, axis=1)
 
         coordinates = data[meta["shown"]]
-        boxsize = meta['size'][meta["shown"]][:,0]
+        boxsize = meta["size"][meta["shown"]][:, 0]
         export_data = {}
 
         if is_2d_stacked:
-            for z in np.unique(coordinates[:,0]):
+            for z in np.unique(coordinates[:, 0]):
                 z = int(z)
-                mask = coordinates[:,0]==z
-                filename = meta['metadata'][z]['name']
-                output_file = _generate_output_filename(orignal_filename=filename,output_path=path)
-                export_data[output_file] = format_func(coordinates[mask,1:], boxsize[mask], meta['features'].loc[mask,:])
+                mask = coordinates[:, 0] == z
+                filename = meta["metadata"][z]["name"]
+                output_file = _generate_output_filename(
+                    orignal_filename=filename, output_path=path
+                )
+                export_data[output_file] = format_func(
+                    coordinates[mask, 1:],
+                    boxsize[mask],
+                    meta["features"].loc[mask, :],
+                )
         else:
-            export_data[path] = format_func(coordinates, boxsize, meta['features'])
-
+            export_data[path] = format_func(
+                coordinates, boxsize, meta["features"]
+            )
 
         for outpth in export_data:
             df = export_data[outpth]
-            write_func(outpth,df)
-
+            write_func(outpth, df)
 
     return path

@@ -2,14 +2,21 @@ import glob
 import io
 import os
 import typing
+import warnings
 
 import matplotlib.pyplot as plt
 import mrcfile
 import numpy as np
 import pandas as pd
-from numpy.array_api._array_object import Array
 
-from .coordinate_io import _MAX_LAYER_NAME
+with warnings.catch_warnings():
+    warnings.filterwarnings(
+        "ignore",
+        r"The numpy.array_api submodule is still experimental. See NEP 47.",
+    )
+    from numpy.array_api._array_object import Array
+
+from .coordinate_io import _MAX_LAYER_NAME, _PROXY_THRESHOLD_GB
 
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
@@ -29,8 +36,7 @@ class LoaderProxy(Array):
             raise AttributeError("Cannot provide empty files list")
 
         _data = self.load_image(0)
-        _len_x = len(self.files)
-        self._array = np.empty((_len_x, *_data.shape), dtype=bool)
+        self._array = np.empty((len(self.files), *_data.shape), dtype=bool)
 
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
@@ -43,6 +49,9 @@ class LoaderProxy(Array):
     def __len__(self):
         return len(self.files)
 
+    def __iter__(self):
+        return (self[idx] for idx in range(len(self.files)))
+
     def __getitem__(self, key):
         try:
             super()._validate_index(key, None)
@@ -52,13 +61,21 @@ class LoaderProxy(Array):
         if isinstance(key, Array):
             key._array
 
-        if isinstance(key, np.integer):
-            key = [key]
+        try:
+            _key = key[0]
+        except TypeError:
+            _key = key
 
-        if isinstance(key[0], np.integer):
-            return self.load_image(key[0])
+        if isinstance(_key, (int, np.integer)):
+            return self.load_image(_key)
         else:
             return self.get_dummy_image()
+
+    def __copy__(self):
+        return LoaderProxy(self.files, self.reader_func)
+
+    def __deepcopy__(self, _):
+        return self.__copy__()
 
     def get_dummy_image(self):
         size = self.shape[-1]
@@ -121,11 +138,18 @@ def to_napari(
             mrc.voxel_size.x if mrc.voxel_size.x != 0 else 1
         )
 
-    if len(path) > 1:
+    file_size = (
+        sum(os.stat(file_name).st_size for file_name in path) / 1024**3
+    )
+    if len(path) > 1 and file_size > _PROXY_THRESHOLD_GB:
         data = LoaderProxy(path, load_mrc)
     else:
-        with mrcfile.open(path[0], permissive=True) as mrc:
-            data = mrc.data
+        data_list = []
+        for file_name in path:
+            with mrcfile.open(file_name, permissive=True) as mrc:
+                tmp_data = mrc.data
+                data_list.append(tmp_data)
+        data = np.squeeze(np.stack(data_list))
         data = (data - np.mean(data)) / np.std(data)
 
     metadata["is_3d"] = len(path) == 1 and data.ndim == 3

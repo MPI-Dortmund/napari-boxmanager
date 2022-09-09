@@ -26,6 +26,10 @@ https://napari.org/plugins/index.html
 **!!!** The installation of the napari-boxmanager requires at least napari version `0.4.16.rc8`! **!!!**
 If the version is not yet available use:
 
+    conda create -y -n napari-env -c conda-forge python=3.9
+    conda activate napari-env
+    pip install 'napari[all]'
+    pip uninstall napari
     pip install git+https://github.com/napari/napari
 
 You can install `napari-boxmanager` via [pip]:

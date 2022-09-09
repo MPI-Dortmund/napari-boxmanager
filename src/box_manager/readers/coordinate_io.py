@@ -27,7 +27,7 @@ def _prepare_coords_df(
     is_3d=True
     for idx, entry in enumerate(path):
         input_data = read_func(entry)
-        box_napari_data=None
+        box_napari_data=pd.DataFrame(columns=meta_columns)
         if input_data is not None:
             box_napari_data = prepare_napari_func(input_data)
 
@@ -39,14 +39,17 @@ def _prepare_coords_df(
         metadata[idx] = {}
         metadata[idx]["path"] = entry
         metadata[idx]["name"] = os.path.basename(entry)
-        metadata[idx]["write"] = None
-        metadata[idx].update(
-            {
-                f"{entry}_{func.__name__}": func(data_df[idx][entry])
-                for func in [min, max]
-                for entry in meta_columns
-            }
-        )
+        metadata[idx]["write"] = True if box_napari_data.empty else None
+        try:
+            metadata[idx].update(
+                {
+                    f"{entry}_{func.__name__}": func(data_df[idx][entry])
+                    for func in [min, max]
+                    for entry in meta_columns
+                }
+            )
+        except ValueError:
+            pass
 
     return pd.concat(data_df, ignore_index=True), metadata, is_3d
 

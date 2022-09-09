@@ -1,7 +1,7 @@
 import os
 import typing
 
-from . import readers as bm_readers
+from . import io as bm_readers
 
 if typing.TYPE_CHECKING:
     pass

@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import pandas as pd
 
-from . import readers as bm_readers
+from . import io as bm_readers
 
 if typing.TYPE_CHECKING:
     import numpy.typing as npt

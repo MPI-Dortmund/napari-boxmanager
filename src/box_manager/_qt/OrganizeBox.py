@@ -279,5 +279,6 @@ class OrganizeBoxWidget(QWidget):
                 self.table_widget.setItem(row_idx, col_idx, item)
         self.table_widget.resizeColumnsToContents()
 
-def get_metadata(path : os.PathLike | list[os.PathLike]):
-    return {'original_path': path[0] if isinstance(path, list) else path}
+
+def get_metadata(path: os.PathLike | list[os.PathLike]):
+    return {"original_path": path[0] if isinstance(path, list) else path}

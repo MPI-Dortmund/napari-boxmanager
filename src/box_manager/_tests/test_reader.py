@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 import box_manager._reader as br
-from box_manager.readers import box, cbox, star, tepkl, tlpkl, tmpkl
+from box_manager.io import box, cbox, star, tepkl, tlpkl, tmpkl
 
 HERE = os.path.dirname(__file__)
 

@@ -1,12 +1,13 @@
 import os
 import typing
-from collections.abc import Callable
+
 import pandas as pd
 
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
-class ReaderInterface(typing.Protocol):
+
+class IOInterface(typing.Protocol):
     def to_napari(
         self,
         path: os.PathLike | list[os.PathLike],
@@ -23,5 +24,3 @@ class ReaderInterface(typing.Protocol):
         meta: dict,
     ):
         ...
-
-

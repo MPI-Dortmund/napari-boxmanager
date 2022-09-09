@@ -1,18 +1,28 @@
 import glob
+import io
 import os
 import pathlib
 import typing
+import warnings
 from collections.abc import Callable
 from typing import Protocol
 
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+with warnings.catch_warnings():
+    warnings.filterwarnings(
+        "ignore",
+        r"The numpy.array_api submodule is still experimental. See NEP 47.",
+    )
+    from numpy.array_api._array_object import Array
+
 from .._qt import OrganizeBox as orgbox
 
-_MAX_LAYER_NAME: int = 30
-_PROXY_THRESHOLD_GB: float = (
+MAX_LAYER_NAME: int = 30
+PROXY_THRESHOLD_GB: float = (
     float(os.environ["BOXMANAGER_PROXY_GB"])
     if "BOXMANAGER_PROXY_GB" in os.environ
     else 2
@@ -69,8 +79,8 @@ def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
     if isinstance(path, list) and len(path) > 1:
         name = "Coordinates"
     elif isinstance(path, list):
-        if len(path[0]) >= _MAX_LAYER_NAME + 3:
-            name = f"...{path[0][-_MAX_LAYER_NAME:]}"  # type: ignore
+        if len(path[0]) >= MAX_LAYER_NAME + 3:
+            name = f"...{path[0][-MAX_LAYER_NAME:]}"  # type: ignore
         else:
             name = path[0]  # type: ignore
     else:
@@ -185,3 +195,78 @@ def from_napari(
             write_func(outpth, df)
 
     return path
+
+
+class LoaderProxy(Array):
+    def __init__(self, files, reader_func):
+        self.reader_func = reader_func
+        self.files = files
+        if len(self.files) == 0:
+            raise AttributeError("Cannot provide empty files list")
+
+        _data = self.load_image(0)
+        self._array = np.empty((len(self.files), *_data.shape), dtype=bool)
+
+    def __new__(cls, *args, **kwargs):
+        obj = object.__new__(cls)
+        return obj
+
+    def load_image(self, index) -> Array:
+        data = self.reader_func(self.files[index])
+        return (data - np.mean(data)) / np.std(data)
+
+    def __len__(self):
+        return len(self.files)
+
+    def __iter__(self):
+        return (self[idx] for idx in range(len(self.files)))
+
+    def __getitem__(self, key):
+        try:
+            super()._validate_index(key, None)
+        except TypeError:
+            super()._validate_index(key)
+
+        if isinstance(key, Array):
+            key._array
+
+        try:
+            _key = key[0]
+        except TypeError:
+            _key = key
+
+        if isinstance(_key, (int, np.integer)):
+            return self.load_image(_key)
+        else:
+            return self.get_dummy_image()
+
+    def __copy__(self):
+        return LoaderProxy(self.files, self.reader_func)
+
+    def __deepcopy__(self, _):
+        return self.__copy__()
+
+    def get_dummy_image(self):
+        size = self.shape[-1]
+        fig = plt.figure(figsize=(size, size), dpi=1)
+        new_shape = (int(fig.bbox.bounds[3]), int(fig.bbox.bounds[2]), -1)
+        plt.text(
+            0.5,
+            0.5,
+            "\U00002639",
+            va="center_baseline",
+            ha="center",
+            fontsize=size * 50,
+        )
+        plt.axis("off")
+
+        io_buf = io.BytesIO()
+        fig.savefig(io_buf, format="raw")
+        io_buf.seek(0)
+        img_arr = np.reshape(
+            np.frombuffer(io_buf.getvalue(), dtype=np.uint8),
+            newshape=new_shape,
+        )[..., 0]
+        io_buf.close()
+        plt.close(fig)
+        return img_arr

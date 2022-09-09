@@ -156,12 +156,14 @@ class OrganizeBoxWidget(QWidget):
                 ).split("*")
             elif "original_path" in layer_metadata:
                 dirname = os.path.dirname(layer_metadata["original_path"])
-                prefix, suffix = os.path.splitext(
+                _, suffix = os.path.splitext(
                     os.path.basename(layer_metadata["original_path"])
                 )
+                prefix = "USE_FILENAME"
             else:
                 dirname = os.path.dirname(layer.name)
-                prefix, suffix = os.path.splitext(os.path.basename(layer.name))
+                _, suffix = os.path.splitext(os.path.basename(layer.name))
+                prefix = "USE_FILENAME"
 
             if "prefix" in layer_metadata:
                 prefix = layer_metadata["prefix"]
@@ -184,9 +186,13 @@ class OrganizeBoxWidget(QWidget):
         prefix_image = self.image_layer.prefix
         suffix_image = self.image_layer.suffix
         image_dict = {
-            os.path.basename(value["path"])
-            .removesuffix(suffix_image)
-            .removeprefix(prefix_image): idx
+            (
+                os.path.basename(value["path"])
+                .removesuffix(suffix_image)
+                .removeprefix(prefix_image)
+                if prefix_image != "USE_FILENAME"
+                else os.path.basename(value["path"]).removesuffix(suffix_image)
+            ): idx
             for idx, value in layer_image.metadata.items()
             if isinstance(idx, int)
         }
@@ -195,9 +201,13 @@ class OrganizeBoxWidget(QWidget):
         prefix_coord = self.coord_layer.prefix
         suffix_coord = self.coord_layer.suffix
         coord_dict = {
-            os.path.basename(value["path"])
-            .removesuffix(suffix_coord)
-            .removeprefix(prefix_coord): idx
+            (
+                os.path.basename(value["path"])
+                .removesuffix(suffix_coord)
+                .removeprefix(prefix_coord)
+                if prefix_image != "USE_FILENAME"
+                else os.path.basename(value["path"]).removesuffix(suffix_coord)
+            ): idx
             for idx, value in layer_coord.metadata.items()
             if isinstance(idx, int)
         }
@@ -213,6 +223,9 @@ class OrganizeBoxWidget(QWidget):
         new_meta["prefix"] = prefix_coord
         new_meta["suffix"] = suffix_coord
 
+        if prefix_coord == "USE_FILENAME":
+            prefix_coord = ""
+
         total_mask = np.zeros(len(old_data), dtype=bool)
         table_list = []
         for key, image_idx in image_dict.items():
@@ -220,7 +233,7 @@ class OrganizeBoxWidget(QWidget):
             try:
                 coord_idx = coord_dict[key]
             except KeyError:
-                name = f"{prefix_coord}{key}{suffix_coord})"
+                name = f"{prefix_coord}{key}{suffix_coord}"
                 new_meta[image_idx] = {
                     "path": os.path.join(self.coord_layer.dirname, name),
                     "name": name,
@@ -258,8 +271,16 @@ class OrganizeBoxWidget(QWidget):
                     new_state[key] = value[total_mask]
                 except TypeError:
                     new_state[key] = value
+                try:
+                    Layer.create(new_data, new_state, old_type_str)
+                except ValueError:
+                    del new_state[key]
             else:
                 new_state[key] = value
+                try:
+                    Layer.create(new_data, new_state, old_type_str)
+                except ValueError:
+                    del new_state[key]
 
         if create_layer:
             layer_coord.visible = False

@@ -14,6 +14,9 @@ contributions:
 
     # Widgets
 
+    - id: napari-boxmanager.select_metric
+      python_name: box_manager._qt.SelectMetric:SelectMetricWidget
+      title: Select box metrics
     - id: napari-boxmanager.organize_box
       python_name: box_manager._qt.OrganizeBox:OrganizeBoxWidget
       title: Organize box files to the respective mrc
@@ -23,9 +26,7 @@ contributions:
     - id: napari-boxmanager.add_layer
       python_name: box_manager._qt.AddLayer:AddLayerWidget
       title: Add new layers with default values
-    - id: napari-boxmanager.select_metric
-      python_name: box_manager._qt.SelectMetric:SelectMetricWidget
-      title: Select box metrics
+
 
   readers:
     - command: napari-boxmanager.get_reader

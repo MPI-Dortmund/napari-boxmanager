@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from pyStarDB import sp_pystardb as star
-
+from interface import NapariLayerData
 from . import io_utils as coordsio
 
 valid_extensions = ["cbox"]
@@ -25,7 +25,7 @@ def read(path: os.PathLike) -> pd.DataFrame:
 
 def to_napari(
     path: os.PathLike | list[os.PathLike],
-) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
+) -> "list[NapariLayerData]":
     r = coordsio.to_napari(
         path=path,
         read_func=read,
@@ -130,7 +130,7 @@ def _make_df_data(
 
 def from_napari(
     path: os.PathLike | list[os.PathLike] | pd.DataFrame,
-    layer_data: list[tuple[typing.Any, dict, str]],
+    layer_data: list[NapariLayerData],
 ):
 
     output_path = coordsio.from_napari(

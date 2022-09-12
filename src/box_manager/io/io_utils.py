@@ -6,7 +6,7 @@ import typing
 import warnings
 from collections.abc import Callable
 from typing import Protocol
-
+from interface import NapariLayerData, NapariMetaData
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
@@ -98,7 +98,7 @@ def to_napari(
     prepare_napari_func: Callable,
     meta_columns: typing.List[str] = [],
     feature_columns: typing.List[str] = [],
-) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
+) -> "list[NapariLayerData]":
 
     input_df: pd.DataFrame
     features: dict[str, typing.Any]
@@ -128,7 +128,7 @@ def to_napari(
 
     layer_name = get_coords_layer_name(path)
 
-    kwargs = {
+    kwargs: NapariMetaData = {
         "edge_color": "red",
         "face_color": "transparent",
         "symbol": "disc" if is_3d else "square",
@@ -167,10 +167,10 @@ def _generate_output_filename(orignal_filename: str, output_path: os.PathLike):
 
 def from_napari(
     path: os.PathLike,
-    layer_data: list[tuple[typing.Any, dict, str]],
+    layer_data: list[NapariLayerData],
     format_func: FormatFunc,
     write_func: Callable[[os.PathLike, pd.DataFrame], typing.Any],
-):
+) -> os.PathLike:
 
     last_file = ""
     for data, meta, layer in layer_data:

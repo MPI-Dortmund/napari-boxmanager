@@ -134,7 +134,8 @@ class FilterImageWidget(QWidget):
                 **filter_kwargs,
             )
             new_layer.data[...] = filtered_image
-            new_layer.events.data()
+            with new_layer.events.visible.blocker():
+                new_layer.visible = True
 
     def handle_filter(self, layer, filter_2d, **kwargs):
         if filter_2d:

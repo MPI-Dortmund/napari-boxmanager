@@ -56,7 +56,7 @@ class FilterImageWidget(QWidget):
         self.layout().addRow("lp resolution / A:", self._lp_filter_resolution)
         self.layout().addRow("hp resolution / A:", self._hp_filter_resolution)
         self.layout().addRow("pixel size / A/px:", self._pixel_size)
-        self.layout().addRow("Filter 2d slices", self._filter_2d)
+        self.layout().addRow("Live filter 2d slices", self._filter_2d)
         self.layout().addRow("show mask", self._show_mask)
         self.layout().addRow("", self._run_btn)
 
@@ -86,30 +86,75 @@ class FilterImageWidget(QWidget):
             show_info("No layer selected")
             return None
 
-        try:
-            filtered_image, mask = filters.bandpass_filter(
-                self.layer.data,
-                self.lp_filter_resolution,
-                self.hp_filter_resolution,
-                self.pixel_size,
-                self.filter_2d,
-                log=show_info,
-            )
-        except TypeError:
+        kwargs = {
+            "lp_filter_resolution_ang": self.lp_filter_resolution,
+            "hp_filter_resolution_ang": self.hp_filter_resolution,
+            "pixel_size": self.pixel_size,
+        }
+
+        filtered_image, mask = self.handle_filter(
+            self.layer,
+            self.filter_2d,
+            **kwargs,
+        )
+        if filtered_image is None:
             return None
 
-        self.layer.visible = False
+        # self.layer.visible = False
         if self.show_mask:
             self.napari_viewer.add_image(
                 mask,
-                name=f"MASK LP {int(self.lp_filter_resolution)} HP {int(self.hp_filter_resolution)} - {self.layer.name}",
+                name=f"MASK LP {int(self.lp_filter_resolution)} HP {int(self.hp_filter_resolution)} AP {self.pixel_size} - {self.layer.name}",
             )
 
-        self.napari_viewer.add_image(
+        image = napari.layers.Image(
             filtered_image,
-            name=f"LP {int(self.lp_filter_resolution)} HP {int(self.hp_filter_resolution)} - {self.layer.name}",
+            name=f"LP {int(self.lp_filter_resolution)} HP {int(self.hp_filter_resolution)} AP {self.pixel_size} LIVE {self.filter_2d}  - {self.layer.name}",
             metadata=self.layer.metadata,
         )
+        self.napari_viewer.layers.insert(
+            self.napari_viewer.layers.index(self.layer) + 1, image
+        )
+        self.napari_viewer.dims.events.current_step.connect(
+            lambda *x, new_layer=image, old_layer=self.layer, filter_kwargs=kwargs: self._filter_layer(
+                new_layer=new_layer, old_layer=old_layer, **filter_kwargs
+            )
+        )
+        image.events.visible.connect(
+            lambda *x, new_layer=image, old_layer=self.layer, filter_kwargs=kwargs: self._filter_layer(
+                new_layer=new_layer, old_layer=old_layer, **filter_kwargs
+            )
+        )
+
+    def _filter_layer(self, new_layer, old_layer, **filter_kwargs):
+        if new_layer.visible:
+            filtered_image, _ = self.handle_filter(
+                old_layer,
+                True,
+                **filter_kwargs,
+            )
+            new_layer.data[...] = filtered_image
+            new_layer.events.data()
+
+    def handle_filter(self, layer, filter_2d, **kwargs):
+        if filter_2d:
+            slice_axis = self.napari_viewer.dims.order[0]
+            slice_index = self.napari_viewer.dims.current_step[slice_axis]
+            slc = [slice(None)] * len(layer.data.shape)
+            slc[slice_axis] = slice_index
+            data = layer.data[tuple(slc)]
+        else:
+            data = layer.data
+        try:
+            filtered_image, mask = filters.bandpass_filter(
+                data,
+                log=show_info,
+                **kwargs,
+            )
+        except TypeError:
+            return None, None
+
+        return filtered_image, mask
 
     @Slot(str)
     def _update_pixel_size(self, layer_name):

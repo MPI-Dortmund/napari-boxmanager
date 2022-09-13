@@ -115,18 +115,26 @@ class FilterImageWidget(QWidget):
         self.napari_viewer.layers.insert(
             self.napari_viewer.layers.index(self.layer) + 1, image
         )
-        self.napari_viewer.dims.events.current_step.connect(
+
+        connect2 = self.napari_viewer.dims.events.current_step.connect(
             lambda *x, new_layer=image, old_layer=self.layer, filter_kwargs=kwargs: self._filter_layer(
                 new_layer=new_layer, old_layer=old_layer, **filter_kwargs
             )
         )
-        image.events.visible.connect(
+        connect1 = image.events.visible.connect(
             lambda *x, new_layer=image, old_layer=self.layer, filter_kwargs=kwargs: self._filter_layer(
                 new_layer=new_layer, old_layer=old_layer, **filter_kwargs
             )
         )
+        image.connect1 = connect1
+        image.connect2 = connect2
 
     def _filter_layer(self, new_layer, old_layer, **filter_kwargs):
+        if new_layer not in self.napari_viewer.layers or old_layer not in self.napari_viewer.layers:
+            new_layer.events.disconnect(new_layer.connect1)
+            self.napari_viewer.dims.events.current_step.disconnect(new_layer.connect2)
+            return
+
         if new_layer.visible:
             filtered_image, _ = self.handle_filter(
                 old_layer,

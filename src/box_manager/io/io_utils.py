@@ -6,7 +6,7 @@ import typing
 import warnings
 from collections.abc import Callable
 from typing import Protocol
-from interface import NapariLayerData, NapariMetaData
+from .interface import NapariLayerData, NapariMetaData
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt

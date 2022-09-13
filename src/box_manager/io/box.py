@@ -6,7 +6,7 @@ import numpy.typing as npt
 import pandas as pd
 
 from . import io_utils as coordsio
-
+from .interface import NapariLayerData
 
 class BoxFileNumberOfColumnsError(pd.errors.IntCastingNaNError):
     pass
@@ -44,7 +44,7 @@ def read(path: "os.PathLike") -> pd.DataFrame:
 
 def to_napari(
     path: os.PathLike | list[os.PathLike],
-) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
+) -> "list[NapariLayerData]":
     r = coordsio.to_napari(
         path=path,
         read_func=read,
@@ -112,14 +112,13 @@ def _make_df_data(
 
 
 def from_napari(
-    path: os.PathLike, layer_data: list[tuple[typing.Any, dict, str]]
+    path: os.PathLike, layer_data: list[NapariLayerData]
 ):
     path = coordsio.from_napari(
         path=path,
         layer_data=layer_data,
         write_func=_write_box,
         format_func=_make_df_data,
-        is_2d_stacked=True,
     )
 
     return path

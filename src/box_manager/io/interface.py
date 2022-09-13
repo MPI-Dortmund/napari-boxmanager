@@ -3,8 +3,7 @@ import typing
 
 import pandas as pd
 
-if typing.TYPE_CHECKING:
-    import numpy.typing as npt
+import numpy.typing as npt
 
 NapariMetaData = dict[str, typing.Any]
 NapariLayerData = tuple[npt.ArrayLike, NapariMetaData, str]

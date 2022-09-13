@@ -4,6 +4,7 @@ import typing
 import numpy.typing as npt
 import pandas as pd
 
+from .interface import NapariLayerData
 from . import io_utils as coordsio
 
 
@@ -45,7 +46,7 @@ def read(path: os.PathLike) -> pd.DataFrame:
 
 def to_napari(
     path: os.PathLike | list[os.PathLike],
-) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
+) -> "list[NapariLayerData]":
 
     return coordsio.to_napari(
         path=path,
@@ -89,13 +90,12 @@ def _make_df_data(
 
 
 def from_napari(
-    path: os.PathLike, layer_data: list[tuple[typing.Any, dict, str]]
+    path: os.PathLike, layer_data: list[NapariLayerData]
 ):
     path = coordsio.from_napari(
         path=path,
         layer_data=layer_data,
         write_func=_write_coords,
-        is_2d_stacked=False,
         format_func=_make_df_data,
     )
     return path

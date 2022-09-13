@@ -52,7 +52,7 @@ class FilterImageWidget(QWidget):
         self._pixel_size.setValidator(float_validator)
 
         self.setLayout(QFormLayout())
-        self.layout().addRow("Label:", self._layer)
+        self.layout().addRow("Image layer:", self._layer)
         self.layout().addRow("LP resolution [A]:", self._lp_filter_resolution)
         self.layout().addRow("HP resolution [A]:", self._hp_filter_resolution)
         self.layout().addRow("Pixel size [A/px]:", self._pixel_size)

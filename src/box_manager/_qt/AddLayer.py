@@ -37,7 +37,7 @@ class AddLayerWidget(QWidget):
         self.setLayout(QVBoxLayout())
 
         layout = QFormLayout()
-        layout.addRow("Copy metadata from:", self._layer)
+        layout.addRow("Target image layer:", self._layer)
         self.layout().addLayout(layout)
 
         layout = QHBoxLayout()

@@ -53,11 +53,11 @@ class FilterImageWidget(QWidget):
 
         self.setLayout(QFormLayout())
         self.layout().addRow("Label:", self._layer)
-        self.layout().addRow("lp resolution [A]:", self._lp_filter_resolution)
-        self.layout().addRow("hp resolution [A]:", self._hp_filter_resolution)
-        self.layout().addRow("pixel size [A/px]:", self._pixel_size)
+        self.layout().addRow("LP resolution [A]:", self._lp_filter_resolution)
+        self.layout().addRow("HP resolution [A]:", self._hp_filter_resolution)
+        self.layout().addRow("Pixel size [A/px]:", self._pixel_size)
         self.layout().addRow("Live filter 2d slices", self._filter_2d)
-        self.layout().addRow("show mask", self._show_mask)
+        self.layout().addRow("Show mask", self._show_mask)
         self.layout().addRow("", self._run_btn)
 
         self._layer.currentTextChanged.connect(self._update_pixel_size)

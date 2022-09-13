@@ -25,7 +25,7 @@ if typing.TYPE_CHECKING:
 class PrefixSuffixCount(QWidget):
     editingFinished = Signal()
 
-    def __init__(self, name, parent=None):
+    def __init__(self, name: str, parent=None):
         super().__init__(parent)
 
         self.setLayout(QFormLayout())
@@ -37,9 +37,9 @@ class PrefixSuffixCount(QWidget):
         self.suffix_edit = QLineEdit(self)
         self.suffix_edit.editingFinished.connect(self.editingFinished.emit)
 
-        self.layout().addRow(f"{name} layers", self.combo)
-        self.layout().addRow(f"{name} prefix", self.prefix_edit)
-        self.layout().addRow(f"{name} suffix", self.suffix_edit)
+        self.layout().addRow(f"{name.capitalize()} layer", self.combo)
+        self.layout().addRow(f"{name.capitalize()} prefix", self.prefix_edit)
+        self.layout().addRow(f"{name.capitalize()} suffix", self.suffix_edit)
         self.layout().setContentsMargins(0, 0, 0, 0)
 
         self.register_combo_functions()

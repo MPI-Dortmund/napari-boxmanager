@@ -59,9 +59,7 @@ def get_identifier(layer, cur_slice):
     if isinstance(layer, napari.layers.Points):
         return layer.data[:, cur_slice]
     elif isinstance(layer, napari.layers.Shapes):
-        if cur_slice != 0:
-            return np.array([])
-        return np.array([entry[0, 0] for entry in layer.data])
+        return np.array([entry[0, cur_slice] for entry in layer.data])
     else:
         assert False, (layer, type(layer))
 

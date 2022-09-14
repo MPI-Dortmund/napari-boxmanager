@@ -134,7 +134,7 @@ def to_napari(
         "symbol": "disc",
         "edge_width": 0.05,
         "edge_width_is_relative": True,
-        "size": input_df["boxsize"],
+        "size": np.average(input_df["boxsize"]),
         "out_of_slice_display": True if is_3d else False,
         "opacity": 0.8,
         "name": layer_name,

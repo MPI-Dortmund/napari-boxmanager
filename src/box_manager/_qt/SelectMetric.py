@@ -831,6 +831,7 @@ class SelectMetricWidget(QWidget):
             old_name
         )
 
+    @Slot(object)
     def _update_on_data(self, event):
         if not self._plugin_view_update:
             layer = event.source
@@ -839,7 +840,7 @@ class SelectMetricWidget(QWidget):
             ):
                 self.prev_valid_layers[layer.name][1] = layer.data
 
-                prev_selection = self.table_widget.get_row_selection()
+                prev_selection = {layer.name}
                 self.table_widget.selectionModel().selectionChanged.disconnect(
                     self.update_hist
                 )

@@ -24,7 +24,7 @@ class FilterImageWidget(QWidget):
         super().__init__()
         self.napari_viewer = napari_viewer
         self._layer = QComboBox(self)
-        self._lp_filter_resolution = QLineEdit("30", self)
+        self._lp_filter_resolution = QLineEdit("20", self)
         self._lp_filter_resolution.setToolTip(
             "Low-Pass filter value in angstrom. Set to 0 to disable low-pass filtering."
         )

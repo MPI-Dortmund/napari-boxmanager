@@ -38,14 +38,16 @@ contributions:
       filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star', '.mrc', '.mrcs', '.st','.coords','.rec']
   sample_data: []
   widgets:
+    - command: napari-boxmanager.select_metric
+      display_name: boxmanager
+    - command: napari-boxmanager.add_layer
+      display_name: add_layer
     - command: napari-boxmanager.bandpass_filter
       display_name: bandpass_filter
     - command: napari-boxmanager.organize_box
       display_name: match_mics
-    - command: napari-boxmanager.add_layer
-      display_name: add_layer
-    - command: napari-boxmanager.select_metric
-      display_name: boxmanager
+
+
 
 
       #contributions:

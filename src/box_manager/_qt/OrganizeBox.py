@@ -277,7 +277,7 @@ class OrganizeBoxWidget(QWidget):
                 if key == "visible":
                     new_state[key] = True
                 elif key == "name":
-                    new_state[key] = f"{layer_coord.name} reordered"
+                    new_state[key] = f"{layer_coord.name} (matched)"
                 elif key == "metadata":
                     new_state[key] = new_meta
                 elif key in (

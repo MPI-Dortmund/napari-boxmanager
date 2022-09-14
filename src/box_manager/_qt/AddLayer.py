@@ -96,6 +96,7 @@ class AddLayerWidget(QWidget):
                 metadata[key][
                     "name"
                 ] = f"{os.path.splitext(value['name'])[0]}.box"
+                metadata[key]["real"] = False
             elif key in ("original_path","is_2d_stack"):
                 metadata[key] = value
         return metadata

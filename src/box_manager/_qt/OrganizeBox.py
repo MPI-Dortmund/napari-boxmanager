@@ -225,6 +225,11 @@ class OrganizeBoxWidget(QWidget):
         for key, image_idx in image_dict.items():
             mic_name = layer_image.metadata[image_idx]["name"]
             try:
+                box_name = layer_coord.metadata[image_idx]["name"]
+            except KeyError:
+                box_name = "-"
+
+            try:
                 coord_idx = coord_dict[key]
             except KeyError:
                 name = f"{prefix_coord}{key}{suffix_coord}"
@@ -232,18 +237,39 @@ class OrganizeBoxWidget(QWidget):
                     "path": os.path.join(self.coord_layer.dirname, name),
                     "name": name,
                     "write": None,
+                    "real": False,
                 }
-                table_list.append((mic_name, "-"))
+                new_coord_name = "-"
+                table_list.append((mic_name, box_name, new_coord_name))
                 continue
             else:
                 new_meta[image_idx] = layer_coord.metadata[coord_idx]
-                table_list.append((mic_name, new_meta[image_idx]["name"]))
+                try:
+                    new_meta[image_idx]['real']
+                except KeyError:
+                    new_meta[image_idx]['real'] = True
+                if new_meta[image_idx]['real']:
+                    new_coord_name = new_meta[image_idx]["name"]
+                else:
+                    new_coord_name = '-'
+            table_list.append((mic_name, box_name, new_coord_name))
 
             slice_mask = np.round(old_data[:, 0], 0) == coord_idx
             total_mask = total_mask | slice_mask
             new_data[slice_mask, 0] = image_idx
 
         new_data = new_data[total_mask, :]
+
+        self.table_widget.setColumnCount(3)
+        self.table_widget.setRowCount(len(table_list))
+
+        self.table_widget.setHorizontalHeaderLabels([layer_image.name, layer_coord.name, f"{layer_coord.name} (matched)"])
+        for row_idx, row_entries in enumerate(table_list):
+            for col_idx, value in enumerate(row_entries):
+                item = QTableWidgetItem(value)
+                item.setFlags(Qt.ItemIsSelectable)
+                self.table_widget.setItem(row_idx, col_idx, item)
+        self.table_widget.resizeColumnsToContents()
 
         if create_layer and new_data.size != 0:
             new_state = {}
@@ -275,18 +301,9 @@ class OrganizeBoxWidget(QWidget):
                 self.napari_viewer.layers.index(layer_coord) + 1, new
             )
             self.coord_layer.setCurrentText(new.name)
+            self.coord_layer.currentTextChanged.emit(new.name)
         elif create_layer:
             show_info("No matching entries for match_mics plugin")
-
-        self.table_widget.setColumnCount(2)
-        self.table_widget.setRowCount(len(table_list))
-
-        for row_idx, row_entries in enumerate(table_list):
-            for col_idx, value in enumerate(row_entries):
-                item = QTableWidgetItem(value)
-                item.setFlags(Qt.ItemIsSelectable)
-                self.table_widget.setItem(row_idx, col_idx, item)
-        self.table_widget.resizeColumnsToContents()
 
 
 def get_metadata(path: os.PathLike | list[os.PathLike]):

@@ -3,6 +3,7 @@ import pathlib
 
 import napari
 import napari.layers
+from napari.layers.shapes._shapes_constants import Mode
 import numpy as np
 from qtpy.QtCore import Slot
 from qtpy.QtGui import QIcon
@@ -145,9 +146,14 @@ class AddLayerWidget(QWidget):
         metadata = self._get_metadata()
         kwargs = {
             "metadata": metadata,
+            "face_color": "transparent",
+            "edge_color": 'red',
+            "edge_width": 2,
+            "opacity": 0.8,
         }
-        self.napari_viewer.add_shapes(
+        shape = self.napari_viewer.add_shapes(
             ndim=max(self.napari_viewer.dims.ndim, 2),
             scale=self.napari_viewer.layers.extent.step,
             **kwargs,
         )
+        shape.mode = Mode.ADD_LINE

@@ -55,6 +55,37 @@ ICON_DIR = pathlib.Path(os.path.dirname(__file__), "_icons")
 #     return inner
 
 
+def get_identifier(layer, cur_slice):
+    if isinstance(layer, napari.layers.Points):
+        return layer.data[:, cur_slice]
+    elif isinstance(layer, napari.layers.Shapes):
+        return np.array([entry[0, cur_slice] for entry in layer.data])
+    else:
+        assert False, (layer, type(layer))
+
+def get_size(layer):
+    if isinstance(layer, napari.layers.Points):
+        return layer.size
+    elif isinstance(layer, napari.layers.Shapes):
+        return np.atleast_1d(layer.edge_width)
+    else:
+        assert False, (layer, type(layer))
+
+def set_size(layer, mask, size):
+    if isinstance(layer, napari.layers.Points):
+        layer.size[mask] = size
+        layer.current_size = size
+        # TODO: Eventually remove after potential event fix: https://github.com/napari/napari/pull/4951
+        layer.events.size()
+    elif isinstance(layer, napari.layers.Shapes):
+        layer.current_edge_width = size
+        edge_width = np.atleast_1d(layer.edge_width)
+        edge_width[mask] = size
+        layer.edge_width = edge_width.tolist()
+        layer.events.edge_width()
+    else:
+        assert False, (layer, type(layer))
+
 class DimensionAxis(enum.Enum):
     Z = 0
     Y = 1
@@ -466,7 +497,7 @@ class SelectMetricWidget(QWidget):
         self._plugin_view_update = False
         self._cur_slice_dim = self.napari_viewer.dims.order[0]
 
-        self.loadable_layers = (napari.layers.Points,)
+        self.loadable_layers = (napari.layers.Points, napari.layers.Shapes)
         self.check_box = [
             "write",
         ]
@@ -625,12 +656,12 @@ class SelectMetricWidget(QWidget):
             for z_slice in slice_idx:
                 layer.metadata[z_slice][col_name] = layer_vals
 
-            if layer.data.shape[1] == 3:
+            if layer.ndim == 3:
                 mask_dimension = np.isin(
-                    np.round(layer.data[:, self._cur_slice_dim], 0), slice_idx
+                    np.round(get_identifier(layer, self._cur_slice_dim), 0), slice_idx
                 )
-            elif layer.data.shape[1] == 2:
-                mask_dimension = np.ones(layer.data.shape[0], dtype=bool)
+            elif layer.ndim == 2:
+                mask_dimension = np.ones(len(layer.data), dtype=bool)
             else:
                 assert False, layer
 
@@ -668,14 +699,14 @@ class SelectMetricWidget(QWidget):
 
                 if not np.array_equal(old_shown, layer.shown):
                     for idx, row in enumerate(rows_idx):
-                        if layer.data.shape[1] == 3:
+                        if layer.ndim == 3:
                             slice_mask = (
-                                np.round(layer.data[:, self._cur_slice_dim], 0)
+                                np.round(get_identifier(layer, self._cur_slice_dim), 0)
                                 == slice_idx[idx]
                             )
-                        elif layer.data.shape[1] == 2:
+                        elif layer.ndim == 2:
                             slice_mask = np.ones(
-                                layer.data.shape[0], dtype=bool
+                                len(layer.data), dtype=bool
                             )
                         else:
                             assert False, layer
@@ -706,10 +737,7 @@ class SelectMetricWidget(QWidget):
                     do_update = True
             elif metric_name == "boxsize":
                 do_update = True
-                layer.size[mask_dimension] = layer_vals
-                layer.current_size = layer_vals
-                # TODO: Eventually remove after potential event fix: https://github.com/napari/napari/pull/4951
-                layer.events.size()
+                set_size(layer, mask_dimension, layer_vals)
             else:
                 assert False
 
@@ -866,15 +894,15 @@ class SelectMetricWidget(QWidget):
     def _prepare_entries(self, layer, name=None) -> list:
         output_list = []
         features_copy = layer.features.copy()
-        if layer.data.shape[1] == 3:
+        if layer.ndim == 3:
             features_copy["identifier"] = (
                 ""
                 if name is not None
-                else np.round(layer.data[:, self._cur_slice_dim], 0).astype(
+                else np.round(get_identifier(layer, self._cur_slice_dim), 0).astype(
                     int
                 )
             )
-        elif layer.data.shape[1] == 2:
+        elif layer.ndim == 2:
             features_copy["identifier"] = "" if name is not None else 0
         else:
             assert False, layer.data
@@ -907,7 +935,12 @@ class SelectMetricWidget(QWidget):
             except TypeError:
                 loop_var = idents
 
-        features_copy["shown"] = layer.shown
+        try:
+            features_copy["shown"] = layer.shown
+        except AttributeError:
+            # Shape layers do not have the shown option, fake it!
+            features_copy["shown"] = np.ones(len(layer.data))
+            layer.shown = features_copy['shown']
         slice_dict = {
             e1: e2
             for e1, e2 in features_copy.groupby("identifier", sort=False)
@@ -924,7 +957,7 @@ class SelectMetricWidget(QWidget):
                 cur_name = "Manual"
             output_list.append(
                 self._prepare_columns(
-                    pd.DataFrame(layer.size, dtype=float),
+                    pd.DataFrame(get_size(layer), dtype=float),
                     ident_df,
                     cur_name,
                     identifier,
@@ -943,7 +976,7 @@ class SelectMetricWidget(QWidget):
             features = pd.DataFrame(columns=["shown"])
             output_list.append(
                 self._prepare_columns(
-                    pd.DataFrame(layer.size, dtype=float),
+                    pd.DataFrame(get_size(layer), dtype=float),
                     features,
                     cur_name,
                     identifier,
@@ -1068,7 +1101,7 @@ class SelectMetricWidget(QWidget):
             except (KeyError, TypeError):
                 if metric_name == "boxsize":
                     layer_features.append(
-                        pd.DataFrame(layer.size).loc[mask, :].mean()
+                        pd.DataFrame(get_size(layer)).loc[mask, :].mean()
                     )
         return pd.concat(layer_features, ignore_index=True)
 
@@ -1181,12 +1214,12 @@ class SelectMetricWidget(QWidget):
             )
             slice_indices.extend(slice_idx)
 
-            if layer.data.shape[1] == 3:
+            if layer.ndim == 3:
                 mask = np.isin(
-                    np.round(layer.data[:, self._cur_slice_dim], 0), slice_idx
+                    np.round(get_identifier(layer, self._cur_slice_dim), 0), slice_idx
                 )
-            elif layer.data.shape[1] == 2:
-                mask = np.ones(layer.data.shape[0], dtype=bool)
+            elif layer.ndim == 2:
+                mask = np.ones(len(layer.data), dtype=bool)
             else:
                 assert False, layer
             layer_mask[layer_name] = mask

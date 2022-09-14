@@ -33,9 +33,9 @@ class PrefixSuffixCount(QWidget):
 
         self.combo = QComboBox(self)
         self.prefix_edit = QLineEdit(self)
-        self.prefix_edit.editingFinished.connect(self.editingFinished.emit)
+        self.prefix_edit.textEdited.connect(lambda x: self.editingFinished.emit())
         self.suffix_edit = QLineEdit(self)
-        self.suffix_edit.editingFinished.connect(self.editingFinished.emit)
+        self.suffix_edit.textEdited.connect(lambda x: self.editingFinished.emit())
 
         self.layout().addRow(f"{name.capitalize()} layer", self.combo)
         self.layout().addRow(f"{name.capitalize()} prefix", self.prefix_edit)
@@ -160,11 +160,11 @@ class OrganizeBoxWidget(QWidget):
                 _, suffix = os.path.splitext(
                     os.path.basename(layer_metadata["original_path"])
                 )
-                prefix = "*"
+                prefix = ""
             else:
                 dirname = os.path.dirname(layer.name)
                 _, suffix = os.path.splitext(os.path.basename(layer.name))
-                prefix = "*"
+                prefix = ""
 
             if "prefix" in layer_metadata:
                 prefix = layer_metadata["prefix"]
@@ -191,8 +191,6 @@ class OrganizeBoxWidget(QWidget):
                 os.path.basename(value["path"])
                 .removesuffix(suffix_image)
                 .removeprefix(prefix_image)
-                if prefix_image != "*"
-                else os.path.basename(value["path"]).removesuffix(suffix_image)
             ): idx
             for idx, value in layer_image.metadata.items()
             if isinstance(idx, int)
@@ -206,8 +204,6 @@ class OrganizeBoxWidget(QWidget):
                 os.path.basename(value["path"])
                 .removesuffix(suffix_coord)
                 .removeprefix(prefix_coord)
-                if prefix_image != "*"
-                else os.path.basename(value["path"]).removesuffix(suffix_coord)
             ): idx
             for idx, value in layer_coord.metadata.items()
             if isinstance(idx, int)
@@ -223,9 +219,6 @@ class OrganizeBoxWidget(QWidget):
         }
         new_meta["prefix"] = prefix_coord
         new_meta["suffix"] = suffix_coord
-
-        if prefix_coord == "*":
-            prefix_coord = ""
 
         total_mask = np.zeros(len(old_data), dtype=bool)
         table_list = []

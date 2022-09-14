@@ -1,4 +1,5 @@
 import enum
+import itertools
 import os
 import pathlib
 import typing
@@ -53,6 +54,15 @@ ICON_DIR = pathlib.Path(os.path.dirname(__file__), "_icons")
 #         print(func.__name__)
 #         return func(*args, **kwargs)
 #     return inner
+
+def check_equal(layer, compare_data):
+    if isinstance(layer, napari.layers.Points):
+        return np.array_equal(layer.data, compare_data)
+    elif isinstance(layer, napari.layers.Shapes):
+        all_same = all([np.array_equal(dat, ent) for dat, ent in itertools.zip_longest(layer.data, compare_data, fillvalue=np.array([]))])
+        return all_same
+    else:
+        assert False, (layer, type(layer))
 
 
 def get_identifier(layer, cur_slice):
@@ -863,9 +873,15 @@ class SelectMetricWidget(QWidget):
     def _update_on_data(self, event):
         if not self._plugin_view_update:
             layer = event.source
-            if not np.array_equal(
-                layer.data, self.prev_valid_layers[layer.name][1]
-            ):
+            try:
+                is_creating = layer._is_creating
+            except AttributeError:
+                is_creating = False
+
+            if is_creating:
+                return
+
+            if not check_equal(layer, self.prev_valid_layers[layer.name][1]):
                 self.prev_valid_layers[layer.name][1] = layer.data
 
                 prev_selection = {layer.name}

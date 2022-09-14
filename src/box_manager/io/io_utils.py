@@ -131,8 +131,8 @@ def to_napari(
     kwargs: NapariMetaData = {
         "edge_color": "red",
         "face_color": "transparent",
-        "symbol": "disc" if is_3d else "square",
-        "edge_width": 0.07,
+        "symbol": "disc",
+        "edge_width": 0.05,
         "edge_width_is_relative": True,
         "size": input_df["boxsize"],
         "out_of_slice_display": True if is_3d else False,

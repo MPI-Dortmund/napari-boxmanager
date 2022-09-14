@@ -584,6 +584,19 @@ class SelectMetricWidget(QWidget):
         except AttributeError:
             pass
         self._update_sync()
+        if "do_activate_on_insert" in event.value.metadata:
+            self.table_widget.selectionModel().selectionChanged.disconnect(
+                self.update_hist
+            )
+            self.table_widget.restore_selection({event.value.name})
+            self.table_widget.selectionModel().selectionChanged.connect(
+                self.update_hist
+            )
+            self.table_widget.selectionModel().selectionChanged.emit(
+                QItemSelection(), QItemSelection()
+            )
+            del event.value.metadata["do_activate_on_insert"]
+
 
     @Slot(str, int, str, object)
     def _update_check_state(self, layer_name, slice_idx, attr_name, value):

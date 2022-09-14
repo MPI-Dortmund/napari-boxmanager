@@ -87,7 +87,9 @@ class AddLayerWidget(QWidget):
         if not layer_name:
             return {}
         layer_meta = self.napari_viewer.layers[layer_name].metadata
-        metadata = {}
+        metadata = {
+            "do_activate_on_insert": True,
+            }
         for key, value in layer_meta.items():
             if isinstance(key, int):
                 metadata[key] = {}

@@ -219,6 +219,7 @@ class OrganizeBoxWidget(QWidget):
         }
         new_meta["prefix"] = prefix_coord
         new_meta["suffix"] = suffix_coord
+        new_meta["do_activate_on_insert"] = True
 
         total_mask = np.zeros(len(old_data), dtype=bool)
         table_list = []

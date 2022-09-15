@@ -73,6 +73,14 @@ def get_identifier(layer, cur_slice):
     else:
         assert False, (layer, type(layer))
 
+def get_current_size(layer):
+    if isinstance(layer, napari.layers.Points):
+        return np.atleast_1d([layer.current_size])
+    elif isinstance(layer, napari.layers.Shapes):
+        return np.atleast_1d([layer.current_edge_width])
+    else:
+        assert False, (layer, type(layer))
+
 def get_size(layer):
     if isinstance(layer, napari.layers.Points):
         return layer.size
@@ -1206,7 +1214,12 @@ class SelectMetricWidget(QWidget):
             except (KeyError, TypeError):
                 if metric_name == "boxsize":
                     layer_features.append(
-                        pd.DataFrame(get_size(layer)).loc[mask, :].mean()
+                        pd.DataFrame(get_size(layer)).loc[mask, :].mean(axis=1)
+                    )
+                elif metric_name == "current_boxsize":
+                    # Only called when layer is empty
+                    layer_features.append(
+                        pd.DataFrame(get_current_size(layer))
                     )
         return pd.concat(layer_features, ignore_index=True)
 
@@ -1380,6 +1393,9 @@ class SelectMetricWidget(QWidget):
         metric_done = []
         if "boxsize" in self.metric_dict:
             labels_data = self._get_all_data("boxsize", layer_mask)
+            if labels_data.empty:
+                labels_data = self._get_all_data("current_boxsize", layer_mask)
+
             if np.all(labels_data == labels_data[0]):
                 self.metric_dict["boxsize"].set_value(int(labels_data[0]))
             else:

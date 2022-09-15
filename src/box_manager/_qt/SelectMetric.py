@@ -996,8 +996,8 @@ class SelectMetricWidget(QWidget):
             )
 
         # Case: No points available
-        if not output_list:
-            identifier = 0
+        if not output_list and name is not None:
+            identifier = "" if name is not None else 0
             try:
                 cur_name = name or layer.metadata[identifier]["name"]
             except KeyError:
@@ -1349,7 +1349,7 @@ class SelectMetricWidget(QWidget):
 
             metric_done.append(metric_name)
 
-        if len(set(slice_indices)) == 1:
+        if len(rows_candidates) == 1 and list(rows_candidates)[0][0] != -1:
             self.napari_viewer.dims.set_point(
                 [self._cur_slice_dim], (slice_indices[0],)
             )

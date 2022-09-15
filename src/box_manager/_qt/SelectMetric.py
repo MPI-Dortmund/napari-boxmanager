@@ -233,24 +233,6 @@ class GroupModel(QStandardItemModel):
             for col_idx, item in enumerate(row_items):
                 root_item.setChild(row_idx, col_idx, item)
 
-    def sort(self, columns):
-        row_dict = {}
-        root_item = self.invisibleRootItem()
-        prev_status = self.blockSignals(True)
-        for row_idx in reversed(range(root_item.rowCount())):
-            name = root_item.child(row_idx, self.label_dict["name"]).text()
-            row_dict[name] = root_item.takeRow(row_idx)
-
-        row_idx = 0
-        for col_name in reversed(columns):
-            if col_name in row_dict:
-                for col_idx, item in enumerate(row_dict[col_name]):
-                    root_item.setChild(row_idx, col_idx, item)
-                row_idx += 1
-        self.blockSignals(prev_status)
-
-        self.layoutChanged.emit()
-
     def set_values(self, parent_idx, rows_idx, col_name, value):
         for row in rows_idx:
             self.set_value(parent_idx, row, col_name, value)
@@ -392,10 +374,61 @@ class GroupView(QTreeView):
     def get_row_selection(self):
         prev_selection = {
             self.model.get_value(-1, entry[1], "name")
-            for entry in self.get_row_candidates()
             if entry[0] == -1
+            else
+            self.model.get_value(-1, entry[0], "name")
+            for entry in self.get_row_candidates()
         }
         return prev_selection
+
+    def get_expansion_state(self):
+        root_item = self.model.invisibleRootItem()
+        rows = root_item.rowCount()
+        is_expanded = {}
+        for row_idx in range(rows):
+            idx = self.model.indexFromItem(root_item.child(row_idx, 0))
+            expansion_state = self.isExpanded(idx)
+            name = self.model.get_value(-1, row_idx, "name")
+            is_expanded[name] = expansion_state
+
+        return is_expanded
+
+    def restore_expansion(self, expansion_dict):
+        root_item = self.model.invisibleRootItem()
+        rows = root_item.rowCount()
+        is_expanded = {}
+        for row_idx in range(rows):
+            idx = self.model.indexFromItem(root_item.child(row_idx, 0))
+            name = self.model.get_value(-1, row_idx, "name")
+            self.setExpanded(idx, expansion_dict[name])
+
+    def sort(self, columns):
+        row_dict = {}
+        model = self.model
+        root_item = model.invisibleRootItem()
+        root_idx = root_item.index()
+        prev_status = self.blockSignals(True)
+
+        prev_selection = self.get_row_selection()
+        prev_expansion = self.get_expansion_state()
+        for new_idx, row_name in enumerate(columns):
+            old_idx = -1
+            for row_idx in reversed(range(root_item.rowCount())):
+                cur_item = root_item.child(row_idx, model.label_dict["name"])
+                if row_name == cur_item.text():
+                    old_idx = row_idx
+                    break
+            assert old_idx >= 0
+            if new_idx == old_idx:
+                continue
+            row = model.takeRow(old_idx)
+            model.insertRow(new_idx, row)
+
+        self.blockSignals(prev_status)
+
+        model.layoutChanged.emit()
+        self.restore_selection(prev_selection)
+        self.restore_expansion(prev_expansion)
 
     @Slot(QModelIndex)
     def on_clicked(self, index):
@@ -525,8 +558,8 @@ class SelectMetricWidget(QWidget):
         ] + self.read_only
 
         self.napari_viewer.layers.events.reordered.connect(self._order_table)
-        self.napari_viewer.layers.events.inserted.connect(self._unlock_layer)
-        self.napari_viewer.layers.events.removed.connect(self._update_sync)
+        self.napari_viewer.layers.events.inserted.connect(self._handle_insert)
+        self.napari_viewer.layers.events.removed.connect(self._handle_remove)
         self.napari_viewer.dims.events.order.connect(self._update_sync)
         self.napari_viewer.events.theme.connect(self._set_color)
 
@@ -576,26 +609,51 @@ class SelectMetricWidget(QWidget):
         self._set_color()
 
     @Slot(object)
-    def _unlock_layer(self, event):
+    def _handle_remove(self, event):
+        layer = event.value
+        self._add_remove_table(layer, ButtonActions.DEL)
+        del self.prev_valid_layers[layer.name]
+
+    @Slot(object)
+    def _handle_insert(self, event):
+        layer = event.value
         try:
             # TODO: Remove try/except after https://github.com/napari/napari/pull/5028
-            if event.value.source.parent is not None:
-                event.value.metadata["set_lock"] = False
+            if layer.source.parent is not None:
+                layer.metadata["set_lock"] = False
+                layer.metadata['do_activate_on_insert'] = True
         except AttributeError:
             pass
-        self._update_sync()
-        if "do_activate_on_insert" in event.value.metadata:
+
+        self._add_remove_table(layer, ButtonActions.ADD)
+        if (
+            "set_lock" in layer.metadata
+            and layer.metadata["set_lock"]
+        ):
+            layer.editable = False
+
+        layer.events.set_data.connect(self._update_on_data)
+        layer.events.editable.connect(self._update_editable)
+        layer.events.name.connect(self._update_name)
+        layer.events.opacity.connect(self._update_opacity)
+        layer.events.visible.connect(self._update_visible)
+        self.prev_valid_layers[layer.name] = [layer, layer.data]
+
+        if "do_activate_on_insert" in layer.metadata:
             self.table_widget.selectionModel().selectionChanged.disconnect(
                 self.update_hist
             )
-            self.table_widget.restore_selection({event.value.name})
+            self.table_widget.restore_selection({layer.name})
             self.table_widget.selectionModel().selectionChanged.connect(
                 self.update_hist
             )
             self.table_widget.selectionModel().selectionChanged.emit(
                 QItemSelection(), QItemSelection()
             )
-            del event.value.metadata["do_activate_on_insert"]
+            del layer.metadata["do_activate_on_insert"]
+
+        self._update_slider()
+
 
 
     @Slot(str, int, str, object)
@@ -647,9 +705,11 @@ class SelectMetricWidget(QWidget):
         self.table_widget.selectionModel().selectionChanged.disconnect(
             self.update_hist
         )
+        prev_expansion = self.table_widget.get_expansion_state()
         prev_selection = self._clear_table()
         self._sync_table(do_selection=False)
         self.table_widget.restore_selection(prev_selection)
+        self.table_widget.restore_expansion(prev_expansion)
         self.table_widget.selectionModel().selectionChanged.connect(
             self.update_hist
         )
@@ -789,20 +849,20 @@ class SelectMetricWidget(QWidget):
             if isinstance(entry, self.loadable_layers)
         ]
 
-        if do_selection:
-            prev_selection = self.table_widget.get_row_selection()
-            self.table_widget.selectionModel().selectionChanged.disconnect(
-                self.update_hist
-            )
-        self.table_model.sort(valid_names)
-        if do_selection:
-            self.table_widget.restore_selection(prev_selection)
-            self.table_widget.selectionModel().selectionChanged.connect(
-                self.update_hist
-            )
-            self.table_widget.selectionModel().selectionChanged.emit(
-                QItemSelection(), QItemSelection()
-            )
+        #if do_selection:
+        #    prev_selection = self.table_widget.get_row_selection()
+        #    self.table_widget.selectionModel().selectionChanged.disconnect(
+        #        self.update_hist
+        #    )
+        self.table_widget.sort(valid_names)
+        #if do_selection:
+        #    self.table_widget.restore_selection(prev_selection)
+        #    self.table_widget.selectionModel().selectionChanged.connect(
+        #        self.update_hist
+        #    )
+        #    self.table_widget.selectionModel().selectionChanged.emit(
+        #        QItemSelection(), QItemSelection()
+        #    )
 
     @Slot(object)
     def _sync_table(
@@ -898,12 +958,14 @@ class SelectMetricWidget(QWidget):
                 self.prev_valid_layers[layer.name][1] = layer.data
 
                 prev_selection = {layer.name}
+                prev_expansion = self.table_widget.get_expansion_state()
                 self.table_widget.selectionModel().selectionChanged.disconnect(
                     self.update_hist
                 )
                 self._add_remove_table(layer, ButtonActions.UPDATE)
                 self._order_table(do_selection=False)
                 self.table_widget.restore_selection(prev_selection)
+                self.table_widget.restore_expansion(prev_expansion)
                 self.table_widget.selectionModel().selectionChanged.connect(
                     self.update_hist
                 )

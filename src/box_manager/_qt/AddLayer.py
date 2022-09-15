@@ -39,12 +39,9 @@ class AddLayerWidget(QWidget):
 
         layout = QFormLayout()
         layout.addRow("Target image layer:", self._layer)
-        self.layout().addLayout(layout)
-
-        layout = QHBoxLayout()
-        layout.addWidget(self._add_point)
-        layout.addWidget(self._add_shape)
-        layout.addWidget(self._add_label)
+        layout.addRow("Create particle layer:", self._add_point)
+        layout.addRow("Create filament layer:", self._add_shape)
+        layout.addRow("Create label layer:", self._add_label)
         self.layout().addLayout(layout)
 
         self.layout().addStretch(True)
@@ -84,12 +81,12 @@ class AddLayerWidget(QWidget):
 
     def _get_metadata(self):
         layer_name = self._layer.currentText()
-        if not layer_name:
-            return {}
-        layer_meta = self.napari_viewer.layers[layer_name].metadata
         metadata = {
             "do_activate_on_insert": True,
             }
+        if not layer_name:
+            return metadata
+        layer_meta = self.napari_viewer.layers[layer_name].metadata
         for key, value in layer_meta.items():
             if isinstance(key, int):
                 metadata[key] = {}
@@ -152,6 +149,7 @@ class AddLayerWidget(QWidget):
             "edge_color": 'red',
             "edge_width": 2,
             "opacity": 0.8,
+            "name": "filaments",
         }
         shape = self.napari_viewer.add_shapes(
             ndim=max(self.napari_viewer.dims.ndim, 2),

@@ -400,7 +400,11 @@ class GroupView(QTreeView):
         for row_idx in range(rows):
             idx = self.model.indexFromItem(root_item.child(row_idx, 0))
             name = self.model.get_value(-1, row_idx, "name")
-            self.setExpanded(idx, expansion_dict[name])
+            try:
+                value = expansion_dict[name]
+            except KeyError:
+                value = False
+            self.setExpanded(idx, value)
 
     def sort(self, columns):
         row_dict = {}
@@ -411,7 +415,7 @@ class GroupView(QTreeView):
 
         prev_selection = self.get_row_selection()
         prev_expansion = self.get_expansion_state()
-        for new_idx, row_name in enumerate(columns):
+        for new_idx, row_name in enumerate(reversed(columns)):
             old_idx = -1
             for row_idx in reversed(range(root_item.rowCount())):
                 cur_item = root_item.child(row_idx, model.label_dict["name"])
@@ -625,6 +629,7 @@ class SelectMetricWidget(QWidget):
         except AttributeError:
             pass
 
+        prev_expansion = self.table_widget.get_expansion_state()
         self._add_remove_table(layer, ButtonActions.ADD)
         if (
             "set_lock" in layer.metadata
@@ -644,6 +649,7 @@ class SelectMetricWidget(QWidget):
                 self.update_hist
             )
             self.table_widget.restore_selection({layer.name})
+            self.table_widget.restore_expansion(prev_expansion)
             self.table_widget.selectionModel().selectionChanged.connect(
                 self.update_hist
             )
@@ -653,8 +659,7 @@ class SelectMetricWidget(QWidget):
             del layer.metadata["do_activate_on_insert"]
 
         self._update_slider()
-
-
+        self._order_table()
 
     @Slot(str, int, str, object)
     def _update_check_state(self, layer_name, slice_idx, attr_name, value):

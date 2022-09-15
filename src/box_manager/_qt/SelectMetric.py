@@ -621,6 +621,9 @@ class SelectMetricWidget(QWidget):
     @Slot(object)
     def _handle_insert(self, event):
         layer = event.value
+        if not isinstance(layer, self.loadable_layers):
+            return
+
         try:
             # TODO: Remove try/except after https://github.com/napari/napari/pull/5028
             if layer.source.parent is not None:

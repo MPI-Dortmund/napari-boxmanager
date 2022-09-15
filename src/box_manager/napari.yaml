@@ -31,10 +31,7 @@ contributions:
   readers:
     - command: napari-boxmanager.get_reader
       accepts_directories: false
-      filename_patterns: ['*.cbox', '*.box', '*.star', '*.mrc', "*.mrcs", "*.st","*.coords","*.rec"]
-    - command: napari-boxmanager.get_reader
-      accepts_directories: false
-      filename_patterns: [ '*.tloc', '*.temb', '*.tmap']
+      filename_patterns: ['*.tloc', '*.temb', '*.tmap','*.cbox', '*.box', '*.star', '*.mrc', "*.mrcs", "*.st","*.coords","*.rec"]
   writers:
     - command: napari-boxmanager.get_writer
       layer_types: ['points*', 'image*']

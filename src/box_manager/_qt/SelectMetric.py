@@ -741,9 +741,15 @@ class SelectMetricWidget(QWidget):
                     self.table_model.get_values(parent_idx, rows_idx, "slice"),
                 )
             )
-            layer_vals = float(
-                self.table_model.get_value(parent_idx, rows_idx[0], col_name)
-            )
+            if rows_idx:
+                layer_vals = float(
+                    self.table_model.get_value(parent_idx, rows_idx[0], col_name)
+                )
+            else:
+                layer_vals = float(
+                    self.table_model.get_value(-1, parent_idx, col_name)
+                )
+
             for z_slice in slice_idx:
                 layer.metadata[z_slice][col_name] = layer_vals
 

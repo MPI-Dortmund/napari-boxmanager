@@ -101,6 +101,17 @@ class AddLayerWidget(QWidget):
                 metadata[key] = value
         return metadata
 
+    def _get_out_of_slice_display(self):
+        layer_name = self._layer.currentText()
+        layer_meta = self.napari_viewer.layers[layer_name].metadata
+        if "is_3d" in layer_meta and "is_2d_stack" in layer_meta:
+            if layer_meta["is_3d"] and not layer_meta["is_2d_stack"]:
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def _new_points(self):
         metadata = self._get_metadata()
         kwargs = {
@@ -111,7 +122,7 @@ class AddLayerWidget(QWidget):
             "edge_width_is_relative": True,
             "size": 128,
             "name": "coordinates",
-            "out_of_slice_display": False,
+            "out_of_slice_display": self._get_out_of_slice_display(),
             "opacity": 0.8,
             "metadata": metadata,
         }

@@ -113,6 +113,8 @@ class AddLayerWidget(QWidget):
             return False
 
     def _new_points(self):
+        if len(self.napari_viewer.layers) == 0:
+            return
         metadata = self._get_metadata()
         kwargs = {
             "edge_color": "red",

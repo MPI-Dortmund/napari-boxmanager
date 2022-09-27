@@ -33,9 +33,13 @@ class PrefixSuffixCount(QWidget):
 
         self.combo = QComboBox(self)
         self.prefix_edit = QLineEdit(self)
-        self.prefix_edit.textEdited.connect(lambda x: self.editingFinished.emit())
+        self.prefix_edit.textEdited.connect(
+            lambda x: self.editingFinished.emit()
+        )
         self.suffix_edit = QLineEdit(self)
-        self.suffix_edit.textEdited.connect(lambda x: self.editingFinished.emit())
+        self.suffix_edit.textEdited.connect(
+            lambda x: self.editingFinished.emit()
+        )
 
         self.layout().addRow(f"{name.capitalize()} layer", self.combo)
         self.layout().addRow(f"{name.capitalize()} prefix", self.prefix_edit)
@@ -127,6 +131,7 @@ class OrganizeBoxWidget(QWidget):
                     for entry in self.napari_viewer.layers
                     if isinstance(entry, valid_types)
                     and entry.ndim == 3
+                    and "is_2d_stack" in entry.metadata
                     and "original_path" in entry.metadata
                 ),
                 key=lambda x: x.name,
@@ -246,13 +251,13 @@ class OrganizeBoxWidget(QWidget):
             else:
                 new_meta[image_idx] = layer_coord.metadata[coord_idx]
                 try:
-                    new_meta[image_idx]['real']
+                    new_meta[image_idx]["real"]
                 except KeyError:
-                    new_meta[image_idx]['real'] = True
-                if new_meta[image_idx]['real']:
+                    new_meta[image_idx]["real"] = True
+                if new_meta[image_idx]["real"]:
                     new_coord_name = new_meta[image_idx]["name"]
                 else:
-                    new_coord_name = '-'
+                    new_coord_name = "-"
             table_list.append((mic_name, box_name, new_coord_name))
 
             slice_mask = np.round(old_data[:, 0], 0) == coord_idx
@@ -264,7 +269,13 @@ class OrganizeBoxWidget(QWidget):
         self.table_widget.setColumnCount(3)
         self.table_widget.setRowCount(len(table_list))
 
-        self.table_widget.setHorizontalHeaderLabels([layer_image.name, layer_coord.name, f"{layer_coord.name} (matched)"])
+        self.table_widget.setHorizontalHeaderLabels(
+            [
+                layer_image.name,
+                layer_coord.name,
+                f"{layer_coord.name} (matched)",
+            ]
+        )
         for row_idx, row_entries in enumerate(table_list):
             for col_idx, value in enumerate(row_entries):
                 item = QTableWidgetItem(value)

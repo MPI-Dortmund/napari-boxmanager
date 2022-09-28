@@ -623,6 +623,9 @@ class SelectMetricWidget(QWidget):
     @Slot(object)
     def _handle_remove(self, event):
         layer = event.value
+        if not isinstance(layer, self.loadable_layers):
+            return
+
         self._add_remove_table(layer, ButtonActions.DEL)
         del self.prev_valid_layers[layer.name]
 

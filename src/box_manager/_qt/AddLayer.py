@@ -65,6 +65,11 @@ class AddLayerWidget(QWidget):
         self._layer.addItems(layer_names)
         self._layer.setCurrentText(current_text)
 
+        enabled = bool(layer_names)
+        self._add_point.setEnabled(enabled)
+        self._add_shape.setEnabled(enabled)
+        self._add_label.setEnabled(enabled)
+
     def _apply_icons(self, *_):
         theme_dir = pathlib.Path(
             ICON_DIR, f"_themes/{self.napari_viewer.theme}"
@@ -113,8 +118,8 @@ class AddLayerWidget(QWidget):
             return False
 
     def _new_points(self):
-        if len(self.napari_viewer.layers) == 0:
-            return
+        #if len(self.napari_viewer.layers) == 0:
+        #    return
         metadata = self._get_metadata()
         kwargs = {
             "edge_color": "red",

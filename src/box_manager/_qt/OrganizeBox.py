@@ -132,6 +132,7 @@ class OrganizeBoxWidget(QWidget):
                     if isinstance(entry, valid_types)
                     and entry.ndim == 3
                     and "is_2d_stack" in entry.metadata
+                    and entry.metadata["is_2d_stack"]
                     and "original_path" in entry.metadata
                 ),
                 key=lambda x: x.name,

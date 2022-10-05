@@ -181,7 +181,11 @@ def from_napari(
         coordinates = data[meta["shown"]]
         boxsize = meta["size"][meta["shown"]][:, 0]
         export_data = {}
-        is_2d_stacked = meta['metadata']["is_2d_stack"]
+        try:
+            is_2d_stacked = meta['metadata']["is_2d_stack"]
+        except KeyError:
+            is_2d_stacked = False
+
         if is_2d_stacked:
             for z in np.unique(coordinates[:, 0]):
                 z = int(z)

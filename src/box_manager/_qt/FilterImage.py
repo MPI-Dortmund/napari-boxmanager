@@ -116,18 +116,19 @@ class FilterImageWidget(QWidget):
             self.napari_viewer.layers.index(self.layer) + 1, image
         )
 
-        connect2 = self.napari_viewer.dims.events.current_step.connect(
-            lambda *x, new_layer=image, old_layer=self.layer, filter_kwargs=kwargs: self._filter_layer(
-                new_layer=new_layer, old_layer=old_layer, **filter_kwargs
+        if self.filter_2d:
+            connect2 = self.napari_viewer.dims.events.current_step.connect(
+                lambda *x, new_layer=image, old_layer=self.layer, filter_kwargs=kwargs: self._filter_layer(
+                    new_layer=new_layer, old_layer=old_layer, **filter_kwargs
+                )
             )
-        )
-        connect1 = image.events.visible.connect(
-            lambda *x, new_layer=image, old_layer=self.layer, filter_kwargs=kwargs: self._filter_layer(
-                new_layer=new_layer, old_layer=old_layer, **filter_kwargs
+            connect1 = image.events.visible.connect(
+                lambda *x, new_layer=image, old_layer=self.layer, filter_kwargs=kwargs: self._filter_layer(
+                    new_layer=new_layer, old_layer=old_layer, **filter_kwargs
+                )
             )
-        )
-        image.connect1 = connect1
-        image.connect2 = connect2
+            image.connect1 = connect1
+            image.connect2 = connect2
 
     def _filter_layer(self, new_layer, old_layer, **filter_kwargs):
         if (
@@ -185,11 +186,13 @@ class FilterImageWidget(QWidget):
             self.pixel_size = pixel_spacing
 
         try:
-            is_2d_stacked = layer.metadata["is_2d_stacked"]
+            is_2d_stacked = layer.metadata["is_2d_stack"]
         except KeyError:
             self.filter_2d = False
+            self._filter_2d.setEnabled(False)
         else:
             self.filter_2d = is_2d_stacked
+            self._filter_2d.setEnabled(is_2d_stacked)
 
     @Slot(object)
     def _update_combo(self, *_):

@@ -130,9 +130,14 @@ class FilterImageWidget(QWidget):
         image.connect2 = connect2
 
     def _filter_layer(self, new_layer, old_layer, **filter_kwargs):
-        if new_layer not in self.napari_viewer.layers or old_layer not in self.napari_viewer.layers:
+        if (
+            new_layer not in self.napari_viewer.layers
+            or old_layer not in self.napari_viewer.layers
+        ):
             new_layer.events.disconnect(new_layer.connect1)
-            self.napari_viewer.dims.events.current_step.disconnect(new_layer.connect2)
+            self.napari_viewer.dims.events.current_step.disconnect(
+                new_layer.connect2
+            )
             return
 
         if new_layer.visible:
@@ -175,16 +180,16 @@ class FilterImageWidget(QWidget):
         try:
             pixel_spacing = layer.metadata["pixel_spacing"]
         except KeyError:
-            pass
+            self.pixel_size = -1
         else:
             self.pixel_size = pixel_spacing
 
         try:
-            is_3d = layer.metadata["is_3d"]
+            is_2d_stacked = layer.metadata["is_2d_stacked"]
         except KeyError:
-            pass
+            self.filter_2d = False
         else:
-            self.filter_2d = not is_3d
+            self.filter_2d = is_2d_stacked
 
     @Slot(object)
     def _update_combo(self, *_):

@@ -6,11 +6,13 @@ import typing
 import warnings
 from collections.abc import Callable
 from typing import Protocol
-from .interface import NapariLayerData, NapariMetaData
+
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+
+from .interface import NapariLayerData, NapariMetaData
 
 with warnings.catch_warnings():
     warnings.filterwarnings(
@@ -108,8 +110,6 @@ def to_napari(
     if not isinstance(path, list):
         path = sorted(glob.glob(path))  # type: ignore
 
-
-
     input_df, metadata, is_3d = _prepare_coords_df(
         path,
         read_func=read_func,
@@ -182,7 +182,7 @@ def from_napari(
         boxsize = meta["size"][meta["shown"]][:, 0]
         export_data = {}
         try:
-            is_2d_stacked = meta['metadata']["is_2d_stack"]
+            is_2d_stacked = meta["metadata"]["is_2d_stack"]
         except KeyError:
             is_2d_stacked = False
 
@@ -219,8 +219,12 @@ class LoaderProxy(Array):
         if len(self.files) == 0:
             raise AttributeError("Cannot provide empty files list")
 
-        _data = self.load_image(0)
-        self._array = np.empty((len(self.files), *_data.shape), dtype=bool)
+        self._array = None
+        self._shape = self.load_image(0).shape
+
+    @property
+    def shape(self):
+        return (len(self.files), *self._shape)
 
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
@@ -228,6 +232,7 @@ class LoaderProxy(Array):
 
     def load_image(self, index) -> Array:
         data = self.reader_func(self.files[index])
+        self._array = np.empty((1, 1, 1), dtype=data.dtype)
         return (data - np.mean(data)) / np.std(data)
 
     def __len__(self):

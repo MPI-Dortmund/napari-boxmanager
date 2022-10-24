@@ -84,3 +84,4 @@ venv/
 **/_version.py
 
 .*.swp
+large_test_data/**

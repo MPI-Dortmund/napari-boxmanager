@@ -112,6 +112,11 @@ class FilterImageWidget(QWidget):
             name=f"LP {int(self.lp_filter_resolution)} HP {int(self.hp_filter_resolution)} AP {self.pixel_size} LIVE {self.filter_2d}  - {self.layer.name}",
             metadata=self.layer.metadata,
         )
+        image.contrast_limits_range = [
+            filtered_image.min(),
+            filtered_image.max(),
+        ]
+        image.contrast_limits = [filtered_image.min(), filtered_image.max()]
         self.napari_viewer.layers.insert(
             self.napari_viewer.layers.index(self.layer) + 1, image
         )
@@ -148,6 +153,14 @@ class FilterImageWidget(QWidget):
                 **filter_kwargs,
             )
             new_layer.data[...] = filtered_image
+            new_layer.contrast_limits_range = [
+                filtered_image.min(),
+                filtered_image.max(),
+            ]
+            new_layer.contrast_limits = [
+                filtered_image.min(),
+                filtered_image.max(),
+            ]
             with new_layer.events.visible.blocker():
                 new_layer.visible = True
 

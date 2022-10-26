@@ -55,11 +55,19 @@ ICON_DIR = pathlib.Path(os.path.dirname(__file__), "_icons")
 #         return func(*args, **kwargs)
 #     return inner
 
+
 def check_equal(layer, compare_data):
     if isinstance(layer, napari.layers.Points):
         return np.array_equal(layer.data, compare_data)
     elif isinstance(layer, napari.layers.Shapes):
-        all_same = all([np.array_equal(dat, ent) for dat, ent in itertools.zip_longest(layer.data, compare_data, fillvalue=np.array([]))])
+        all_same = all(
+            [
+                np.array_equal(dat, ent)
+                for dat, ent in itertools.zip_longest(
+                    layer.data, compare_data, fillvalue=np.array([])
+                )
+            ]
+        )
         return all_same
     else:
         assert False, (layer, type(layer))
@@ -73,6 +81,7 @@ def get_identifier(layer, cur_slice):
     else:
         assert False, (layer, type(layer))
 
+
 def get_current_size(layer):
     if isinstance(layer, napari.layers.Points):
         return np.atleast_1d([layer.current_size])
@@ -80,6 +89,7 @@ def get_current_size(layer):
         return np.atleast_1d([layer.current_edge_width])
     else:
         assert False, (layer, type(layer))
+
 
 def get_size(layer):
     if isinstance(layer, napari.layers.Points):
@@ -89,8 +99,14 @@ def get_size(layer):
     else:
         assert False, (layer, type(layer))
 
+
 def set_size(layer, mask, size):
+
     if isinstance(layer, napari.layers.Points):
+        currently_selected = layer.selected_data.intersection(
+            set(range(len(layer.size)))
+        )
+        layer.selected_data = currently_selected
         layer.size[mask] = size
         layer.current_size = size
         # TODO: Eventually remove after potential event fix: https://github.com/napari/napari/pull/4951
@@ -103,6 +119,7 @@ def set_size(layer, mask, size):
         layer.events.edge_width()
     else:
         assert False, (layer, type(layer))
+
 
 class DimensionAxis(enum.Enum):
     Z = 0
@@ -241,6 +258,18 @@ class GroupModel(QStandardItemModel):
             for col_idx, item in enumerate(row_items):
                 root_item.setChild(row_idx, col_idx, item)
 
+    def find_index(self, parent_name: str, slice_val: str):
+        root_item = self.group_items[parent_name]
+        parent_idx = self.indexFromItem(root_item).row()
+
+        for row_idx in range(root_item.rowCount()):
+            if slice_val == self.get_value(parent_idx, row_idx, "slice"):
+                self.set_value
+                break
+        else:
+            return parent_idx, None
+        return parent_idx, row_idx
+
     def set_values(self, parent_idx, rows_idx, col_name, value):
         for row in rows_idx:
             self.set_value(parent_idx, row, col_name, value)
@@ -269,6 +298,16 @@ class GroupModel(QStandardItemModel):
         return (
             child_item.child(row_idx, self.label_dict[col_name]).checkState()
             == Qt.Checked
+        )
+
+    def set_checkstate(self, parent_idx, row_idx, col_name, value):
+        root_element = self.invisibleRootItem()
+        if parent_idx == -1:
+            child_item = root_element
+        else:
+            child_item = root_element.child(parent_idx, 0)
+        child_item.child(row_idx, self.label_dict[col_name]).setCheckState(
+            Qt.Checked if value else Qt.Unchecked
         )
 
     def get_values(self, parent_idx, rows_idx, col_name):
@@ -383,8 +422,7 @@ class GroupView(QTreeView):
         prev_selection = {
             self.model.get_value(-1, entry[1], "name")
             if entry[0] == -1
-            else
-            self.model.get_value(-1, entry[0], "name")
+            else self.model.get_value(-1, entry[0], "name")
             for entry in self.get_row_candidates()
         }
         return prev_selection
@@ -404,7 +442,6 @@ class GroupView(QTreeView):
     def restore_expansion(self, expansion_dict):
         root_item = self.model.invisibleRootItem()
         rows = root_item.rowCount()
-        is_expanded = {}
         for row_idx in range(rows):
             idx = self.model.indexFromItem(root_item.child(row_idx, 0))
             name = self.model.get_value(-1, row_idx, "name")
@@ -415,10 +452,8 @@ class GroupView(QTreeView):
             self.setExpanded(idx, value)
 
     def sort(self, columns):
-        row_dict = {}
         model = self.model
         root_item = model.invisibleRootItem()
-        root_idx = root_item.index()
         prev_status = self.blockSignals(True)
 
         prev_selection = self.get_row_selection()
@@ -639,16 +674,13 @@ class SelectMetricWidget(QWidget):
             # TODO: Remove try/except after https://github.com/napari/napari/pull/5028
             if layer.source.parent is not None:
                 layer.metadata["set_lock"] = False
-                layer.metadata['do_activate_on_insert'] = True
+                layer.metadata["do_activate_on_insert"] = True
         except AttributeError:
             pass
 
         prev_expansion = self.table_widget.get_expansion_state()
         self._add_remove_table(layer, ButtonActions.ADD)
-        if (
-            "set_lock" in layer.metadata
-            and layer.metadata["set_lock"]
-        ):
+        if "set_lock" in layer.metadata and layer.metadata["set_lock"]:
             layer.editable = False
 
         layer.events.set_data.connect(self._update_on_data)
@@ -738,6 +770,7 @@ class SelectMetricWidget(QWidget):
 
     @Slot(dict, str)
     def _update_view(self, layer_dict, col_name):
+        prev_plugin_view_update = self._plugin_view_update
         self._plugin_view_update = True
         metric_name, is_min_max = self.trim_suffix(col_name)
 
@@ -754,7 +787,9 @@ class SelectMetricWidget(QWidget):
             )
             if rows_idx:
                 layer_vals = float(
-                    self.table_model.get_value(parent_idx, rows_idx[0], col_name)
+                    self.table_model.get_value(
+                        parent_idx, rows_idx[0], col_name
+                    )
                 )
             else:
                 layer_vals = float(
@@ -766,7 +801,8 @@ class SelectMetricWidget(QWidget):
 
             if layer.ndim == 3:
                 mask_dimension = np.isin(
-                    np.round(get_identifier(layer, self._cur_slice_dim), 0), slice_idx
+                    np.round(get_identifier(layer, self._cur_slice_dim), 0),
+                    slice_idx,
                 )
             elif layer.ndim == 2:
                 mask_dimension = np.ones(len(layer.data), dtype=bool)
@@ -809,13 +845,14 @@ class SelectMetricWidget(QWidget):
                     for idx, row in enumerate(rows_idx):
                         if layer.ndim == 3:
                             slice_mask = (
-                                np.round(get_identifier(layer, self._cur_slice_dim), 0)
+                                np.round(
+                                    get_identifier(layer, self._cur_slice_dim),
+                                    0,
+                                )
                                 == slice_idx[idx]
                             )
                         elif layer.ndim == 2:
-                            slice_mask = np.ones(
-                                len(layer.data), dtype=bool
-                            )
+                            slice_mask = np.ones(len(layer.data), dtype=bool)
                         else:
                             assert False, layer
                         self.table_model.set_value(
@@ -851,7 +888,7 @@ class SelectMetricWidget(QWidget):
 
             if do_update:
                 layer.refresh()
-        self._plugin_view_update = False
+        self._plugin_view_update = prev_plugin_view_update
 
     @staticmethod
     def trim_suffix(label_name):
@@ -874,13 +911,13 @@ class SelectMetricWidget(QWidget):
             if isinstance(entry, self.loadable_layers)
         ]
 
-        #if do_selection:
+        # if do_selection:
         #    prev_selection = self.table_widget.get_row_selection()
         #    self.table_widget.selectionModel().selectionChanged.disconnect(
         #        self.update_hist
         #    )
         self.table_widget.sort(valid_names)
-        #if do_selection:
+        # if do_selection:
         #    self.table_widget.restore_selection(prev_selection)
         #    self.table_widget.selectionModel().selectionChanged.connect(
         #        self.update_hist
@@ -982,18 +1019,7 @@ class SelectMetricWidget(QWidget):
             if not check_equal(layer, self.prev_valid_layers[layer.name][1]):
                 self.prev_valid_layers[layer.name][1] = layer.data
 
-                prev_selection = {layer.name}
-                prev_expansion = self.table_widget.get_expansion_state()
-                self.table_widget.selectionModel().selectionChanged.disconnect(
-                    self.update_hist
-                )
-                self._add_remove_table(layer, ButtonActions.UPDATE)
-                self._order_table(do_selection=False)
-                self.table_widget.restore_selection(prev_selection)
-                self.table_widget.restore_expansion(prev_expansion)
-                self.table_widget.selectionModel().selectionChanged.connect(
-                    self.update_hist
-                )
+                self._update_table(layer)
                 self.table_widget.selectionModel().selectionChanged.emit(
                     QItemSelection(), QItemSelection()
                 )
@@ -1014,9 +1040,9 @@ class SelectMetricWidget(QWidget):
             features_copy["identifier"] = (
                 ""
                 if name is not None
-                else np.round(get_identifier(layer, self._cur_slice_dim), 0).astype(
-                    int
-                )
+                else np.round(
+                    get_identifier(layer, self._cur_slice_dim), 0
+                ).astype(int)
             )
         elif layer.ndim == 2:
             features_copy["identifier"] = "" if name is not None else 0
@@ -1036,7 +1062,12 @@ class SelectMetricWidget(QWidget):
         range_list.extend(full_range)
 
         if name is None and self._show_mode == "All":
-            loop_var = sorted(list(set(range_list)))
+            if layer.ndim == 3:
+                loop_var = sorted(list(set(range_list)))
+            elif layer.ndim == 2:
+                loop_var = [0]
+            else:
+                assert False, layer.data
         else:
             idents = np.unique(features_copy["identifier"]).tolist()
             write_slices = [
@@ -1056,7 +1087,7 @@ class SelectMetricWidget(QWidget):
         except AttributeError:
             # Shape layers do not have the shown option, fake it!
             features_copy["shown"] = np.ones(len(layer.data))
-            layer.shown = features_copy['shown']
+            layer.shown = features_copy["shown"]
         slice_dict = {
             e1: e2
             for e1, e2 in features_copy.groupby("identifier", sort=False)
@@ -1190,9 +1221,61 @@ class SelectMetricWidget(QWidget):
                 self.table_model.sort_children(layer_name, "slice")
         elif action == ButtonActions.DEL:
             self.table_model.remove_group(layer_name)
-        elif action == ButtonActions.UPDATE:
-            self._add_remove_table(layer, ButtonActions.DEL)
-            self._add_remove_table(layer, ButtonActions.ADD)
+        else:
+            assert False, action
+
+    def _update_table(self, layer: napari.layers.Layer):
+        prev_plugin_view_update = self._plugin_view_update
+        self._plugin_view_update = True
+        layer_name = layer.name
+        if self.napari_viewer.dims.ndim == 3:
+            current_slice = int(
+                self.napari_viewer.dims.point[self.napari_viewer.dims.order[0]]
+            )
+            mask = (
+                layer.data[:, self.napari_viewer.dims.order[0]]
+                == current_slice
+            )
+            boxes = np.count_nonzero(mask)
+            selected = np.count_nonzero(layer.shown[mask])
+        elif self.napari_viewer.dims.ndim == 2:
+            current_slice = 0
+            boxes = len(layer.data)
+            selected = np.count_nonzero(layer.shown)
+        else:
+            assert False, layer.data
+
+        parent_idx, child_idx = self.table_model.find_index(
+            layer_name, str(current_slice)
+        )
+        if child_idx is None:
+            print("TODO: Implement new creation of group")
+            self._plugin_view_update = prev_plugin_view_update
+            return
+
+        self.table_model.set_value(parent_idx, child_idx, "boxes", boxes)
+        self.table_model.set_value(parent_idx, child_idx, "selected", selected)
+
+        write_val = layer.metadata[current_slice]["write"]
+        check_value = write_val if write_val is not None else bool(selected)
+        if check_value != self.table_model.get_checkstate(
+            parent_idx, child_idx, "write"
+        ):
+            self.table_model.set_checkstate(
+                parent_idx, child_idx, "write", check_value
+            )
+            # Do not change the checkstate
+            layer.metadata[current_slice]["write"] = write_val
+
+        self.table_model.set_value(
+            -1,
+            parent_idx,
+            "selected",
+            np.count_nonzero(layer.shown),
+        )
+        self.table_model.set_value(-1, parent_idx, "boxes", len(layer.shown))
+        self._plugin_view_update = prev_plugin_view_update
+        layer.refresh()
 
     def _get_all_data(self, metric_name, layer_mask=None):
 
@@ -1337,7 +1420,8 @@ class SelectMetricWidget(QWidget):
 
             if layer.ndim == 3:
                 mask = np.isin(
-                    np.round(get_identifier(layer, self._cur_slice_dim), 0), slice_idx
+                    np.round(get_identifier(layer, self._cur_slice_dim), 0),
+                    slice_idx,
                 )
             elif layer.ndim == 2:
                 mask = np.ones(len(layer.data), dtype=bool)

@@ -1017,9 +1017,35 @@ class SelectMetricWidget(QWidget):
                 return
 
             if not check_equal(layer, self.prev_valid_layers[layer.name][1]):
-                self.prev_valid_layers[layer.name][1] = layer.data
+                old_data = self.prev_valid_layers[layer.name][1]
 
-                self._update_table(layer)
+                if self.napari_viewer.dims.ndim == 3:
+                    set_old = {tuple(row) for row in old_data}
+                    set_new = {tuple(row) for row in layer.data}
+                    indices_old = {
+                        row[self.napari_viewer.dims.order[0]]
+                        for row in set_old - set_new
+                    }
+                    indices_new = {
+                        row[self.napari_viewer.dims.order[0]]
+                        for row in set_new - set_old
+                    }
+                    current_slices = list(indices_new | indices_old)
+                    if indices_new:
+                        for idx in range(layer.features.shape[1]):
+                            layer.features.iloc[-1, idx] = (
+                                layer.features.iloc[:-1, idx]
+                                .sort_values()
+                                .iloc[layer.features.shape[0] // 2]
+                            )
+                elif self.napari_viewer.dims.ndim == 2:
+                    current_slices = [0]
+                else:
+                    assert False, layer.data
+
+                self.prev_valid_layers[layer.name][1] = layer.data
+                for current_slice in current_slices:
+                    self._update_table(layer, int(np.round(current_slice, 0)))
                 self.table_widget.selectionModel().selectionChanged.emit(
                     QItemSelection(), QItemSelection()
                 )
@@ -1224,16 +1250,13 @@ class SelectMetricWidget(QWidget):
         else:
             assert False, action
 
-    def _update_table(self, layer: napari.layers.Layer):
+    def _update_table(self, layer: napari.layers.Layer, current_slice):
         prev_plugin_view_update = self._plugin_view_update
         self._plugin_view_update = True
         layer_name = layer.name
         if self.napari_viewer.dims.ndim == 3:
-            current_slice = int(
-                self.napari_viewer.dims.point[self.napari_viewer.dims.order[0]]
-            )
             mask = (
-                layer.data[:, self.napari_viewer.dims.order[0]]
+                np.round(layer.data[:, self.napari_viewer.dims.order[0]], 0)
                 == current_slice
             )
             boxes = np.count_nonzero(mask)

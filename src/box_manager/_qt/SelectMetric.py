@@ -1330,7 +1330,7 @@ class SelectMetricWidget(QWidget):
             np.count_nonzero(layer.shown),
         )
         self.table_model.set_value(-1, parent_idx, "boxes", len(layer.shown))
-        if do_sort or True:
+        if do_sort:
             self.table_widget.selectionModel().selectionChanged.disconnect(
                 self.update_hist
             )

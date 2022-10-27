@@ -245,29 +245,33 @@ class GroupModel(QStandardItemModel):
     def sort_children(self, group_name, label):
         root_item = self.group_items[group_name]
 
-        row_items = []
-        for row_idx in reversed(range(root_item.rowCount())):
-            text = root_item.child(row_idx, self.label_dict[label]).text()
-            try:
-                val = float(text)
-            except ValueError:
-                val = text
-            row_items.append((val, root_item.takeRow(row_idx)))
-
-        for row_idx, (_, row_items) in enumerate(sorted(row_items)):
-            for col_idx, item in enumerate(row_items):
-                root_item.setChild(row_idx, col_idx, item)
+        root_item.sortChildren(self.label_dict[label])
 
     def find_index(self, parent_name: str, slice_val: str):
         root_item = self.group_items[parent_name]
         parent_idx = self.indexFromItem(root_item).row()
 
-        for row_idx in range(root_item.rowCount()):
-            if slice_val == self.get_value(parent_idx, row_idx, "slice"):
-                self.set_value
-                break
-        else:
-            return parent_idx, None
+        def binary_search(parent_idx, search_val, low, high):
+            if low > high:
+                return None
+
+            row_idx = (high + low) // 2
+            try:
+                cur_slice = int(self.get_value(parent_idx, row_idx, "slice"))
+            except AttributeError:
+                return None
+
+            if search_val == cur_slice:
+                return row_idx
+            elif search_val > cur_slice:
+                return binary_search(parent_idx, search_val, row_idx + 1, high)
+            else:
+                return binary_search(parent_idx, search_val, low, row_idx - 1)
+
+        low = 0
+        high = root_item.rowCount()
+        row_idx = binary_search(parent_idx, int(slice_val), low, high)
+
         return parent_idx, row_idx
 
     def set_values(self, parent_idx, rows_idx, col_name, value):
@@ -382,6 +386,7 @@ class GroupModel(QStandardItemModel):
         group_item.setChild(row_idx, 0, item_icon)
 
         self.append_to_row(group_item, columns, row_idx)
+        return row_idx
 
 
 class GroupDelegate(QStyledItemDelegate):
@@ -1166,7 +1171,10 @@ class SelectMetricWidget(QWidget):
         output_dict = {}
         output_dict["write"] = ""
         output_dict["name"] = name
-        output_dict["slice"] = str(slice_idx)
+        if isinstance(slice_idx, int):
+            output_dict["slice"] = f"{slice_idx:0{len(str(len(label_data)))}d}"
+        else:
+            output_dict["slice"] = str(slice_idx)
         output_dict["boxes"] = str(len(features))
         output_dict["selected"] = str(np.count_nonzero(features["shown"]))
 
@@ -1271,6 +1279,7 @@ class SelectMetricWidget(QWidget):
         parent_idx, child_idx = self.table_model.find_index(
             layer_name, str(current_slice)
         )
+        do_sort = False
         if child_idx is None:
             range_list = [
                 entry for entry in layer.metadata if isinstance(entry, int)
@@ -1283,18 +1292,22 @@ class SelectMetricWidget(QWidget):
             else:
                 label_data = pd.DataFrame()
             range_list.extend(full_range)
+            try:
+                name = layer.metadata[current_slice]["name"]
+            except KeyError:
+                name = "Manual"
             new_col_entry = self._prepare_columns(
                 pd.DataFrame(get_size(layer), dtype=float),
                 pd.DataFrame(columns=list(layer.features.columns) + ["shown"]),
-                "Manual",
+                name,
                 current_slice,
                 label_data,
                 False,
             )
-            self.table_model.append_element_to_group(layer_name, new_col_entry)
-            parent_idx, child_idx = self.table_model.find_index(
-                layer_name, str(current_slice)
+            child_idx = self.table_model.append_element_to_group(
+                layer_name, new_col_entry
             )
+            do_sort = True
 
         self.table_model.set_value(parent_idx, child_idx, "boxes", boxes)
         self.table_model.set_value(parent_idx, child_idx, "selected", selected)
@@ -1317,7 +1330,14 @@ class SelectMetricWidget(QWidget):
             np.count_nonzero(layer.shown),
         )
         self.table_model.set_value(-1, parent_idx, "boxes", len(layer.shown))
-        self.table_model.sort_children(layer_name, "slice")
+        if do_sort or True:
+            self.table_widget.selectionModel().selectionChanged.disconnect(
+                self.update_hist
+            )
+            self.table_model.sort_children(layer_name, "slice")
+            self.table_widget.selectionModel().selectionChanged.connect(
+                self.update_hist
+            )
         self._plugin_view_update = prev_plugin_view_update
         layer.refresh()
 

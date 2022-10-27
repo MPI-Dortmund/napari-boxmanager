@@ -1,2 +1,2 @@
-Writing images & boxfiles
-=========================
+Writing
+=======

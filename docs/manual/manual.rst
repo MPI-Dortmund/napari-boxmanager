@@ -1,5 +1,5 @@
 =========
-Tutorials
+Manual
 =========
 
 .. include:: read.rst

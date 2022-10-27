@@ -3,6 +3,16 @@ Welcome to the User Guide of the napari-boxmanager!
 
 Welcome, this is the user guide for the napari-boxmanager!
 
+
+User Guide: full table of contents
+==================================
+
+.. toctree::
+   :maxdepth: 2
+
+   manual/manual
+
+
 Help
 ====
 

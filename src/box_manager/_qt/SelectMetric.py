@@ -1059,7 +1059,7 @@ class SelectMetricWidget(QWidget):
         ):
             layer.editable = False
 
-    def _prepare_entries(self, layer, name=None) -> list:
+    def _prepare_entries(self, layer, *, name=None) -> list:
         output_list = []
         features_copy = layer.features.copy()
         if layer.ndim == 3:
@@ -1239,7 +1239,7 @@ class SelectMetricWidget(QWidget):
 
         if action == ButtonActions.ADD:
             if self.table_model.add_group(
-                layer_name, self._prepare_entries(layer, layer_name)[0]
+                layer_name, self._prepare_entries(layer, name=layer_name)[0]
             ):
                 entries = self._prepare_entries(layer)
                 for entry in entries:
@@ -1272,9 +1272,29 @@ class SelectMetricWidget(QWidget):
             layer_name, str(current_slice)
         )
         if child_idx is None:
-            print("TODO: Implement new creation of group")
-            self._plugin_view_update = prev_plugin_view_update
-            return
+            range_list = [
+                entry for entry in layer.metadata if isinstance(entry, int)
+            ]
+            full_range = np.arange(
+                *self.napari_viewer.dims.range[0], dtype=int
+            ).tolist()
+            if range_list:
+                label_data = pd.DataFrame(layer.metadata).loc[:, range_list].T
+            else:
+                label_data = pd.DataFrame()
+            range_list.extend(full_range)
+            new_col_entry = self._prepare_columns(
+                pd.DataFrame(get_size(layer), dtype=float),
+                pd.DataFrame(columns=list(layer.features.columns) + ["shown"]),
+                "Manual",
+                current_slice,
+                label_data,
+                False,
+            )
+            self.table_model.append_element_to_group(layer_name, new_col_entry)
+            parent_idx, child_idx = self.table_model.find_index(
+                layer_name, str(current_slice)
+            )
 
         self.table_model.set_value(parent_idx, child_idx, "boxes", boxes)
         self.table_model.set_value(parent_idx, child_idx, "selected", selected)
@@ -1297,6 +1317,7 @@ class SelectMetricWidget(QWidget):
             np.count_nonzero(layer.shown),
         )
         self.table_model.set_value(-1, parent_idx, "boxes", len(layer.shown))
+        self.table_model.sort_children(layer_name, "slice")
         self._plugin_view_update = prev_plugin_view_update
         layer.refresh()
 

@@ -119,42 +119,26 @@ def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
     return name
 
 
-def _to_napari_filament(input_df):
-
-
-    coord_columns = ["y", "z"]
-
-
-
+def _to_napari_filament(input_df, coord_columns):
     boxsize = [np.mean(fil['boxsize']) for fil in input_df]
     input_df = [fil[coord_columns] for fil in input_df]
     color = [np.random.choice(range(256), size=3) for _ in range(len(input_df))] #RGB
     color = ['#%02x%02x%02x' % (r, g, b) for r,g,b in color]
     kwargs: NapariMetaData = {
-        "edge_color": "red",
+        "edge_color": color,
         "face_color": "transparent",
         "edge_width": boxsize,
         "opacity": 0.4,
         "shape_type": "path",
-        "edge_color": color,
+
     }
     dat = input_df
     layer_type = "shapes"
 
     return dat, kwargs, layer_type
 
-def _to_napari_particle(path, input_df, is_3d):
+def _to_napari_particle(input_df, coord_columns, is_3d):
     input_df = pd.concat(input_df, ignore_index=True)
-
-
-    if (isinstance(path, list) and len(path) > 1) or is_3d:
-        coord_columns = [
-            "x",
-            "y",
-            "z",
-        ]  # Happens for --stack option and '*.ext'
-    else:
-        coord_columns = ["y", "z"]
 
 
     kwargs: NapariMetaData = {
@@ -195,8 +179,6 @@ def to_napari(
         meta_columns=meta_columns,
     )
 
-    print("IS FILAMENT", is_filament)
-
 
     metadata["is_2d_stack"] = len(path) > 1
     metadata.update(orgbox_meta)
@@ -208,18 +190,20 @@ def to_napari(
 
     layer_name = get_coords_layer_name(path)
 
-    if is_filament:
-        dat, kwargs, layer_type = _to_napari_filament(input_df)
+    if (isinstance(path, list) and len(path) > 1) or is_3d:
+        # Happens for --stack option and '*.ext'
+        coord_columns = ["x", "y", "z"]
     else:
-        dat, kwargs, layer_type = _to_napari_particle(path, input_df, is_3d)
+        coord_columns = ["y", "z"]
+
+    if is_filament:
+        dat, kwargs, layer_type = _to_napari_filament(input_df, coord_columns)
+    else:
+        dat, kwargs, layer_type = _to_napari_particle(input_df, coord_columns, is_3d)
 
     kwargs["name"] = layer_name
     kwargs["metadata"] = metadata
     kwargs["features"] = features
-    print(dat)
-
-
-
 
     return [(dat, kwargs, layer_type)]
 

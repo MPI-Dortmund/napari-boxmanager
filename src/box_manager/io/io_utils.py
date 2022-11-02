@@ -118,6 +118,44 @@ def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
 
     return name
 
+
+def _to_napari_filament(input_df, coord_columns):
+    boxsize = [np.mean(fil['boxsize']) for fil in input_df]
+    input_df = [fil[coord_columns] for fil in input_df]
+    color = [np.random.choice(range(256), size=3) for _ in range(len(input_df))] #RGB
+    color = ['#%02x%02x%02x' % (r, g, b) for r,g,b in color]
+    kwargs: NapariMetaData = {
+        "edge_color": color,
+        "face_color": "transparent",
+        "edge_width": boxsize,
+        "opacity": 0.4,
+        "shape_type": "path",
+
+    }
+    dat = input_df
+    layer_type = "shapes"
+
+    return dat, kwargs, layer_type
+
+def _to_napari_particle(input_df, coord_columns, is_3d):
+    input_df = pd.concat(input_df, ignore_index=True)
+
+
+    kwargs: NapariMetaData = {
+        "edge_color": "red",
+        "face_color": "transparent",
+        "symbol": "disc",
+        "edge_width": 0.05,
+        "edge_width_is_relative": True,
+        "size": np.average(input_df["boxsize"]),
+        "out_of_slice_display": True if is_3d else False,
+        "opacity": 0.8,
+    }
+    dat = input_df[coord_columns]
+    layer_type = "points"
+
+    return dat, kwargs, layer_type
+
 def to_napari(
     path: os.PathLike | list[os.PathLike],
     read_func: Callable[[os.PathLike], pd.DataFrame],
@@ -141,52 +179,8 @@ def to_napari(
         meta_columns=meta_columns,
     )
 
-    if not is_filament:
-        input_df = pd.concat(input_df, ignore_index=True)
-
-
-    if (isinstance(path, list) and len(path) > 1) or is_3d:
-        coord_columns = [
-            "x",
-            "y",
-            "z",
-        ]  # Happens for --stack option and '*.ext'
-    else:
-        coord_columns = ["y", "z"]
-
-
-    if is_filament:
-        boxsize = [np.mean(fil['boxsize']) for fil in input_df]
-        input_df = [fil[coord_columns] for fil in input_df]
-        color = [np.random.choice(range(256), size=3) for _ in range(len(input_df))] #RGB
-        color = ['#%02x%02x%02x' % (r, g, b) for r,g,b in color]
-        kwargs: NapariMetaData = {
-            "edge_color": "red",
-            "face_color": "transparent",
-            "edge_width": boxsize,
-            "opacity": 0.4,
-            "shape_type": "path",
-            "edge_color": color,
-        }
-        dat = input_df
-        layer_type = "shapes"
-    else:
-        kwargs: NapariMetaData = {
-            "edge_color": "red",
-            "face_color": "transparent",
-            "symbol": "disc",
-            "edge_width": 0.05,
-            "edge_width_is_relative": True,
-            "size": np.average(input_df["boxsize"]),
-            "out_of_slice_display": True if is_3d else False,
-            "opacity": 0.8,
-
-        }
-        dat = input_df[coord_columns]
-        layer_type = "points"
 
     metadata["is_2d_stack"] = len(path) > 1
-
     metadata.update(orgbox_meta)
 
     features = {
@@ -194,8 +188,20 @@ def to_napari(
         for entry in feature_columns  # _get_meta_idx() + _get_hidden_meta_idx()
     }
 
+    layer_name = get_coords_layer_name(path)
 
-    kwargs["name"] = get_coords_layer_name(path)
+    if (isinstance(path, list) and len(path) > 1) or is_3d:
+        # Happens for --stack option and '*.ext'
+        coord_columns = ["x", "y", "z"]
+    else:
+        coord_columns = ["y", "z"]
+
+    if is_filament:
+        dat, kwargs, layer_type = _to_napari_filament(input_df, coord_columns)
+    else:
+        dat, kwargs, layer_type = _to_napari_particle(input_df, coord_columns, is_3d)
+
+    kwargs["name"] = layer_name
     kwargs["metadata"] = metadata
     kwargs["features"] = features
 

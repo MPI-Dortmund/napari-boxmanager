@@ -118,7 +118,6 @@ def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
 
     return name
 
-
 def to_napari(
     path: os.PathLike | list[os.PathLike],
     read_func: Callable[[os.PathLike], pd.DataFrame],
@@ -141,19 +140,10 @@ def to_napari(
         prepare_napari_func=prepare_napari_func,
         meta_columns=meta_columns,
     )
-    is_filament = True
 
     if not is_filament:
         input_df = pd.concat(input_df, ignore_index=True)
 
-    metadata["is_2d_stack"] = len(path) > 1
-
-    metadata.update(orgbox_meta)
-
-    features = {
-        entry: input_df[entry].to_numpy()
-        for entry in feature_columns  # _get_meta_idx() + _get_hidden_meta_idx()
-    }
 
     if (isinstance(path, list) and len(path) > 1) or is_3d:
         coord_columns = [
@@ -164,7 +154,7 @@ def to_napari(
     else:
         coord_columns = ["y", "z"]
 
-    layer_name = get_coords_layer_name(path)
+
     if is_filament:
         boxsize = [np.mean(fil['boxsize']) for fil in input_df]
         input_df = [fil[coord_columns] for fil in input_df]
@@ -175,11 +165,8 @@ def to_napari(
             "face_color": "transparent",
             "edge_width": boxsize,
             "opacity": 0.4,
-            "name": layer_name,
             "shape_type": "path",
             "edge_color": color,
-            "metadata": metadata,
-            "features": features,
         }
         dat = input_df
         layer_type = "shapes"
@@ -193,19 +180,25 @@ def to_napari(
             "size": np.average(input_df["boxsize"]),
             "out_of_slice_display": True if is_3d else False,
             "opacity": 0.8,
-            "name": layer_name,
-            "metadata": metadata,
-            "features": features,
+
         }
         dat = input_df[coord_columns]
         layer_type = "points"
 
+    metadata["is_2d_stack"] = len(path) > 1
+
+    metadata.update(orgbox_meta)
+
+    features = {
+        entry: input_df[entry].to_numpy()
+        for entry in feature_columns  # _get_meta_idx() + _get_hidden_meta_idx()
+    }
 
 
-    #coords_fil1 = {"x": [5,5], "y": [100, 1500], "z": [100,1500]}
-    #coords_fil2 = {"x": [20,20],"y": [500, 2900], "z": [600, 1800]}
-    #dat = [pd.DataFrame(coords_fil1), pd.DataFrame(coords_fil2)]
-    #input_df[coord_columns]
+    kwargs["name"] = get_coords_layer_name(path)
+    kwargs["metadata"] = metadata
+    kwargs["features"] = features
+
     return [(dat, kwargs, layer_type)]
 
 

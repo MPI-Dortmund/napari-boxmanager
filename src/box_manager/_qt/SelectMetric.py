@@ -1025,8 +1025,10 @@ class SelectMetricWidget(QWidget):
                 old_data = self.prev_valid_layers[layer.name][1]
 
                 if self.napari_viewer.dims.ndim == 3:
-                    set_old = {tuple(row) for row in old_data}
-                    set_new = {tuple(row) for row in layer.data}
+                    set_old = {tuple(row.ravel().tolist()) for row in old_data}
+                    set_new = {
+                        tuple(row.ravel().tolist()) for row in layer.data
+                    }
                     indices_old = {
                         row[self.napari_viewer.dims.order[0]]
                         for row in set_old - set_new
@@ -1263,16 +1265,33 @@ class SelectMetricWidget(QWidget):
         self._plugin_view_update = True
         layer_name = layer.name
         if self.napari_viewer.dims.ndim == 3:
-            mask = (
-                np.round(layer.data[:, self.napari_viewer.dims.order[0]], 0)
-                == current_slice
-            )
+            try:
+                mask = (
+                    np.round(
+                        layer.data[:, self.napari_viewer.dims.order[0]], 0
+                    )
+                    == current_slice
+                )
+            except TypeError:
+                layer_data = np.array([row[0] for row in layer.data])
+                mask = (
+                    np.round(
+                        layer_data[:, self.napari_viewer.dims.order[0]], 0
+                    )
+                    == current_slice
+                )
             boxes = np.count_nonzero(mask)
-            selected = np.count_nonzero(layer.shown[mask])
+            try:
+                selected = np.count_nonzero(layer.shown[mask])
+            except IndexError:
+                selected = boxes
         elif self.napari_viewer.dims.ndim == 2:
             current_slice = 0
             boxes = len(layer.data)
-            selected = np.count_nonzero(layer.shown)
+            if boxes == len(layer.shown):
+                selected = np.count_nonzero(layer.shown)
+            else:
+                selected = boxes
         else:
             assert False, layer.data
 
@@ -1323,13 +1342,26 @@ class SelectMetricWidget(QWidget):
             # Do not change the checkstate
             layer.metadata[current_slice]["write"] = write_val
 
-        self.table_model.set_value(
-            -1,
-            parent_idx,
-            "selected",
-            np.count_nonzero(layer.shown),
-        )
-        self.table_model.set_value(-1, parent_idx, "boxes", len(layer.shown))
+        if len(layer.shown) == len(layer.data):
+            self.table_model.set_value(
+                -1,
+                parent_idx,
+                "selected",
+                np.count_nonzero(layer.shown),
+            )
+            self.table_model.set_value(
+                -1, parent_idx, "boxes", len(layer.shown)
+            )
+        else:
+            self.table_model.set_value(
+                -1,
+                parent_idx,
+                "selected",
+                len(layer.data),
+            )
+            self.table_model.set_value(
+                -1, parent_idx, "boxes", len(layer.data)
+            )
         if do_sort:
             self.table_widget.selectionModel().selectionChanged.disconnect(
                 self.update_hist

@@ -53,7 +53,7 @@ def _prepare_coords_df(
     read_func: Callable[[os.PathLike], pd.DataFrame],
     prepare_napari_func: Callable,
     meta_columns: typing.List[str] = [],
-) -> tuple[typing.List[pd.DataFrame], dict[int, os.PathLike], bool, bool]:
+) -> tuple[typing.List[pd.DataFrame], dict, bool, bool]:
 
     data_df: list[pd.DataFrame] = []
     metadata: dict = {}
@@ -178,7 +178,6 @@ def to_napari(
         prepare_napari_func=prepare_napari_func,
         meta_columns=meta_columns,
     )
-
 
     metadata["is_2d_stack"] = len(path) > 1
     metadata.update(orgbox_meta)

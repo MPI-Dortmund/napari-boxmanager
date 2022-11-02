@@ -41,13 +41,19 @@ class FormatFunc(Protocol):
         ...
 
 def _split_filaments(data: pd.DataFrame) -> typing.List[pd.DataFrame]:
+    filament_ids = np.unique(data['fid'])
+    filaments = []
+    for id in filament_ids:
+        mask = data['fid']==id
+        filaments.append(data[mask])
+    return filaments
 
 def _prepare_coords_df(
     path: list[os.PathLike],
     read_func: Callable[[os.PathLike], pd.DataFrame],
     prepare_napari_func: Callable,
     meta_columns: typing.List[str] = [],
-) -> tuple[pd.DataFrame, dict[int, os.PathLike], bool]:
+) -> tuple[typing.List[pd.DataFrame], dict[int, os.PathLike], bool]:
 
     data_df: list[pd.DataFrame] = []
     metadata: dict = {}
@@ -56,11 +62,16 @@ def _prepare_coords_df(
         input_data = read_func(entry)
 
         box_napari_data = pd.DataFrame(columns=meta_columns)
+
         if input_data is not None:
             box_napari_data = prepare_napari_func(input_data)
             if "x" not in box_napari_data:
                 is_3d = False
                 box_napari_data["x"] = idx
+            if 'fid' in box_napari_data:
+                pass
+                box_napari_data = _split_filaments(box_napari_data)
+
         data_df.append(box_napari_data)
 
         metadata[idx] = {}
@@ -78,7 +89,7 @@ def _prepare_coords_df(
         except ValueError:
             pass
 
-    return pd.concat(data_df, ignore_index=True), metadata, is_3d
+    return data_df, metadata, is_3d
 
 
 def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
@@ -117,7 +128,10 @@ def to_napari(
         prepare_napari_func=prepare_napari_func,
         meta_columns=meta_columns,
     )
-    print(input_df)
+    if isinstance(input_df[0], list):
+        is_filament=True
+    else:
+        input_df[0]
 
     metadata["is_2d_stack"] = len(path) > 1
 
@@ -129,20 +143,32 @@ def to_napari(
     }
 
     layer_name = get_coords_layer_name(path)
-
-    kwargs: NapariMetaData = {
-        "edge_color": "red",
-        "face_color": "transparent",
-        "symbol": "disc",
-        "edge_width": 0.05,
-        "edge_width_is_relative": True,
-        "size": np.average(input_df["boxsize"]),
-        "out_of_slice_display": True if is_3d else False,
-        "opacity": 0.8,
-        "name": layer_name,
-        "metadata": metadata,
-        "features": features,
-    }
+    if is_filament:
+        kwargs: NapariMetaData = {
+            "edge_color": "red",
+            "face_color": "transparent",
+            "edge_width": 60,
+            "opacity": 0.4,
+            "name": layer_name,
+            "shape_type": "path",
+            "edge_color": ["green","red"]
+            #"metadata": metadata,
+            #"features": features,
+        }
+    else:
+        kwargs: NapariMetaData = {
+            "edge_color": "red",
+            "face_color": "transparent",
+            "symbol": "disc",
+            "edge_width": 0.05,
+            "edge_width_is_relative": True,
+            "size": np.average(input_df["boxsize"]),
+            "out_of_slice_display": True if is_3d else False,
+            "opacity": 0.8,
+            "name": layer_name,
+            "metadata": metadata,
+            "features": features,
+        }
 
     if (isinstance(path, list) and len(path) > 1) or is_3d:
         coord_columns = [
@@ -153,7 +179,11 @@ def to_napari(
     else:
         coord_columns = ["y", "z"]
 
-    return [(input_df[coord_columns], kwargs, "points")]
+    coords_fil1 = {"x": [5,5], "y": [100, 1500], "z": [100,1500]}
+    coords_fil2 = {"x": [20,20],"y": [500, 2900], "z": [600, 1800]}
+    dat = [pd.DataFrame(coords_fil1), pd.DataFrame(coords_fil2)]
+    #input_df[coord_columns]
+    return [(dat, kwargs, "shapes")]
 
 
 def _generate_output_filename(orignal_filename: str, output_path: os.PathLike):

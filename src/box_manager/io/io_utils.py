@@ -53,11 +53,12 @@ def _prepare_coords_df(
     read_func: Callable[[os.PathLike], pd.DataFrame],
     prepare_napari_func: Callable,
     meta_columns: typing.List[str] = [],
-) -> tuple[typing.List[pd.DataFrame], dict[int, os.PathLike], bool]:
+) -> tuple[typing.List[pd.DataFrame], dict[int, os.PathLike], bool, bool]:
 
     data_df: list[pd.DataFrame] = []
     metadata: dict = {}
     is_3d = True
+    is_filament = False
     for idx, entry in enumerate(path):
         input_data = read_func(entry)
 
@@ -69,15 +70,27 @@ def _prepare_coords_df(
                 is_3d = False
                 box_napari_data["x"] = idx
             if 'fid' in box_napari_data:
-                pass
+                is_filament = True
                 box_napari_data = _split_filaments(box_napari_data)
 
-        data_df.append(box_napari_data)
+
+        checkbox = None
+        if is_filament:
+            if len(box_napari_data) == 0 or np.all([b.empty for b in box_napari_data]):
+                checkbox = True
+        elif box_napari_data.empty:
+            checkbox = True
+
+        if is_filament:
+            data_df.extend(box_napari_data)
+        else:
+            data_df.append(box_napari_data)
+
 
         metadata[idx] = {}
         metadata[idx]["path"] = entry
         metadata[idx]["name"] = os.path.basename(entry)
-        metadata[idx]["write"] = True if box_napari_data.empty else None
+        metadata[idx]["write"] = checkbox
         try:
             metadata[idx].update(
                 {
@@ -89,7 +102,7 @@ def _prepare_coords_df(
         except ValueError:
             pass
 
-    return data_df, metadata, is_3d
+    return data_df, metadata, is_3d, is_filament
 
 
 def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
@@ -122,16 +135,16 @@ def to_napari(
     if not isinstance(path, list):
         path = sorted(glob.glob(path))  # type: ignore
 
-    input_df, metadata, is_3d = _prepare_coords_df(
+    input_df, metadata, is_3d, is_filament = _prepare_coords_df(
         path,
         read_func=read_func,
         prepare_napari_func=prepare_napari_func,
         meta_columns=meta_columns,
     )
-    if isinstance(input_df[0], list):
-        is_filament=True
-    else:
-        input_df[0]
+    is_filament = True
+
+    if not is_filament:
+        input_df = pd.concat(input_df, ignore_index=True)
 
     metadata["is_2d_stack"] = len(path) > 1
 
@@ -142,19 +155,34 @@ def to_napari(
         for entry in feature_columns  # _get_meta_idx() + _get_hidden_meta_idx()
     }
 
+    if (isinstance(path, list) and len(path) > 1) or is_3d:
+        coord_columns = [
+            "x",
+            "y",
+            "z",
+        ]  # Happens for --stack option and '*.ext'
+    else:
+        coord_columns = ["y", "z"]
+
     layer_name = get_coords_layer_name(path)
     if is_filament:
+        boxsize = [np.mean(fil['boxsize']) for fil in input_df]
+        input_df = [fil[coord_columns] for fil in input_df]
+        color = [np.random.choice(range(256), size=3) for _ in range(len(input_df))] #RGB
+        color = ['#%02x%02x%02x' % (r, g, b) for r,g,b in color]
         kwargs: NapariMetaData = {
             "edge_color": "red",
             "face_color": "transparent",
-            "edge_width": 60,
+            "edge_width": boxsize,
             "opacity": 0.4,
             "name": layer_name,
             "shape_type": "path",
-            "edge_color": ["green","red"]
-            #"metadata": metadata,
-            #"features": features,
+            "edge_color": color,
+            "metadata": metadata,
+            "features": features,
         }
+        dat = input_df
+        layer_type = "shapes"
     else:
         kwargs: NapariMetaData = {
             "edge_color": "red",
@@ -169,21 +197,16 @@ def to_napari(
             "metadata": metadata,
             "features": features,
         }
+        dat = input_df[coord_columns]
+        layer_type = "points"
 
-    if (isinstance(path, list) and len(path) > 1) or is_3d:
-        coord_columns = [
-            "x",
-            "y",
-            "z",
-        ]  # Happens for --stack option and '*.ext'
-    else:
-        coord_columns = ["y", "z"]
 
-    coords_fil1 = {"x": [5,5], "y": [100, 1500], "z": [100,1500]}
-    coords_fil2 = {"x": [20,20],"y": [500, 2900], "z": [600, 1800]}
-    dat = [pd.DataFrame(coords_fil1), pd.DataFrame(coords_fil2)]
+
+    #coords_fil1 = {"x": [5,5], "y": [100, 1500], "z": [100,1500]}
+    #coords_fil2 = {"x": [20,20],"y": [500, 2900], "z": [600, 1800]}
+    #dat = [pd.DataFrame(coords_fil1), pd.DataFrame(coords_fil2)]
     #input_df[coord_columns]
-    return [(dat, kwargs, "shapes")]
+    return [(dat, kwargs, layer_type)]
 
 
 def _generate_output_filename(orignal_filename: str, output_path: os.PathLike):

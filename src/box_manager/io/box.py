@@ -22,8 +22,16 @@ DEFAULT_BOXSIZE: int = 10
 def get_valid_extensions():
     return ["box"]
 
+def is_helicon_with_particle_coords(path):
+    try:
+        with open(path) as f:
+            first_line = f.readline()
+            f.close()
+        return "#micrograph" in first_line
+    except ValueError:
+        return False
 
-def read(path: "os.PathLike") -> pd.DataFrame:
+def read_boxfile(path: "os.PathLike") -> pd.DataFrame:
     names = ["x", "y", "box_x", "box_y"]
     box_data: pd.DataFrame = pd.read_csv(
         path,
@@ -38,8 +46,97 @@ def read(path: "os.PathLike") -> pd.DataFrame:
         box_data.astype(int)
     except pd.errors.IntCastingNaNError:
         raise BoxFileNumberOfColumnsError
-
     return box_data
+
+def read_helicon_boxfile(path: "os.PathLike") -> pd.DataFrame:
+
+    def get_first_and_last_coord(helix_line):
+        if not helix_line.startswith("#helix"):
+            raise ValueError("Line does not start with '#helix'")
+        import re
+        result = re.findall('\d+.\d*',helix_line)
+        allnumbers = [float(r) for r in result]
+        return allnumbers[:4]
+
+    if os.stat(path).st_size != 0:
+        split_indicis = []
+        boxsize = 0
+        index_first_helix = -1
+        csvlines = None
+        with open(path, "r") as csvfile:
+            csvlines = csvfile.readlines()
+            helixlines_indicies = []
+            for index, row in enumerate(csvlines):
+                if row.startswith("#segment"):
+                    boxsize = int(float(row.split()[2]))
+                elif row.startswith("#helix"):
+                    boxsize = int(float(row[(row.rfind(",") + 1):]))
+                    if index_first_helix == -1:
+                        index_first_helix = index
+                    else:
+
+                        split_indicis.append(
+                            index - index_first_helix - (len(split_indicis) + 1)
+                        )
+                    helixlines_indicies.append(index)
+
+        coordinates = np.atleast_2d(np.genfromtxt(path))
+        #coordinates_lowleftcorner = coordinates - boxsize / 2
+        coord_filaments = np.split(coordinates, split_indicis)
+
+        data_dict = {
+            "x": [],
+            "y": [],
+            "box_x": [],
+            "box_y": [],
+            "fid": []
+        }
+        for filament_index, filament in enumerate(coord_filaments):
+            first_and_last_coord = get_first_and_last_coord(csvlines[helixlines_indicies[filament_index]])
+
+            # first
+            data_dict['x'].append(first_and_last_coord[0])
+            data_dict['y'].append(first_and_last_coord[1])
+            data_dict['box_x'].append(boxsize)
+            data_dict['box_y'].append(boxsize)
+            data_dict['fid'].append(filament_index+1)
+
+            # in between
+            for coords in filament:
+                if len(coords) > 0:
+                    data_dict['x'].append(coords[0])
+                    data_dict['y'].append(coords[1])
+                    data_dict['box_x'].append(boxsize)
+                    data_dict['box_y'].append(boxsize)
+                    data_dict['fid'].append(filament_index + 1)
+
+
+            # last
+            data_dict['x'].append(first_and_last_coord[2])
+            data_dict['y'].append(first_and_last_coord[3])
+            data_dict['box_x'].append(boxsize)
+            data_dict['box_y'].append(boxsize)
+            data_dict['fid'].append(filament_index + 1)
+
+        data_df = pd.DataFrame(data_dict)
+
+        ## make lower left corner to be compatible with prepare function
+        data_df['x'] = data_df['x'] - boxsize // 2
+        data_df['y'] = data_df['y'] - boxsize // 2
+
+        return data_df
+
+    return None
+
+
+
+def read(path: "os.PathLike") -> pd.DataFrame:
+    if is_helicon_with_particle_coords(path):
+        box_data: pd.DataFrame = read_helicon_boxfile(path)
+    else:
+        box_data: pd.DataFrame = read_boxfile(path)
+    return box_data
+
 
 
 def to_napari(
@@ -74,7 +171,7 @@ def _prepare_napari_box(
 
     Returns
     -------
-    Dataframe with centered coordinates with box size.
+    Dataframe with centered coordinates with box size. Returns a list of dataframes in case of filaments
 
     """
     output_data: pd.DataFrame = pd.DataFrame(
@@ -87,6 +184,9 @@ def _prepare_napari_box(
     output_data["boxsize"] = np.maximum(
         input_df[["box_x", "box_y"]].mean(axis=1), DEFAULT_BOXSIZE
     ).astype(int)
+
+    if 'fid' in input_df:
+        output_data["fid"] = input_df["fid"]
 
     return output_data
 

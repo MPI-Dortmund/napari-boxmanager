@@ -40,6 +40,7 @@ class FormatFunc(Protocol):
     ) -> pd.DataFrame:
         ...
 
+def _split_filaments(data: pd.DataFrame) -> typing.List[pd.DataFrame]:
 
 def _prepare_coords_df(
     path: list[os.PathLike],
@@ -53,10 +54,10 @@ def _prepare_coords_df(
     is_3d = True
     for idx, entry in enumerate(path):
         input_data = read_func(entry)
+
         box_napari_data = pd.DataFrame(columns=meta_columns)
         if input_data is not None:
             box_napari_data = prepare_napari_func(input_data)
-
             if "x" not in box_napari_data:
                 is_3d = False
                 box_napari_data["x"] = idx
@@ -116,6 +117,7 @@ def to_napari(
         prepare_napari_func=prepare_napari_func,
         meta_columns=meta_columns,
     )
+    print(input_df)
 
     metadata["is_2d_stack"] = len(path) > 1
 

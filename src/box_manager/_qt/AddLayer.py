@@ -168,6 +168,7 @@ class AddLayerWidget(QWidget):
             "edge_width": 20,
             "opacity": 0.4,
             "name": "filaments",
+            "shape_type": "path",
         }
         shape = self.napari_viewer.add_shapes(
             ndim=max(self.napari_viewer.dims.ndim, 2),

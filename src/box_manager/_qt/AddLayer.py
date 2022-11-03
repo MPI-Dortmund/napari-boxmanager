@@ -175,4 +175,4 @@ class AddLayerWidget(QWidget):
             scale=self.napari_viewer.layers.extent.step,
             **kwargs,
         )
-        shape.mode = Mode.ADD_LINE
+        shape.mode = Mode.ADD_PATH

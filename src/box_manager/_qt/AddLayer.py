@@ -165,8 +165,8 @@ class AddLayerWidget(QWidget):
             "metadata": metadata,
             "face_color": "transparent",
             "edge_color": 'red',
-            "edge_width": 2,
-            "opacity": 0.8,
+            "edge_width": 20,
+            "opacity": 0.4,
             "name": "filaments",
         }
         shape = self.napari_viewer.add_shapes(

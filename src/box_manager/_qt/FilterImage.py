@@ -12,6 +12,7 @@ from qtpy.QtWidgets import (
     QPushButton,
     QWidget,
 )
+import numpy as np
 
 from .._utils import filters
 
@@ -91,7 +92,6 @@ class FilterImageWidget(QWidget):
             "hp_filter_resolution_ang": self.hp_filter_resolution,
             "pixel_size": self.pixel_size,
         }
-
         filtered_image, mask = self.handle_filter(
             self.layer,
             self.filter_2d,
@@ -116,7 +116,8 @@ class FilterImageWidget(QWidget):
             filtered_image.min(),
             filtered_image.max(),
         ]
-        image.contrast_limits = [filtered_image.min(), filtered_image.max()]
+        image.contrast_limits = [-3, 3]
+
         self.napari_viewer.layers.insert(
             self.napari_viewer.layers.index(self.layer) + 1, image
         )
@@ -158,8 +159,8 @@ class FilterImageWidget(QWidget):
                 filtered_image.max(),
             ]
             new_layer.contrast_limits = [
-                filtered_image.min(),
-                filtered_image.max(),
+                -3,
+                3,
             ]
             with new_layer.events.visible.blocker():
                 new_layer.visible = True
@@ -179,6 +180,7 @@ class FilterImageWidget(QWidget):
                 log=show_info,
                 **kwargs,
             )
+            filtered_image = (filtered_image-np.mean(filtered_image))/np.std(filtered_image)
         except TypeError:
             return None, None
 

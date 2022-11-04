@@ -2,6 +2,7 @@ import glob
 import io
 import os
 import pathlib
+import sys
 import typing
 import warnings
 from collections.abc import Callable
@@ -218,49 +219,89 @@ def _generate_output_filename(orignal_filename: str, output_path: os.PathLike):
     return output_file
 
 
+def _write_particle_data(
+        path: os.PathLike,
+        data: NapariLayerData,
+        meta: NapariLayerData,
+        format_func: FormatFunc,
+        write_func: Callable[[os.PathLike, pd.DataFrame], typing.Any],
+    ):
+    if data.shape[1] == 2:
+        data = np.insert(data, 0, 0, axis=1)
+
+
+    if 'shown' in meta:
+        mask = meta["shown"]
+    else:
+        # For filaments
+        mask = np.ones(len(data), dtype=int)==1
+
+    coordinates = data[mask]
+
+    if 'size' in meta:
+        boxsize = meta["size"][mask][:, 0]
+    else:
+        #For filaments
+        boxsize = np.array(meta["edge_width"])[mask]
+    export_data = {}
+    try:
+        is_2d_stacked = meta["metadata"]["is_2d_stack"]
+    except KeyError:
+        is_2d_stacked = False
+
+    if is_2d_stacked:
+        for z in np.unique(coordinates[:, 0]):
+            z = int(z)
+            mask = coordinates[:, 0] == z
+            filename = meta["metadata"][z]["name"]
+            output_file = _generate_output_filename(
+                orignal_filename=filename, output_path=path
+            )
+
+            export_data[output_file] = format_func(
+                coordinates[mask, 1:],
+                boxsize[mask],
+                meta["features"].loc[mask, :],
+            )
+    else:
+        export_data[path] = format_func(
+            coordinates, boxsize, meta["features"]
+        )
+
+    for outpth in export_data:
+        df = export_data[outpth]
+        write_func(outpth, df)
+    last_file = outpth
+    return str(last_file)
+
+
 def from_napari(
     path: os.PathLike,
     layer_data: list[NapariLayerData],
     format_func: FormatFunc,
-    write_func: Callable[[os.PathLike, pd.DataFrame], typing.Any],
+    write_func: Callable[[os.PathLike, pd.DataFrame | list[pd.DataFrame]], typing.Any],
 ) -> os.PathLike:
 
     last_file = ""
     for data, meta, layer in layer_data:
 
-        if data.shape[1] == 2:
-            data = np.insert(data, 0, 0, axis=1)
-
-        coordinates = data[meta["shown"]]
-        boxsize = meta["size"][meta["shown"]][:, 0]
-        export_data = {}
-        try:
-            is_2d_stacked = meta["metadata"]["is_2d_stack"]
-        except KeyError:
-            is_2d_stacked = False
-
-        if is_2d_stacked:
-            for z in np.unique(coordinates[:, 0]):
-                z = int(z)
-                mask = coordinates[:, 0] == z
-                filename = meta["metadata"][z]["name"]
-                output_file = _generate_output_filename(
-                    orignal_filename=filename, output_path=path
-                )
-                export_data[output_file] = format_func(
-                    coordinates[mask, 1:],
-                    boxsize[mask],
-                    meta["features"].loc[mask, :],
-                )
+        if isinstance(data,list):
+            boxsize = []
+            repeat = []
+            fid = []
+            for fil_index, fil in enumerate(data):
+                boxsize.extend([meta['edge_width'][fil_index]]*len(fil))
+                repeat.append(len(fil))
+                fid.extend([fil_index+1]*len(fil))
+            meta['features'] = meta['features'].loc[meta['features'].index.repeat(repeat)]
+            meta['edge_width'] = boxsize
+            data_list = np.concatenate(data)
+            fid = np.array(fid,dtype=int)
+            data_list = np.append(data_list, np.atleast_2d(np.array(fid)).T, axis=1)
+            last_file = _write_particle_data(path, data_list, meta, format_func, write_func)
         else:
-            export_data[path] = format_func(
-                coordinates, boxsize, meta["features"]
-            )
+            last_file = _write_particle_data(path,data,meta,format_func,write_func)
 
-        for outpth in export_data:
-            df = export_data[outpth]
-            write_func(outpth, df)
-        last_file = outpth
 
     return str(last_file)
 

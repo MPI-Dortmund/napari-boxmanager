@@ -1,4 +1,5 @@
 import os
+import sys
 import typing
 
 import numpy as np
@@ -17,7 +18,7 @@ class UnknownFormatException(Exception):
 
 
 DEFAULT_BOXSIZE: int = 10
-
+DEFAULT_RESAMPLING_FILAMENT: int = -1 # 20% of boxsize
 
 def get_valid_extensions():
     return ["box"]
@@ -128,7 +129,56 @@ def read_helicon_boxfile(path: "os.PathLike") -> pd.DataFrame:
 
     return None
 
+def write_eman1_helicon(path: str, filaments: list[pd.DataFrame]):
 
+    import csv
+    image_filename = "NA"
+    with open(path, "w", newline='', encoding='utf-8') as boxfile:
+        boxwriter = csv.writer(
+            boxfile, delimiter="\t", quotechar="|", quoting=csv.QUOTE_NONE, lineterminator="\n",
+        )
+        # micrograph: actin_cAla_1_corrfull.mrc
+        # segment length: 384
+        # segment width: 384
+
+        if filaments is not None and len(filaments) > 0:
+
+            boxsize = filaments[0]['boxsize'][0]
+
+            boxwriter.writerow(["#micrograph: " + image_filename])
+            boxwriter.writerow(["#segment length: " + str(int(boxsize))])
+            boxwriter.writerow(["#segment width: " + str(int(boxsize))])
+
+            for fil in filaments:
+                if len(fil) > 0:
+                    boxwriter.writerow(
+                        [
+                            "#helix: ("
+                            + str(fil['x'][0] + boxsize / 2)
+                            + ", "
+                            + str(fil['y'][0] + boxsize / 2)
+                            + "),"
+                            + "("
+
+                            + str(fil['x'][len(fil) - 1] + boxsize / 2)
+                            + ", "
+                            + str(fil['y'][len(fil) - 1] + boxsize / 2)
+                            + "),"
+                            + str(int(boxsize))
+                        ]
+                    )
+                    print(fil)
+                    for index, box in fil.iterrows():
+                        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                        print(box)
+                        boxwriter.writerow(
+                            [
+                                ""
+                                + str(box['x'] + boxsize / 2)
+                                + " "
+                                + str(box['y'] + boxsize / 2)
+                            ]
+                        )
 
 def read(path: "os.PathLike") -> pd.DataFrame:
     if is_helicon_with_particle_coords(path):
@@ -197,7 +247,7 @@ def _write_box(path: os.PathLike, df: pd.DataFrame):
     )
 
 
-def _make_df_data(
+def _make_df_data_particle(
     coordinates: pd.DataFrame, box_size: npt.ArrayLike, feature: pd.DataFrame
 ) -> pd.DataFrame:
     data = {"x": [], "y": [], "boxsize": []}
@@ -211,14 +261,55 @@ def _make_df_data(
     return pd.DataFrame(data)
 
 
+def resample_filament(fil: pd.DataFrame, distance: int) -> pd.DataFrame:
+
+    fil[['x','y']]
+
+
+def _make_df_data_filament(
+    coordinates: pd.DataFrame, box_size: npt.ArrayLike, feature: pd.DataFrame
+) -> list[pd.DataFrame]:
+    data = {"x": [], "y": [], "fid": [], "boxsize": []}
+    filaments = []
+    for (y, x, fid), boxsize in zip(
+        coordinates,
+        box_size,
+    ):
+        if len(data['fid'])>0 and data['fid'][-1] != fid:
+            filaments.append(pd.DataFrame(data))
+            data = {"x": [], "y": [], "fid": [], "boxsize": []}
+
+        data["x"].append(x - boxsize / 2)
+        data["y"].append(y - boxsize / 2)
+        data["fid"].append(fid)
+        data["boxsize"].append(boxsize)
+    filaments.append(pd.DataFrame(data))
+
+    ## Resampling
+    for index_fil, fil in enumerate(filaments):
+        distance = int(fil['boxsize'][0] * 0.2)
+        filaments[index_fil] = resample_filament(fil,distance)
+
+    return filaments
+
+
 def from_napari(
     path: os.PathLike, layer_data: list[NapariLayerData]
 ):
+    is_filament=isinstance(layer_data[0][0],list)
+
+    if is_filament:
+        format_func = _make_df_data_filament
+        write_func = write_eman1_helicon
+    else:
+        format_func = _make_df_data_particle
+        write_func = _write_box
+
     path = coordsio.from_napari(
         path=path,
         layer_data=layer_data,
-        write_func=_write_box,
-        format_func=_make_df_data,
+        write_func=write_func,
+        format_func=format_func,
     )
 
     return path

@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 import scipy.fftpack as fft
-
+from scipy.ndimage import gaussian_filter
 
 def bandpass_filter(
     input_data: npt.ArrayLike,
@@ -56,7 +56,7 @@ def bandpass_filter(
     pad_image = np.pad(input_data, pad_list, "symmetric")
     pad_image = fft.fftn(pad_image)
     pad_image = fft.fftshift(pad_image)
-    from scipy.ndimage import gaussian_filter
+
     mask=gaussian_filter(mask.astype(float),sigma=4)
     pad_image *= mask
     pad_image = fft.ifftshift(pad_image)

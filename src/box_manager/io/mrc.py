@@ -60,9 +60,10 @@ def to_napari(
         for file_name in path:
             with mrcfile.open(file_name, permissive=True) as mrc:
                 tmp_data = mrc.data
+                tmp_data = (tmp_data - np.mean(tmp_data)) / np.std(tmp_data)
                 data_list.append(tmp_data)
         data = np.squeeze(np.stack(data_list))
-        data = (data - np.mean(data)) / np.std(data)
+
 
     metadata["is_3d"] = len(path) == 1 and data.ndim == 3
     metadata["is_2d_stack"] = len(path) > 1 and data.ndim == 3

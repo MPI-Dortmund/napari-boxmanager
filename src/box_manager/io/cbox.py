@@ -59,6 +59,7 @@ def from_napari(
 #########################
 
 ### READING ####
+################
 
 def read(path: os.PathLike) -> pd.DataFrame:
     try:
@@ -124,7 +125,37 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     return output_data
 
 
+def _fill_meta_idx(input_df: pd.DataFrame) -> None:
+    """
+    Fills the meta idx array.
+
+    Parameters
+    ----------
+    input_dict Raw input data
+
+    Returns
+    -------
+    None
+
+    """
+    global meta_columns
+
+    if (
+        not input_df["_EstWidth"].isnull().values.any()
+    ) and "size" not in meta_columns:
+        meta_columns.append("size")
+    if (
+        not input_df["_Confidence"].isnull().values.any()
+    ) and "confidence" not in meta_columns:
+        meta_columns.append("confidence")
+    if (
+        not input_df["_NumBoxes"].isnull().values.any()
+    ) and "num_boxes" not in meta_columns:
+        meta_columns.append("num_boxes")
+
+
 ### Writing ####
+################
 
 def write_cbox(path: os.PathLike, df: pd.DataFrame):
     sfile = star.StarFile(path)
@@ -214,33 +245,6 @@ def _make_df_data(
 
 
 
-def _fill_meta_idx(input_df: pd.DataFrame) -> None:
-    """
-    Fills the meta idx array.
-
-    Parameters
-    ----------
-    input_dict Raw input data
-
-    Returns
-    -------
-    None
-
-    """
-    global meta_columns
-
-    if (
-        not input_df["_EstWidth"].isnull().values.any()
-    ) and "size" not in meta_columns:
-        meta_columns.append("size")
-    if (
-        not input_df["_Confidence"].isnull().values.any()
-    ) and "confidence" not in meta_columns:
-        meta_columns.append("confidence")
-    if (
-        not input_df["_NumBoxes"].isnull().values.any()
-    ) and "num_boxes" not in meta_columns:
-        meta_columns.append("num_boxes")
 
 
 

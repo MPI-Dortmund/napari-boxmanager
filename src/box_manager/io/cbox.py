@@ -96,7 +96,7 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
 
     cryolo_data = input_df
 
-    _fill_meta_idx(cryolo_data)
+    _fill_meta_features_idx(cryolo_data)
     is_3d = True
     if cryolo_data["_CoordinateZ"].isnull().values.any():
         is_3d = False
@@ -140,7 +140,7 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     return output_data
 
 
-def _fill_meta_idx(input_df: pd.DataFrame) -> None:
+def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
     """
     Fills the meta idx array.
 

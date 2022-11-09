@@ -13,15 +13,11 @@ coords_3d_idx = ["x", "y", "z"]
 coords_2d_idx = ["y", "z"]
 meta_columns = []
 
-
-def read(path: os.PathLike) -> pd.DataFrame:
-    try:
-        starfile = star.StarFile(path)
-        data_dict = starfile["cryolo"]
-    except TypeError:
-        return None
-    return pd.DataFrame(data_dict)
-
+#########################
+# GENERAL STUFF
+#########################
+def get_valid_extensions() -> list[str]:
+    return valid_extensions
 
 def to_napari(
     path: os.PathLike | list[os.PathLike],
@@ -36,6 +32,99 @@ def to_napari(
 
     return r
 
+def _get_meta_columns():
+    return meta_columns
+
+
+def from_napari(
+    path: os.PathLike | list[os.PathLike] | pd.DataFrame,
+    layer_data: list[NapariLayerData],
+):
+
+    output_path = coordsio.from_napari(
+        path=path,
+        layer_data=layer_data,
+        write_func=write_cbox,
+        format_func=_make_df_data,
+    )
+    return output_path
+
+#########################
+# FILAMENT STUFF
+#########################
+
+
+#########################
+# PARTICLE STUFF
+#########################
+
+### READING ####
+
+def read(path: os.PathLike) -> pd.DataFrame:
+    try:
+        starfile = star.StarFile(path)
+        data_dict = starfile["cryolo"]
+    except TypeError:
+        return None
+    return pd.DataFrame(data_dict)
+
+def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
+    """
+
+    Parameters
+    ----------
+    input_df Dataframe with raw data from the read function
+
+    Returns
+    -------
+    Dataframe with centered coordinates and additional metadate if necessary.
+
+    """
+
+    cryolo_data = input_df
+
+    _fill_meta_idx(cryolo_data)
+    is_3d = True
+    if cryolo_data["_CoordinateZ"].isnull().values.any():
+        is_3d = False
+
+    columns = ["z", "y"]
+    if is_3d:
+        columns.append("x")
+
+    output_data: pd.DataFrame = pd.DataFrame(
+        columns=columns + _get_meta_columns()
+    )
+
+    output_data["z"] = np.array(cryolo_data["_CoordinateX"]) + np.array(
+        cryolo_data["_Width"] / 2
+    )
+    output_data["y"] = np.array(cryolo_data["_CoordinateY"]) + np.array(
+        cryolo_data["_Height"] / 2
+    )
+    if is_3d:
+        output_data["x"] = cryolo_data["_CoordinateZ"]
+
+    output_data["boxsize"] = (
+        np.array(cryolo_data["_Width"]) + np.array(cryolo_data["_Height"])
+    ) / 2
+
+    if "size" in meta_columns:
+        output_data["size"] = (
+            np.array(cryolo_data["_EstWidth"])
+            + np.array(cryolo_data["_EstHeight"])
+        ) / 2
+
+    if "num_boxes" in meta_columns:
+        output_data["num_boxes"] = cryolo_data["_NumBoxes"]
+
+    if "confidence" in meta_columns:
+        output_data["confidence"] = cryolo_data["_Confidence"]
+
+    return output_data
+
+
+### Writing ####
 
 def write_cbox(path: os.PathLike, df: pd.DataFrame):
     sfile = star.StarFile(path)
@@ -58,11 +147,6 @@ def write_cbox(path: os.PathLike, df: pd.DataFrame):
     sfile.write_star_file(
         overwrite=True, tags=["global", "cryolo", "cryolo_include"]
     )
-
-
-def get_valid_extensions() -> list[str]:
-    return valid_extensions
-
 
 def _make_df_data(
     coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
@@ -128,18 +212,6 @@ def _make_df_data(
     return pd.DataFrame(data)
 
 
-def from_napari(
-    path: os.PathLike | list[os.PathLike] | pd.DataFrame,
-    layer_data: list[NapariLayerData],
-):
-
-    output_path = coordsio.from_napari(
-        path=path,
-        layer_data=layer_data,
-        write_func=write_cbox,
-        format_func=_make_df_data,
-    )
-    return output_path
 
 
 def _fill_meta_idx(input_df: pd.DataFrame) -> None:
@@ -171,61 +243,7 @@ def _fill_meta_idx(input_df: pd.DataFrame) -> None:
         meta_columns.append("num_boxes")
 
 
-def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
-    """
-
-    Parameters
-    ----------
-    input_df Dataframe with raw data from the read function
-
-    Returns
-    -------
-    Dataframe with centered coordinates and additional metadate if necessary.
-
-    """
-
-    cryolo_data = input_df
-
-    _fill_meta_idx(cryolo_data)
-    is_3d = True
-    if cryolo_data["_CoordinateZ"].isnull().values.any():
-        is_3d = False
-
-    columns = ["z", "y"]
-    if is_3d:
-        columns.append("x")
-
-    output_data: pd.DataFrame = pd.DataFrame(
-        columns=columns + _get_meta_columns()
-    )
-
-    output_data["z"] = np.array(cryolo_data["_CoordinateX"]) + np.array(
-        cryolo_data["_Width"] / 2
-    )
-    output_data["y"] = np.array(cryolo_data["_CoordinateY"]) + np.array(
-        cryolo_data["_Height"] / 2
-    )
-    if is_3d:
-        output_data["x"] = cryolo_data["_CoordinateZ"]
-
-    output_data["boxsize"] = (
-        np.array(cryolo_data["_Width"]) + np.array(cryolo_data["_Height"])
-    ) / 2
-
-    if "size" in meta_columns:
-        output_data["size"] = (
-            np.array(cryolo_data["_EstWidth"])
-            + np.array(cryolo_data["_EstHeight"])
-        ) / 2
-
-    if "num_boxes" in meta_columns:
-        output_data["num_boxes"] = cryolo_data["_NumBoxes"]
-
-    if "confidence" in meta_columns:
-        output_data["confidence"] = cryolo_data["_Confidence"]
-
-    return output_data
 
 
-def _get_meta_columns():
-    return meta_columns
+
+

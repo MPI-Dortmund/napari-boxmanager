@@ -58,7 +58,7 @@ def to_napari(
         for cluster_id, cluster_df in napari_df.groupby("grp_idx", sort=False):
             path = input_df.attrs["references"][cluster_id]
             if len(path) >= MAX_LAYER_NAME + 3:
-                name = f"...{path[-{MAX_LAYER_NAME}:]}"  # type: ignore
+                name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
             else:
                 name = path  # type: ignore
             output_dfs.append(

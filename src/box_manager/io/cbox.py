@@ -12,6 +12,7 @@ valid_extensions = ["cbox"]
 coords_3d_idx = ["x", "y", "z"]
 coords_2d_idx = ["y", "z"]
 meta_columns = []
+feature_columns = []
 
 #########################
 # GENERAL STUFF
@@ -31,13 +32,16 @@ def to_napari(
         read_func=read,
         prepare_napari_func=_prepare_napari,
         meta_columns=_get_meta_columns(),
-        feature_columns=_get_meta_columns(),
+        feature_columns=_get_feature_columns(),
     )
 
     return r
 
 def _get_meta_columns():
     return meta_columns
+
+def _get_feature_columns():
+    return feature_columns
 
 def read(path: os.PathLike) -> pd.DataFrame:
     try:
@@ -130,7 +134,7 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     if "confidence" in meta_columns:
         output_data["confidence"] = cryolo_data["_Confidence"]
 
-    if "fid" in meta_columns:
+    if "fid" in feature_columns:
         output_data["fid"] = cryolo_data["_filamentid"]
 
     return output_data
@@ -150,6 +154,7 @@ def _fill_meta_idx(input_df: pd.DataFrame) -> None:
 
     """
     global meta_columns
+    global feature_columns
 
     if (
         not input_df["_EstWidth"].isnull().values.any()
@@ -165,8 +170,8 @@ def _fill_meta_idx(input_df: pd.DataFrame) -> None:
         meta_columns.append("num_boxes")
     if (
         not input_df["_filamentid"].isnull().values.any()
-    ) and "fid" not in meta_columns:
-        meta_columns.append("fid")
+    ) and "fid" not in feature_columns:
+        feature_columns.append("fid")
 
 
 ### Writing ####

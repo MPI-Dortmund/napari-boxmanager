@@ -284,8 +284,8 @@ def from_napari(
 
     last_file = ""
     for data, meta, layer in layer_data:
-
-        if isinstance(data,list):
+        is_filament_data = isinstance(data,list)
+        if is_filament_data:
             boxsize = []
             repeat = []
             fid = []

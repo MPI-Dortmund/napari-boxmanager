@@ -74,7 +74,6 @@ def _prepare_coords_df(
                 is_filament = True
                 box_napari_data = _split_filaments(box_napari_data)
 
-
         checkbox = None
         if is_filament:
             if len(box_napari_data) == 0 or np.all([b.empty for b in box_napari_data]):
@@ -182,11 +181,18 @@ def to_napari(
 
     metadata["is_2d_stack"] = len(path) > 1
     metadata.update(orgbox_meta)
-
-    features = {
-        entry: input_df[entry].to_numpy()
-        for entry in feature_columns  # _get_meta_idx() + _get_hidden_meta_idx()
-    }
+    features = {}
+    for entry in feature_columns:
+        if is_filament:
+            for fil in input_df:
+                if entry in features:
+                    features[entry] = np.concatenate([features[entry], fil[entry].to_numpy()])
+                else:
+                    features[entry] = fil[entry].to_numpy()
+        else:
+            features[entry] = input_df[entry].to_numpy()
+    print(features)
+    features = {}
 
     layer_name = get_coords_layer_name(path)
 

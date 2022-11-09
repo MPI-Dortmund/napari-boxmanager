@@ -16,6 +16,10 @@ meta_columns = []
 #########################
 # GENERAL STUFF
 #########################
+
+### READING ####
+################
+
 def get_valid_extensions() -> list[str]:
     return valid_extensions
 
@@ -35,6 +39,16 @@ def to_napari(
 def _get_meta_columns():
     return meta_columns
 
+def read(path: os.PathLike) -> pd.DataFrame:
+    try:
+        starfile = star.StarFile(path)
+        data_dict = starfile["cryolo"]
+    except TypeError:
+        return None
+    return pd.DataFrame(data_dict)
+
+### Writing ####
+################
 
 def from_napari(
     path: os.PathLike | list[os.PathLike] | pd.DataFrame,
@@ -53,6 +67,8 @@ def from_napari(
 # FILAMENT STUFF
 #########################
 
+### READING ####
+################
 
 #########################
 # PARTICLE STUFF
@@ -60,14 +76,6 @@ def from_napari(
 
 ### READING ####
 ################
-
-def read(path: os.PathLike) -> pd.DataFrame:
-    try:
-        starfile = star.StarFile(path)
-        data_dict = starfile["cryolo"]
-    except TypeError:
-        return None
-    return pd.DataFrame(data_dict)
 
 def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -122,6 +130,9 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     if "confidence" in meta_columns:
         output_data["confidence"] = cryolo_data["_Confidence"]
 
+    if "fid" in meta_columns:
+        output_data["fid"] = cryolo_data["_filamentid"]
+
     return output_data
 
 
@@ -152,6 +163,10 @@ def _fill_meta_idx(input_df: pd.DataFrame) -> None:
         not input_df["_NumBoxes"].isnull().values.any()
     ) and "num_boxes" not in meta_columns:
         meta_columns.append("num_boxes")
+    if (
+        not input_df["_filamentid"].isnull().values.any()
+    ) and "fid" not in meta_columns:
+        meta_columns.append("fid")
 
 
 ### Writing ####

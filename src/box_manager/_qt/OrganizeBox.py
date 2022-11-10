@@ -83,7 +83,7 @@ class OrganizeBoxWidget(QWidget):
     def __init__(self, napari_viewer: "napari.Viewer"):
         super().__init__()
         self.napari_viewer = napari_viewer
-        self.loadable_layers = (napari.layers.Points,)
+        self.loadable_layers = (napari.layers.Points, napari.layers.Shapes)
 
         self.napari_viewer.layers.events.inserted.connect(self._update_combo)
         self.napari_viewer.layers.events.removed.connect(self._update_combo)

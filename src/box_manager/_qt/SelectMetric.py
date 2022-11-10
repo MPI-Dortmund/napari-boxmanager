@@ -25,6 +25,7 @@ from qtpy.QtGui import (
 )
 from qtpy.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QComboBox,
     QFormLayout,
     QHBoxLayout,
@@ -523,11 +524,19 @@ class GroupView(QTreeView):
         self.selectionModel().clear()
         self.selectionModel().select(selection, flag)
 
-    def get_row_candidates(self):
-        return {
-            (entry.parent().row(), entry.row())
-            for entry in self.selectedIndexes()
-        }
+    def get_row_candidates(self, parent_only=True):
+        if parent_only:
+            return {
+                (-1, entry.parent().row())
+                if entry.parent().row() != -1
+                else (entry.parent().row(), entry.row())
+                for entry in self.selectedIndexes()
+            }
+        else:
+            return {
+                (entry.parent().row(), entry.row())
+                for entry in self.selectedIndexes()
+            }
 
     def get_rows(self, rows_candidates, col_idx):
         parents = {entry[1] for entry in rows_candidates if entry[0] == -1}
@@ -615,6 +624,14 @@ class SelectMetricWidget(QWidget):
         )
         self.metric_area = QVBoxLayout()
 
+        self.option_area = QHBoxLayout()
+        self.global_checkbox = QCheckBox(
+            "Apply on layers, not on slices", self
+        )
+        self.option_area.addWidget(self.global_checkbox)
+        self.global_checkbox.setChecked(True)
+        self.global_checkbox.stateChanged.connect(lambda _: self.update_hist())
+
         self.settings_area = QHBoxLayout()
         self.hide_dim = QComboBox(self)
         self.hide_dim.currentTextChanged.connect(self.update_hist)
@@ -646,6 +663,7 @@ class SelectMetricWidget(QWidget):
         self.setLayout(QVBoxLayout())
         self.layout().addLayout(self.settings_area, stretch=0)  # type: ignore
         self.layout().addWidget(self.table_widget, stretch=1)
+        self.layout().addLayout(self.option_area, stretch=0)  # type: ignore
         self.layout().addLayout(self.metric_area, stretch=0)  # type: ignore
 
         self._sync_table(select_first=True)
@@ -1456,7 +1474,9 @@ class SelectMetricWidget(QWidget):
         self.update_hist()
 
     def update_hist(self, *_):
-        rows_candidates = self.table_widget.get_row_candidates()
+        rows_candidates = self.table_widget.get_row_candidates(
+            self.global_checkbox.isChecked()
+        )
         if not rows_candidates:
             for layer, _ in self.prev_valid_layers.values():
                 if "prev_opacity" in layer.metadata:

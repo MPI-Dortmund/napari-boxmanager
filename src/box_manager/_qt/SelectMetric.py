@@ -25,6 +25,7 @@ from qtpy.QtGui import (
 )
 from qtpy.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QComboBox,
     QFormLayout,
     QHBoxLayout,
@@ -69,15 +70,6 @@ def check_equal(layer, compare_data):
             ]
         )
         return all_same
-    else:
-        assert False, (layer, type(layer))
-
-
-def get_identifier(layer, cur_slice):
-    if isinstance(layer, napari.layers.Points):
-        return layer.data[:, cur_slice]
-    elif isinstance(layer, napari.layers.Shapes):
-        return np.array([entry[0, cur_slice] for entry in layer.data])
     else:
         assert False, (layer, type(layer))
 
@@ -532,11 +524,19 @@ class GroupView(QTreeView):
         self.selectionModel().clear()
         self.selectionModel().select(selection, flag)
 
-    def get_row_candidates(self):
-        return {
-            (entry.parent().row(), entry.row())
-            for entry in self.selectedIndexes()
-        }
+    def get_row_candidates(self, parent_only=True):
+        if parent_only:
+            return {
+                (-1, entry.parent().row())
+                if entry.parent().row() != -1
+                else (entry.parent().row(), entry.row())
+                for entry in self.selectedIndexes()
+            }
+        else:
+            return {
+                (entry.parent().row(), entry.row())
+                for entry in self.selectedIndexes()
+            }
 
     def get_rows(self, rows_candidates, col_idx):
         parents = {entry[1] for entry in rows_candidates if entry[0] == -1}
@@ -624,6 +624,14 @@ class SelectMetricWidget(QWidget):
         )
         self.metric_area = QVBoxLayout()
 
+        self.option_area = QHBoxLayout()
+        self.global_checkbox = QCheckBox(
+            "Apply on layers, not on slices", self
+        )
+        self.option_area.addWidget(self.global_checkbox)
+        self.global_checkbox.setChecked(True)
+        self.global_checkbox.stateChanged.connect(lambda _: self.update_hist())
+
         self.settings_area = QHBoxLayout()
         self.hide_dim = QComboBox(self)
         self.hide_dim.currentTextChanged.connect(self.update_hist)
@@ -655,6 +663,7 @@ class SelectMetricWidget(QWidget):
         self.setLayout(QVBoxLayout())
         self.layout().addLayout(self.settings_area, stretch=0)  # type: ignore
         self.layout().addWidget(self.table_widget, stretch=1)
+        self.layout().addLayout(self.option_area, stretch=0)  # type: ignore
         self.layout().addLayout(self.metric_area, stretch=0)  # type: ignore
 
         self._sync_table(select_first=True)
@@ -806,7 +815,9 @@ class SelectMetricWidget(QWidget):
 
             if layer.ndim == 3:
                 mask_dimension = np.isin(
-                    np.round(get_identifier(layer, self._cur_slice_dim), 0),
+                    np.round(
+                        general.get_identifier(layer, self._cur_slice_dim), 0
+                    ),
                     slice_idx,
                 )
             elif layer.ndim == 2:
@@ -851,7 +862,9 @@ class SelectMetricWidget(QWidget):
                         if layer.ndim == 3:
                             slice_mask = (
                                 np.round(
-                                    get_identifier(layer, self._cur_slice_dim),
+                                    general.get_identifier(
+                                        layer, self._cur_slice_dim
+                                    ),
                                     0,
                                 )
                                 == slice_idx[idx]
@@ -1074,7 +1087,7 @@ class SelectMetricWidget(QWidget):
                 ""
                 if name is not None
                 else np.round(
-                    get_identifier(layer, self._cur_slice_dim), 0
+                    general.get_identifier(layer, self._cur_slice_dim), 0
                 ).astype(int)
             )
         elif layer.ndim == 2:
@@ -1461,7 +1474,9 @@ class SelectMetricWidget(QWidget):
         self.update_hist()
 
     def update_hist(self, *_):
-        rows_candidates = self.table_widget.get_row_candidates()
+        rows_candidates = self.table_widget.get_row_candidates(
+            self.global_checkbox.isChecked()
+        )
         if not rows_candidates:
             for layer, _ in self.prev_valid_layers.values():
                 if "prev_opacity" in layer.metadata:
@@ -1516,7 +1531,9 @@ class SelectMetricWidget(QWidget):
 
             if layer.ndim == 3:
                 mask = np.isin(
-                    np.round(get_identifier(layer, self._cur_slice_dim), 0),
+                    np.round(
+                        general.get_identifier(layer, self._cur_slice_dim), 0
+                    ),
                     slice_idx,
                 )
             elif layer.ndim == 2:

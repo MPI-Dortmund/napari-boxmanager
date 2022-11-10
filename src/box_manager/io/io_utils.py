@@ -119,7 +119,7 @@ def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
     return name
 
 
-def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns):
+def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns, is_3d):
     #boxsize_ = [np.mean(fil['boxsize']) for fil in input_df]
 
     color = []
@@ -127,7 +127,7 @@ def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns):
     total = 0
 
     for fil in input_df:
-        bs = 100#np.mean(fil['boxsize'])
+        bs = np.mean(fil['boxsize'])
         c = np.random.choice(range(256), size=3)
         total += len(fil)
         color.extend([c]*len(fil))
@@ -135,17 +135,6 @@ def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns):
     input_df = pd.concat([fil[coord_columns] for fil in input_df])
     color = [(r, g, b,50) for r,g,b in color]
 
-    '''
-    kwargs: NapariMetaData = {
-        "edge_color": color,
-        "face_color": "transparent",
-        "edge_width": boxsize,
-        "opacity": 0.4,
-        "shape_type": "path",
-
-    }
-    '''
-    is_3d = False
     kwargs: NapariMetaData = {
         "edge_color": color,
         "face_color": "transparent",
@@ -226,7 +215,7 @@ def to_napari(
         coord_columns = ["y", "z"]
 
     if is_filament:
-        dat, kwargs, layer_type = _to_napari_filament(input_df_list, coord_columns)
+        dat, kwargs, layer_type = _to_napari_filament(input_df_list, coord_columns, is_3d)
     else:
         dat, kwargs, layer_type = _to_napari_particle(input_df_list, coord_columns, is_3d)
     kwargs["name"] = layer_name

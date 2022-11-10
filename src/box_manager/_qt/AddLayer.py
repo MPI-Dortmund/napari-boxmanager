@@ -3,14 +3,13 @@ import pathlib
 
 import napari
 import napari.layers
-from napari.layers.shapes._shapes_constants import Mode
 import numpy as np
+from napari.layers.shapes._shapes_constants import Mode
 from qtpy.QtCore import Slot
 from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import (
     QComboBox,
     QFormLayout,
-    QHBoxLayout,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -88,7 +87,7 @@ class AddLayerWidget(QWidget):
         layer_name = self._layer.currentText()
         metadata = {
             "do_activate_on_insert": True,
-            }
+        }
         if not layer_name:
             return metadata
         layer_meta = self.napari_viewer.layers[layer_name].metadata
@@ -101,8 +100,9 @@ class AddLayerWidget(QWidget):
                 metadata[key][
                     "name"
                 ] = f"{os.path.splitext(value['name'])[0]}.box"
+                metadata[key]["image_name"] = value["name"]
                 metadata[key]["real"] = False
-            elif key in ("original_path","is_2d_stack"):
+            elif key in ("original_path", "is_2d_stack"):
                 metadata[key] = value
         return metadata
 
@@ -118,7 +118,7 @@ class AddLayerWidget(QWidget):
             return False
 
     def _new_points(self):
-        #if len(self.napari_viewer.layers) == 0:
+        # if len(self.napari_viewer.layers) == 0:
         #    return
         metadata = self._get_metadata()
         kwargs = {
@@ -164,7 +164,7 @@ class AddLayerWidget(QWidget):
         kwargs = {
             "metadata": metadata,
             "face_color": "transparent",
-            "edge_color": 'red',
+            "edge_color": "red",
             "edge_width": 2,
             "opacity": 0.8,
             "name": "filaments",

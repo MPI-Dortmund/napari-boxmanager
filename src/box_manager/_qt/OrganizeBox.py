@@ -246,6 +246,7 @@ class OrganizeBoxWidget(QWidget):
                 new_meta[image_idx] = {
                     "path": os.path.join(self.coord_layer.dirname, name),
                     "name": name,
+                    "image_name": mic_name,
                     "write": None,
                     "real": False,
                 }
@@ -254,6 +255,7 @@ class OrganizeBoxWidget(QWidget):
                 continue
             else:
                 new_meta[image_idx] = layer_coord.metadata[coord_idx]
+                new_meta[image_idx]["image_name"] = mic_name
                 try:
                     new_meta[image_idx]["real"]
                 except KeyError:

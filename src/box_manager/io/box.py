@@ -258,45 +258,6 @@ def _make_df_data_particle(
     return pd.DataFrame(data)
 
 
-def resample_filament(filament : pd.DataFrame, new_distance : float):
-    if len(filament)<=1:
-        return filament
-    from scipy.interpolate import interp1d
-    import numpy as np
-    new_distance = np.sqrt(new_distance**2+new_distance**2)
-    box_size = filament['boxsize'][0]
-
-    x = filament['x'].to_list()
-    y = filament['y'].to_list()
-
-    # Linear length on the line
-    sqsum = np.ediff1d(x, to_begin=0) ** 2 + np.ediff1d(y, to_begin=0) ** 2
-    distance_elem = np.cumsum(np.sqrt(sqsum))
-    total_elength = distance_elem[-1]
-
-
-    distance = distance_elem / distance_elem[-1] #norm to 1
-    fx, fy = interp1d(distance, x), interp1d(distance, y)
-
-    num = int(total_elength / (new_distance)) +1
-
-    alpha = np.linspace(0, 1, num)
-
-    x_regular, y_regular = fx(alpha), fy(alpha)
-
-    new_boxes = {
-        "x": [],
-        "y": [],
-        "boxsize": [],
-    }
-
-    for i in range(len(x_regular)):
-        new_boxes['x'].append(x_regular[i])
-        new_boxes['y'].append(y_regular[i])
-        new_boxes['boxsize'].append(box_size)
-
-    return pd.DataFrame(new_boxes)
-
 
 def _make_df_data_filament(
     coordinates: pd.DataFrame, box_size: npt.ArrayLike, feature: pd.DataFrame
@@ -320,7 +281,7 @@ def _make_df_data_filament(
     ## Resampling
     for index_fil, fil in enumerate(filaments):
         distance = int(fil['boxsize'][0] * 0.2)
-        filaments[index_fil] =resample_filament(fil, distance)
+        filaments[index_fil] = coordsio.resample_filament(fil, distance)
 
     return filaments
 

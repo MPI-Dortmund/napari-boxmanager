@@ -67,13 +67,13 @@ def _prepare_coords_df(
 
         if input_data is not None:
             box_napari_data = prepare_napari_func(input_data)
+
             if "x" not in box_napari_data:
                 is_3d = False
                 box_napari_data["x"] = idx
             if 'fid' in box_napari_data:
                 is_filament = True
                 box_napari_data = _split_filaments(box_napari_data)
-
         checkbox = None
         if is_filament:
             if len(box_napari_data) == 0 or np.all([b.empty for b in box_napari_data]):
@@ -119,11 +119,23 @@ def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
     return name
 
 
-def _to_napari_filament(input_df, coord_columns):
-    boxsize = [np.mean(fil['boxsize']) for fil in input_df]
-    input_df = [fil[coord_columns] for fil in input_df]
-    color = [np.random.choice(range(256), size=3) for _ in range(len(input_df))] #RGB
-    color = ['#%02x%02x%02x' % (r, g, b) for r,g,b in color]
+def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns):
+    #boxsize_ = [np.mean(fil['boxsize']) for fil in input_df]
+
+    color = []
+    boxsize = []
+    total = 0
+
+    for fil in input_df:
+        bs = 100#np.mean(fil['boxsize'])
+        c = np.random.choice(range(256), size=3)
+        total += len(fil)
+        color.extend([c]*len(fil))
+        boxsize.extend([bs]*len(fil))
+    input_df = pd.concat([fil[coord_columns] for fil in input_df])
+    color = [(r, g, b,50) for r,g,b in color]
+
+    '''
     kwargs: NapariMetaData = {
         "edge_color": color,
         "face_color": "transparent",
@@ -132,8 +144,20 @@ def _to_napari_filament(input_df, coord_columns):
         "shape_type": "path",
 
     }
+    '''
+    is_3d = False
+    kwargs: NapariMetaData = {
+        "edge_color": color,
+        "face_color": "transparent",
+        "symbol": "disc",
+        "edge_width": 0.05,
+        "edge_width_is_relative": True,
+        "size": np.average(boxsize),
+        "out_of_slice_display": True if is_3d else False,
+        "opacity": 0.8,
+    }
     dat = input_df
-    layer_type = "shapes"
+    layer_type = "points"
 
     return dat, kwargs, layer_type
 
@@ -164,7 +188,7 @@ def to_napari(
     feature_columns: typing.List[str] = [],
 ) -> "list[NapariLayerData]":
 
-    input_df: pd.DataFrame
+    input_df_list: list[pd.DataFrame]
     features: dict[str, typing.Any]
 
     orgbox_meta = orgbox.get_metadata(path)
@@ -172,7 +196,7 @@ def to_napari(
     if not isinstance(path, list):
         path = sorted(glob.glob(path))  # type: ignore
 
-    input_df, metadata, is_3d, is_filament = _prepare_coords_df(
+    input_df_list, metadata, is_3d, is_filament = _prepare_coords_df(
         path,
         read_func=read_func,
         prepare_napari_func=prepare_napari_func,
@@ -184,15 +208,14 @@ def to_napari(
     features = {}
     for entry in feature_columns:
         if is_filament:
-            for fil in input_df:
+            for fil in input_df_list:
                 if entry in features:
                     features[entry] = np.concatenate([features[entry], fil[entry].to_numpy()])
                 else:
                     features[entry] = fil[entry].to_numpy()
         else:
-            features[entry] = input_df[entry].to_numpy()
-    print(features)
-    features = {}
+            all = pd.concat(input_df_list)
+            features[entry] = all[entry].to_numpy()
 
     layer_name = get_coords_layer_name(path)
 
@@ -203,10 +226,9 @@ def to_napari(
         coord_columns = ["y", "z"]
 
     if is_filament:
-        dat, kwargs, layer_type = _to_napari_filament(input_df, coord_columns)
+        dat, kwargs, layer_type = _to_napari_filament(input_df_list, coord_columns)
     else:
-        dat, kwargs, layer_type = _to_napari_particle(input_df, coord_columns, is_3d)
-
+        dat, kwargs, layer_type = _to_napari_particle(input_df_list, coord_columns, is_3d)
     kwargs["name"] = layer_name
     kwargs["metadata"] = metadata
     kwargs["features"] = features
@@ -224,6 +246,58 @@ def _generate_output_filename(orignal_filename: str, output_path: os.PathLike):
     output_file = pathlib.Path(dirname, file_base + extension)
     return output_file
 
+def resample_filament(
+        filament : pd.DataFrame,
+        new_distance : float,
+        coordinate_columns,
+        constant_columns
+):
+    if len(filament)<=1:
+        return filament
+    from scipy.interpolate import interp1d
+    import numpy as np
+    new_distance = np.sqrt(new_distance**2+new_distance**2)
+    box_size = filament['boxsize'][0]
+
+    sqsum = 0
+    for col in coordinate_columns:
+        coord_dat = filament[col].to_list()
+        sqsum = sqsum + np.ediff1d(coord_dat, to_begin=0) ** 2
+    '''
+    x = filament['x'].to_list()
+    y = filament['y'].to_list()
+
+    # Linear length on the line
+    sqsum = np.ediff1d(x, to_begin=0) ** 2 + np.ediff1d(y, to_begin=0) ** 2
+    '''
+    distance_elem = np.cumsum(np.sqrt(sqsum))
+    total_elength = distance_elem[-1]
+
+
+    distance = distance_elem / distance_elem[-1] #norm to 1
+    interpolators = []
+    for col in coordinate_columns:
+        interp = interp1d(distance, filament[col].to_list())
+        interpolators.append(interp)
+
+    num = int(total_elength / (new_distance)) +1
+
+    alpha = np.linspace(0, 1, num)
+
+    x_regular, y_regular = fx(alpha), fy(alpha)
+
+    new_boxes = {
+        "x": [],
+        "y": [],
+        "boxsize": [],
+    }
+
+    for i in range(len(x_regular)):
+        new_boxes['x'].append(x_regular[i])
+        new_boxes['y'].append(y_regular[i])
+        new_boxes['boxsize'].append(box_size)
+
+    return pd.DataFrame(new_boxes)
 
 def _write_particle_data(
         path: os.PathLike,

@@ -1,3 +1,4 @@
+import copy
 import os
 import typing
 
@@ -83,65 +84,38 @@ def from_napari(
 def _make_df_data_filament(
     coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
 ) -> list[pd.DataFrame]:
+
     data = {
         "_CoordinateX": [],
         "_CoordinateY": [],
-        "_CoordinateZ": [],
         "_Width": [],
         "_Height": [],
-        "_Depth": [],
-        "_EstWidth": [],
-        "_EstHeight": [],
-        "_Confidence": [],
-        "_NumBoxes": [],
-        "_Angle": [],
+        "_filamentid": [],
     }
-    for i in range(len(coordinates)):
-        coords = coordinates[i]
-        boxsize = box_size[i]
+    empty_data = data.copy()
 
-        is_3d = True
-
-        if len(coords) == 2:
-            is_3d = False
-            y, x = coords
-            z = np.nan
-        else:
-            z, y, x = coords
+    filaments = []
+    for (y, x, fid), boxsize in zip(
+            coordinates,
+            box_size,
+    ):
+        if len(data['_filamentid']) > 0 and data['_filamentid'][-1] != fid:
+            filaments.append(pd.DataFrame(data))
+            data = empty_data.copy()
 
         data["_CoordinateX"].append(x - boxsize / 2)
         data["_CoordinateY"].append(y - boxsize / 2)
-        data["_CoordinateZ"].append(z)
+        data["_filamentid"].append(fid)
         data["_Width"].append(boxsize)
         data["_Height"].append(boxsize)
-        if is_3d:
-            data["_Depth"].append(boxsize)
-        else:
-            data["_Depth"].append(np.nan)
+    filaments.append(pd.DataFrame(data))
 
-        if "size" in features:
-            data["_EstWidth"].append(features["size"].iloc[i])
-            data["_EstHeight"].append(features["size"].iloc[i])
-        else:
-            data["_EstWidth"].append(np.nan)
-            data["_EstHeight"].append(np.nan)
+    ## Resampling
+    for index_fil, fil in enumerate(filaments):
+        distance = int(fil['_Width'][0] * 0.2)
+        filaments[index_fil] = coordsio.resample_filament(fil, distance)
 
-        if "confidence" in features:
-            data["_Confidence"].append(features["confidence"].iloc[i])
-        else:
-            data["_Confidence"].append(np.nan)
-
-        if "numboxes" in features:
-            data["_NumBoxes"].append(features["numboxes"].iloc[i])
-        else:
-            data["_NumBoxes"].append(np.nan)
-
-        if "angle" in features:
-            data["_Angle"].append(features["angle"].iloc[i])
-        else:
-            data["_Angle"].append(np.nan)
-
-    return pd.DataFrame(data)
+    return filaments
 
 #########################
 # PARTICLE STUFF
@@ -203,7 +177,7 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     if "confidence" in meta_columns:
         output_data["confidence"] = cryolo_data["_Confidence"]
 
-    if "fid" in feature_columns:
+    if "fid" in meta_columns:
         output_data["fid"] = cryolo_data["_filamentid"]
 
     return output_data
@@ -233,14 +207,15 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
         not input_df["_Confidence"].isnull().values.any()
     ) and "confidence" not in meta_columns:
         meta_columns.append("confidence")
+        feature_columns.append("confidence")
     if (
         not input_df["_NumBoxes"].isnull().values.any()
     ) and "num_boxes" not in meta_columns:
         meta_columns.append("num_boxes")
     if (
-        not input_df["_filamentid"].isnull().values.any()
-    ) and "fid" not in feature_columns:
-        feature_columns.append("fid")
+        "_filamentid" in input_df and not input_df["_filamentid"].isnull().values.any()
+    ) and "fid" not in meta_columns:
+        meta_columns.append("fid")
 
 
 ### Writing ####

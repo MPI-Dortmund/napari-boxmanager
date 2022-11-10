@@ -10,5 +10,5 @@ v0.2.11: (UPCOMING)
 v0.2.10:
 *******************
  - Fix bug when reading .tloc files with long paths (Thanks Tom Dendooven)
- - Fix bug with contrast issues with when low pass filter images
+ - Fix bug with contrast issues when low pass filter images
  - Add smooth fall-off when low pass filtering images

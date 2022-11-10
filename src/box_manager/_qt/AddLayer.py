@@ -139,6 +139,7 @@ class AddLayerWidget(QWidget):
             **kwargs,
         )
         layer.events.size()
+        layer.mode = 'add'
 
     def _new_labels(self):
         metadata = self._get_metadata()

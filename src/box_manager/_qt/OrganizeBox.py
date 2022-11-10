@@ -18,6 +18,8 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from .._utils import general
+
 if typing.TYPE_CHECKING:
     import napari
 
@@ -83,7 +85,7 @@ class OrganizeBoxWidget(QWidget):
     def __init__(self, napari_viewer: "napari.Viewer"):
         super().__init__()
         self.napari_viewer = napari_viewer
-        self.loadable_layers = (napari.layers.Points,)
+        self.loadable_layers = (napari.layers.Points, napari.layers.Shapes)
 
         self.napari_viewer.layers.events.inserted.connect(self._update_combo)
         self.napari_viewer.layers.events.removed.connect(self._update_combo)
@@ -217,6 +219,7 @@ class OrganizeBoxWidget(QWidget):
 
         old_data, old_state, old_type_str = layer_coord.as_layer_data_tuple()
         new_data = deepcopy(old_data)
+        ident_data = general.get_identifier(layer_coord, 0)
 
         new_meta = {
             key: value
@@ -227,7 +230,7 @@ class OrganizeBoxWidget(QWidget):
         new_meta["suffix"] = suffix_coord
         new_meta["do_activate_on_insert"] = True
 
-        total_mask = np.zeros(len(old_data), dtype=bool)
+        total_mask = np.zeros(len(ident_data), dtype=bool)
         table_list = []
         for key, image_idx in image_dict.items():
             mic_name = layer_image.metadata[image_idx]["name"]
@@ -261,11 +264,16 @@ class OrganizeBoxWidget(QWidget):
                     new_coord_name = "-"
             table_list.append((mic_name, box_name, new_coord_name))
 
-            slice_mask = np.round(old_data[:, 0], 0) == coord_idx
+            slice_mask = np.round(ident_data, 0) == coord_idx
             total_mask = total_mask | slice_mask
             new_data[slice_mask, 0] = image_idx
 
-        new_data = new_data[total_mask, :]
+        try:
+            new_data = new_data[total_mask, :]
+        except TypeError:
+            new_data = [
+                entry for entry, keep in zip(new_data, total_mask) if keep
+            ]
 
         self.table_widget.setColumnCount(3)
         self.table_widget.setRowCount(len(table_list))
@@ -284,7 +292,7 @@ class OrganizeBoxWidget(QWidget):
                 self.table_widget.setItem(row_idx, col_idx, item)
         self.table_widget.resizeColumnsToContents()
 
-        if create_layer and new_data.size != 0:
+        if create_layer and len(new_data) != 0:
             new_state = {}
             for key, value in old_state.items():
                 if key == "visible":

@@ -73,15 +73,6 @@ def check_equal(layer, compare_data):
         assert False, (layer, type(layer))
 
 
-def get_identifier(layer, cur_slice):
-    if isinstance(layer, napari.layers.Points):
-        return layer.data[:, cur_slice]
-    elif isinstance(layer, napari.layers.Shapes):
-        return np.array([entry[0, cur_slice] for entry in layer.data])
-    else:
-        assert False, (layer, type(layer))
-
-
 def get_current_size(layer):
     if isinstance(layer, napari.layers.Points):
         return np.atleast_1d([layer.current_size])
@@ -806,7 +797,9 @@ class SelectMetricWidget(QWidget):
 
             if layer.ndim == 3:
                 mask_dimension = np.isin(
-                    np.round(get_identifier(layer, self._cur_slice_dim), 0),
+                    np.round(
+                        general.get_identifier(layer, self._cur_slice_dim), 0
+                    ),
                     slice_idx,
                 )
             elif layer.ndim == 2:
@@ -851,7 +844,9 @@ class SelectMetricWidget(QWidget):
                         if layer.ndim == 3:
                             slice_mask = (
                                 np.round(
-                                    get_identifier(layer, self._cur_slice_dim),
+                                    general.get_identifier(
+                                        layer, self._cur_slice_dim
+                                    ),
                                     0,
                                 )
                                 == slice_idx[idx]
@@ -1074,7 +1069,7 @@ class SelectMetricWidget(QWidget):
                 ""
                 if name is not None
                 else np.round(
-                    get_identifier(layer, self._cur_slice_dim), 0
+                    general.get_identifier(layer, self._cur_slice_dim), 0
                 ).astype(int)
             )
         elif layer.ndim == 2:
@@ -1516,7 +1511,9 @@ class SelectMetricWidget(QWidget):
 
             if layer.ndim == 3:
                 mask = np.isin(
-                    np.round(get_identifier(layer, self._cur_slice_dim), 0),
+                    np.round(
+                        general.get_identifier(layer, self._cur_slice_dim), 0
+                    ),
                     slice_idx,
                 )
             elif layer.ndim == 2:

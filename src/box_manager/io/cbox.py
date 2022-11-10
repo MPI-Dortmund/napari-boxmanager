@@ -58,12 +58,18 @@ def from_napari(
     path: os.PathLike | list[os.PathLike] | pd.DataFrame,
     layer_data: list[NapariLayerData],
 ):
+    is_filament = isinstance(layer_data[0][0], list)
+
+    if is_filament:
+        format_func = _make_df_data_filament
+    else:
+        format_func = _make_df_data
 
     output_path = coordsio.from_napari(
         path=path,
         layer_data=layer_data,
         write_func=write_cbox,
-        format_func=_make_df_data,
+        format_func=format_func,
     )
     return output_path
 
@@ -71,8 +77,71 @@ def from_napari(
 # FILAMENT STUFF
 #########################
 
-### READING ####
+### WRITING ####
 ################
+
+def _make_df_data_filament(
+    coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
+) -> list[pd.DataFrame]:
+    data = {
+        "_CoordinateX": [],
+        "_CoordinateY": [],
+        "_CoordinateZ": [],
+        "_Width": [],
+        "_Height": [],
+        "_Depth": [],
+        "_EstWidth": [],
+        "_EstHeight": [],
+        "_Confidence": [],
+        "_NumBoxes": [],
+        "_Angle": [],
+    }
+    for i in range(len(coordinates)):
+        coords = coordinates[i]
+        boxsize = box_size[i]
+
+        is_3d = True
+
+        if len(coords) == 2:
+            is_3d = False
+            y, x = coords
+            z = np.nan
+        else:
+            z, y, x = coords
+
+        data["_CoordinateX"].append(x - boxsize / 2)
+        data["_CoordinateY"].append(y - boxsize / 2)
+        data["_CoordinateZ"].append(z)
+        data["_Width"].append(boxsize)
+        data["_Height"].append(boxsize)
+        if is_3d:
+            data["_Depth"].append(boxsize)
+        else:
+            data["_Depth"].append(np.nan)
+
+        if "size" in features:
+            data["_EstWidth"].append(features["size"].iloc[i])
+            data["_EstHeight"].append(features["size"].iloc[i])
+        else:
+            data["_EstWidth"].append(np.nan)
+            data["_EstHeight"].append(np.nan)
+
+        if "confidence" in features:
+            data["_Confidence"].append(features["confidence"].iloc[i])
+        else:
+            data["_Confidence"].append(np.nan)
+
+        if "numboxes" in features:
+            data["_NumBoxes"].append(features["numboxes"].iloc[i])
+        else:
+            data["_NumBoxes"].append(np.nan)
+
+        if "angle" in features:
+            data["_Angle"].append(features["angle"].iloc[i])
+        else:
+            data["_Angle"].append(np.nan)
+
+    return pd.DataFrame(data)
 
 #########################
 # PARTICLE STUFF

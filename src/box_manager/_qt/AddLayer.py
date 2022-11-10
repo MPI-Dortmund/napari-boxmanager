@@ -26,11 +26,11 @@ class AddLayerWidget(QWidget):
 
         self._add_point = QPushButton(self)
         self._add_shape = QPushButton(self)
-        self._add_label = QPushButton(self)
+        # self._add_label = QPushButton(self)
 
         self._add_point.clicked.connect(self._new_points)
         self._add_shape.clicked.connect(self._new_shapes)
-        self._add_label.clicked.connect(self._new_labels)
+        # self._add_label.clicked.connect(self._new_labels)
 
         self._layer = QComboBox(self)
 
@@ -40,7 +40,7 @@ class AddLayerWidget(QWidget):
         layout.addRow("Target image layer:", self._layer)
         layout.addRow("Create particle layer:", self._add_point)
         layout.addRow("Create filament layer:", self._add_shape)
-        layout.addRow("Create label layer:", self._add_label)
+        # layout.addRow("Create label layer:", self._add_label)
         self.layout().addLayout(layout)
 
         self.layout().addStretch(True)
@@ -67,7 +67,7 @@ class AddLayerWidget(QWidget):
         enabled = bool(layer_names)
         self._add_point.setEnabled(enabled)
         self._add_shape.setEnabled(enabled)
-        self._add_label.setEnabled(enabled)
+        # self._add_label.setEnabled(enabled)
 
     def _apply_icons(self, *_):
         theme_dir = pathlib.Path(
@@ -80,8 +80,8 @@ class AddLayerWidget(QWidget):
         point_icon = QIcon(os.path.join(theme_dir, "new_shapes.svg"))
         self._add_shape.setIcon(point_icon)
 
-        point_icon = QIcon(os.path.join(theme_dir, "new_labels.svg"))
-        self._add_label.setIcon(point_icon)
+        # point_icon = QIcon(os.path.join(theme_dir, "new_labels.svg"))
+        # self._add_label.setIcon(point_icon)
 
     def _get_metadata(self):
         layer_name = self._layer.currentText()
@@ -139,6 +139,7 @@ class AddLayerWidget(QWidget):
             **kwargs,
         )
         layer.events.size()
+        layer.mode = "add"
 
     def _new_labels(self):
         metadata = self._get_metadata()
@@ -165,13 +166,14 @@ class AddLayerWidget(QWidget):
             "metadata": metadata,
             "face_color": "transparent",
             "edge_color": "red",
-            "edge_width": 2,
-            "opacity": 0.8,
+            "edge_width": 20,
+            "opacity": 0.4,
             "name": "filaments",
+            "shape_type": "path",
         }
         shape = self.napari_viewer.add_shapes(
             ndim=max(self.napari_viewer.dims.ndim, 2),
             scale=self.napari_viewer.layers.extent.step,
             **kwargs,
         )
-        shape.mode = Mode.ADD_LINE
+        shape.mode = Mode.ADD_PATH

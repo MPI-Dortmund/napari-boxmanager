@@ -2,6 +2,7 @@ import glob
 import io
 import os
 import pathlib
+import sys
 import typing
 import warnings
 from collections.abc import Callable
@@ -40,32 +41,56 @@ class FormatFunc(Protocol):
     ) -> pd.DataFrame:
         ...
 
+def _split_filaments(data: pd.DataFrame) -> typing.List[pd.DataFrame]:
+    filament_ids = np.unique(data['fid'])
+    filaments = []
+    for id in filament_ids:
+        mask = data['fid']==id
+        filaments.append(data[mask])
+    return filaments
 
 def _prepare_coords_df(
     path: list[os.PathLike],
     read_func: Callable[[os.PathLike], pd.DataFrame],
     prepare_napari_func: Callable,
     meta_columns: typing.List[str] = [],
-) -> tuple[pd.DataFrame, dict[int, os.PathLike], bool]:
+) -> tuple[typing.List[pd.DataFrame], dict, bool, bool]:
 
     data_df: list[pd.DataFrame] = []
     metadata: dict = {}
     is_3d = True
+    is_filament = False
     for idx, entry in enumerate(path):
         input_data = read_func(entry)
+
         box_napari_data = pd.DataFrame(columns=meta_columns)
+
         if input_data is not None:
             box_napari_data = prepare_napari_func(input_data)
 
             if "x" not in box_napari_data:
                 is_3d = False
                 box_napari_data["x"] = idx
-        data_df.append(box_napari_data)
+            if 'fid' in box_napari_data:
+                is_filament = True
+                box_napari_data = _split_filaments(box_napari_data)
+        checkbox = None
+        if is_filament:
+            if len(box_napari_data) == 0 or np.all([b.empty for b in box_napari_data]):
+                checkbox = True
+        elif box_napari_data.empty:
+            checkbox = True
+
+        if is_filament:
+            data_df.extend(box_napari_data)
+        else:
+            data_df.append(box_napari_data)
+
 
         metadata[idx] = {}
         metadata[idx]["path"] = entry
         metadata[idx]["name"] = os.path.basename(entry)
-        metadata[idx]["write"] = True if box_napari_data.empty else None
+        metadata[idx]["write"] = checkbox
         try:
             metadata[idx].update(
                 {
@@ -77,7 +102,7 @@ def _prepare_coords_df(
         except ValueError:
             pass
 
-    return pd.concat(data_df, ignore_index=True), metadata, is_3d
+    return data_df, metadata, is_3d, is_filament
 
 
 def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
@@ -94,39 +119,40 @@ def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
     return name
 
 
-def to_napari(
-    path: os.PathLike | list[os.PathLike],
-    read_func: Callable[[os.PathLike], pd.DataFrame],
-    prepare_napari_func: Callable,
-    meta_columns: typing.List[str] = [],
-    feature_columns: typing.List[str] = [],
-) -> "list[NapariLayerData]":
+def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns, is_3d):
+    #boxsize_ = [np.mean(fil['boxsize']) for fil in input_df]
 
-    input_df: pd.DataFrame
-    features: dict[str, typing.Any]
+    color = []
+    boxsize = []
+    total = 0
 
-    orgbox_meta = orgbox.get_metadata(path)
+    for fil in input_df:
+        bs = np.mean(fil['boxsize'])
+        c = np.random.choice(range(256), size=3)
+        total += len(fil)
+        color.extend([c]*len(fil))
+        boxsize.extend([bs]*len(fil))
+    input_df = pd.concat([fil[coord_columns] for fil in input_df])
+    color = [(r, g, b,50) for r,g,b in color]
 
-    if not isinstance(path, list):
-        path = sorted(glob.glob(path))  # type: ignore
-
-    input_df, metadata, is_3d = _prepare_coords_df(
-        path,
-        read_func=read_func,
-        prepare_napari_func=prepare_napari_func,
-        meta_columns=meta_columns,
-    )
-
-    metadata["is_2d_stack"] = len(path) > 1
-
-    metadata.update(orgbox_meta)
-
-    features = {
-        entry: input_df[entry].to_numpy()
-        for entry in feature_columns  # _get_meta_idx() + _get_hidden_meta_idx()
+    kwargs: NapariMetaData = {
+        "edge_color": color,
+        "face_color": "transparent",
+        "symbol": "disc",
+        "edge_width": 0.05,
+        "edge_width_is_relative": True,
+        "size": np.average(boxsize),
+        "out_of_slice_display": True if is_3d else False,
+        "opacity": 0.8,
     }
+    dat = input_df
+    layer_type = "points"
 
-    layer_name = get_coords_layer_name(path)
+    return dat, kwargs, layer_type
+
+def _to_napari_particle(input_df, coord_columns, is_3d):
+    input_df = pd.concat(input_df, ignore_index=True)
+
 
     kwargs: NapariMetaData = {
         "edge_color": "red",
@@ -137,21 +163,66 @@ def to_napari(
         "size": np.average(input_df["boxsize"]),
         "out_of_slice_display": True if is_3d else False,
         "opacity": 0.8,
-        "name": layer_name,
-        "metadata": metadata,
-        "features": features,
     }
+    dat = input_df[coord_columns]
+    layer_type = "points"
+
+    return dat, kwargs, layer_type
+
+def to_napari(
+    path: os.PathLike | list[os.PathLike],
+    read_func: Callable[[os.PathLike], pd.DataFrame],
+    prepare_napari_func: Callable,
+    meta_columns: typing.List[str] = [],
+    feature_columns: typing.List[str] = [],
+) -> "list[NapariLayerData]":
+
+    input_df_list: list[pd.DataFrame]
+    features: dict[str, typing.Any]
+
+    orgbox_meta = orgbox.get_metadata(path)
+
+    if not isinstance(path, list):
+        path = sorted(glob.glob(path))  # type: ignore
+
+    input_df_list, metadata, is_3d, is_filament = _prepare_coords_df(
+        path,
+        read_func=read_func,
+        prepare_napari_func=prepare_napari_func,
+        meta_columns=meta_columns,
+    )
+
+    metadata["is_2d_stack"] = len(path) > 1
+    metadata.update(orgbox_meta)
+    features = {}
+    for entry in feature_columns:
+        if is_filament:
+            for fil in input_df_list:
+                if entry in features:
+                    features[entry] = np.concatenate([features[entry], fil[entry].to_numpy()])
+                else:
+                    features[entry] = fil[entry].to_numpy()
+        else:
+            all = pd.concat(input_df_list)
+            features[entry] = all[entry].to_numpy()
+
+    layer_name = get_coords_layer_name(path)
 
     if (isinstance(path, list) and len(path) > 1) or is_3d:
-        coord_columns = [
-            "x",
-            "y",
-            "z",
-        ]  # Happens for --stack option and '*.ext'
+        # Happens for --stack option and '*.ext'
+        coord_columns = ["x", "y", "z"]
     else:
         coord_columns = ["y", "z"]
 
-    return [(input_df[coord_columns], kwargs, "points")]
+    if is_filament:
+        dat, kwargs, layer_type = _to_napari_filament(input_df_list, coord_columns, is_3d)
+    else:
+        dat, kwargs, layer_type = _to_napari_particle(input_df_list, coord_columns, is_3d)
+    kwargs["name"] = layer_name
+    kwargs["metadata"] = metadata
+    kwargs["features"] = features
+
+    return [(dat, kwargs, layer_type)]
 
 
 def _generate_output_filename(orignal_filename: str, output_path: os.PathLike):
@@ -164,50 +235,142 @@ def _generate_output_filename(orignal_filename: str, output_path: os.PathLike):
     output_file = pathlib.Path(dirname, file_base + extension)
     return output_file
 
+def resample_filament(
+        filament : pd.DataFrame,
+        new_distance : float,
+        coordinate_columns,
+        constant_columns
+):
+    if len(filament)<=1:
+        return filament
+    from scipy.interpolate import interp1d
+    import numpy as np
+    new_distance = np.sqrt(new_distance**2+new_distance**2)
+    box_size = filament['boxsize'][0]
+
+    sqsum = 0
+    for col in coordinate_columns:
+        coord_dat = filament[col].to_list()
+        sqsum = sqsum + np.ediff1d(coord_dat, to_begin=0) ** 2
+    '''
+    x = filament['x'].to_list()
+    y = filament['y'].to_list()
+
+    # Linear length on the line
+    sqsum = np.ediff1d(x, to_begin=0) ** 2 + np.ediff1d(y, to_begin=0) ** 2
+    '''
+    distance_elem = np.cumsum(np.sqrt(sqsum))
+    total_elength = distance_elem[-1]
+
+
+    distance = distance_elem / distance_elem[-1] #norm to 1
+    interpolators = []
+    for col in coordinate_columns:
+        interp = interp1d(distance, filament[col].to_list())
+        interpolators.append(interp)
+
+    num = int(total_elength / (new_distance)) +1
+
+    alpha = np.linspace(0, 1, num)
+
+    x_regular, y_regular = fx(alpha), fy(alpha)
+
+    new_boxes = {
+        "x": [],
+        "y": [],
+        "boxsize": [],
+    }
+
+    for i in range(len(x_regular)):
+        new_boxes['x'].append(x_regular[i])
+        new_boxes['y'].append(y_regular[i])
+        new_boxes['boxsize'].append(box_size)
+
+    return pd.DataFrame(new_boxes)
+
+def _write_particle_data(
+        path: os.PathLike,
+        data: NapariLayerData,
+        meta: NapariLayerData,
+        format_func: FormatFunc,
+        write_func: Callable[[os.PathLike, pd.DataFrame], typing.Any],
+    ):
+    if data.shape[1] == 2:
+        data = np.insert(data, 0, 0, axis=1)
+
+
+    if 'shown' in meta:
+        mask = meta["shown"]
+    else:
+        # For filaments
+        mask = np.ones(len(data), dtype=int)==1
+
+    coordinates = data[mask]
+
+    if 'size' in meta:
+        boxsize = meta["size"][mask][:, 0]
+    else:
+        #For filaments
+        boxsize = np.array(meta["edge_width"])[mask]
+    export_data = {}
+    try:
+        is_2d_stacked = meta["metadata"]["is_2d_stack"]
+    except KeyError:
+        is_2d_stacked = False
+
+    if is_2d_stacked:
+        for z in np.unique(coordinates[:, 0]):
+            z = int(z)
+            mask = coordinates[:, 0] == z
+            filename = meta["metadata"][z]["name"]
+            output_file = _generate_output_filename(
+                orignal_filename=filename, output_path=path
+            )
+
+            export_data[output_file] = format_func(
+                coordinates[mask, 1:],
+                boxsize[mask],
+                meta["features"].loc[mask, :],
+            )
+    else:
+        export_data[path] = format_func(
+            coordinates, boxsize, meta["features"]
+        )
+
+    for outpth in export_data:
+        df = export_data[outpth]
+        write_func(outpth, df)
+    last_file = outpth
+    return str(last_file)
+
 
 def from_napari(
     path: os.PathLike,
     layer_data: list[NapariLayerData],
     format_func: FormatFunc,
-    write_func: Callable[[os.PathLike, pd.DataFrame], typing.Any],
+    write_func: Callable[[os.PathLike, pd.DataFrame | list[pd.DataFrame]], typing.Any],
 ) -> os.PathLike:
 
     last_file = ""
     for data, meta, layer in layer_data:
-
-        if data.shape[1] == 2:
-            data = np.insert(data, 0, 0, axis=1)
-
-        coordinates = data[meta["shown"]]
-        boxsize = meta["size"][meta["shown"]][:, 0]
-        export_data = {}
-        try:
-            is_2d_stacked = meta["metadata"]["is_2d_stack"]
-        except KeyError:
-            is_2d_stacked = False
-
-        if is_2d_stacked:
-            for z in np.unique(coordinates[:, 0]):
-                z = int(z)
-                mask = coordinates[:, 0] == z
-                filename = meta["metadata"][z]["name"]
-                output_file = _generate_output_filename(
-                    orignal_filename=filename, output_path=path
-                )
-                export_data[output_file] = format_func(
-                    coordinates[mask, 1:],
-                    boxsize[mask],
-                    meta["features"].loc[mask, :],
-                )
+        is_filament_data = isinstance(data,list)
+        if is_filament_data:
+            boxsize = []
+            repeat = []
+            fid = []
+            for fil_index, fil in enumerate(data):
+                boxsize.extend([meta['edge_width'][fil_index]]*len(fil))
+                repeat.append(len(fil))
+                fid.extend([fil_index+1]*len(fil))
+            meta['features'] = meta['features'].loc[meta['features'].index.repeat(repeat)]
+            meta['edge_width'] = boxsize
+            data_list = np.concatenate(data)
+            fid = np.array(fid,dtype=int)
+            data_list = np.append(data_list, np.atleast_2d(np.array(fid)).T, axis=1)
+            last_file = _write_particle_data(path, data_list, meta, format_func, write_func)
         else:
-            export_data[path] = format_func(
-                coordinates, boxsize, meta["features"]
-            )
+            last_file = _write_particle_data(path,data,meta,format_func,write_func)
 
-        for outpth in export_data:
-            df = export_data[outpth]
-            write_func(outpth, df)
-        last_file = outpth
 
     return str(last_file)
 

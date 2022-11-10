@@ -11,6 +11,7 @@ User Guide: full table of contents
    :maxdepth: 2
 
    manual/manual
+   changes
 
 
 Help

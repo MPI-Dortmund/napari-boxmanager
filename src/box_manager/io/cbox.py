@@ -59,7 +59,7 @@ def from_napari(
     path: os.PathLike | list[os.PathLike] | pd.DataFrame,
     layer_data: list[NapariLayerData],
 ):
-    is_filament ="is_filament_layer" in layer_data[0][1]['metadata'] and layer_data[0][1]['metadata']["is_filament_layer"]
+    is_filament = coordsio.is_filament_layer(layer_data)
 
     if is_filament:
         format_func = _make_df_data_filament

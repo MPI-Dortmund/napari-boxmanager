@@ -133,6 +133,8 @@ def write_eman1_helicon(path: str, filaments: list[pd.DataFrame], **kwargs):
 
     import csv
     image_filename = "NA"
+    if 'image_name' in kwargs:
+        image_filename = kwargs['image_name']
     with open(path, "w", newline='', encoding='utf-8') as boxfile:
         boxwriter = csv.writer(
             boxfile, delimiter="\t", quotechar="|", quoting=csv.QUOTE_NONE, lineterminator="\n",
@@ -289,7 +291,7 @@ def _make_df_data_filament(
 def from_napari(
     path: os.PathLike, layer_data: list[NapariLayerData]
 ):
-    is_filament=isinstance(layer_data[0][0],list)
+    is_filament= coordsio.is_filament_layer(layer_data)
 
     if is_filament:
         format_func = _make_df_data_filament

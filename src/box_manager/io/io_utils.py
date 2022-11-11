@@ -15,6 +15,10 @@ import pandas as pd
 
 from .interface import NapariLayerData, NapariMetaData
 
+
+class IllegalFormatException(Exception):
+    pass
+
 with warnings.catch_warnings():
     warnings.filterwarnings(
         "ignore",
@@ -105,6 +109,21 @@ def _prepare_coords_df(
     metadata["is_filament_layer"] = is_filament
     return data_df, metadata, is_3d
 
+def is_filament_layer(layer_data: typing.Union[NapariLayerData, list[NapariLayerData]]) -> bool:
+
+    def check(ldat: NapariLayerData) -> bool:
+        is_filament = "is_filament_layer" in ldat[1]['metadata'] and ldat[1]['metadata'][
+            "is_filament_layer"]
+        return is_filament
+
+    if isinstance(layer_data,list):
+        if np.sum([check(layer) for layer in layer_data]) not in (0, len(layer_data)):
+            raise IllegalFormatException("Only layers of the same type (either particle or filament can be saved.")
+        is_filament = check(layer_data[0])
+    else:
+        is_filament = check(layer_data[0])
+
+    return is_filament
 
 def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
     if isinstance(path, list) and len(path) > 1:
@@ -298,6 +317,7 @@ def _write_particle_data(
     if data.shape[1] == 2:
         data = np.insert(data, 0, 0, axis=1)
 
+    kwargs = {}
 
     if 'shown' in meta:
         mask = meta["shown"]
@@ -323,6 +343,7 @@ def _write_particle_data(
             z = int(z)
             mask = coordinates[:, 0] == z
             filename = meta["metadata"][z]["name"]
+            kwargs['image_name'] = meta["metadata"][z]['image_name']
             output_file = _generate_output_filename(
                 orignal_filename=filename, output_path=path
             )
@@ -339,10 +360,9 @@ def _write_particle_data(
 
     for outpth in export_data:
         df = export_data[outpth]
-        write_func(outpth, df)
+        write_func(outpth, df, **kwargs)
     last_file = outpth
     return str(last_file)
-
 
 def from_napari(
     path: os.PathLike,
@@ -353,9 +373,7 @@ def from_napari(
 
     last_file = ""
     for data, meta, layer in layer_data:
-        print("KEYS:", meta.values())
-        import sys
-        sys.exit()
+
         is_filament_data = isinstance(data,list)
         if is_filament_data:
             boxsize = []

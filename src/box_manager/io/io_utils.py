@@ -107,6 +107,7 @@ def _prepare_coords_df(
         except ValueError:
             pass
     metadata["is_filament_layer"] = is_filament
+
     return data_df, metadata, is_3d
 
 def is_filament_layer(layer_data: typing.Union[NapariLayerData, list[NapariLayerData]]) -> bool:
@@ -343,7 +344,7 @@ def _write_particle_data(
             z = int(z)
             mask = coordinates[:, 0] == z
             filename = meta["metadata"][z]["name"]
-            kwargs['image_name'] = meta["metadata"][z]['image_name']
+            kwargs['image_name'] = filename
             output_file = _generate_output_filename(
                 orignal_filename=filename, output_path=path
             )
@@ -374,11 +375,15 @@ def from_napari(
     last_file = ""
     for data, meta, layer in layer_data:
 
-        is_filament_data = isinstance(data,list)
+        is_filament_data = is_filament_layer(layer_data)
         if is_filament_data:
             boxsize = []
             repeat = []
             fid = []
+            print(data)
+            print(data.shape)
+            print(meta['metadata'][0])
+            sys.exit()
             for fil_index, fil in enumerate(data):
                 boxsize.extend([meta['edge_width'][fil_index]]*len(fil))
                 repeat.append(len(fil))

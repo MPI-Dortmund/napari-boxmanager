@@ -196,13 +196,16 @@ def to_napari(
         read_func=read,
         prepare_napari_func=_prepare_napari_box,
         meta_columns=_get_meta_idx(),
-        feature_columns=_get_meta_idx() + _get_hidden_meta_idx(),
+        feature_columns=_get_feature_idx(),
     )
     return r
 
 
 def _get_meta_idx():
     return []
+
+def _get_feature_idx():
+    return ["fid"]
 
 
 def _get_hidden_meta_idx():
@@ -266,6 +269,7 @@ def _make_df_data_filament(
 ) -> list[pd.DataFrame]:
     data = {"x": [], "y": [], "fid": [], "boxsize": []}
     filaments = []
+
     for (y, x, fid), boxsize in zip(
         coordinates,
         box_size,
@@ -292,7 +296,6 @@ def from_napari(
     path: os.PathLike, layer_data: list[NapariLayerData]
 ):
     is_filament= coordsio.is_filament_layer(layer_data)
-
     if is_filament:
         format_func = _make_df_data_filament
         write_func = write_eman1_helicon

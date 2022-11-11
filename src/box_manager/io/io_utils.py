@@ -225,7 +225,6 @@ def to_napari(
         else:
             all = pd.concat(input_df_list)
             features[entry] = all[entry].to_numpy()
-
     layer_name = get_coords_layer_name(path)
 
     if (isinstance(path, list) and len(path) > 1) or is_3d:
@@ -272,13 +271,7 @@ def resample_filament(
     for col in coordinate_columns:
         coord_dat = filament[col].to_list()
         sqsum = sqsum + np.ediff1d(coord_dat, to_begin=0) ** 2
-    '''
-    x = filament['x'].to_list()
-    y = filament['y'].to_list()
 
-    # Linear length on the line
-    sqsum = np.ediff1d(x, to_begin=0) ** 2 + np.ediff1d(y, to_begin=0) ** 2
-    '''
     distance_elem = np.cumsum(np.sqrt(sqsum))
     total_elength = distance_elem[-1]
 

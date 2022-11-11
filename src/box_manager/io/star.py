@@ -83,7 +83,7 @@ def _make_df_data(
 
     return pd.DataFrame(data)
 
-def _write_star(path: os.PathLike, df: pd.DataFrame):
+def _write_star(path: os.PathLike, df: pd.DataFrame, **kwargs):
     sfile = star.StarFile(path)
 
     sfile.update("", df, True)

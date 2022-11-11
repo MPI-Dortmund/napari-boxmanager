@@ -221,7 +221,7 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
 ### Writing ####
 ################
 
-def write_cbox(path: os.PathLike, df: pd.DataFrame):
+def write_cbox(path: os.PathLike, df: pd.DataFrame, **kwargs):
     sfile = star.StarFile(path)
 
     version_df = pd.DataFrame([["1.0"]], columns=["_cbox_format_version"])

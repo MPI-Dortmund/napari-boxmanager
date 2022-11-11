@@ -70,7 +70,7 @@ def _prepare_napari_coords(
     return output_data
 
 
-def _write_coords(path: os.PathLike, df: pd.DataFrame):
+def _write_coords(path: os.PathLike, df: pd.DataFrame, **kwargs):
     df[["x", "y", "z"]].to_csv(path, sep=" ", header=None, index=None)
 
 

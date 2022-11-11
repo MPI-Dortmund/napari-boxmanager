@@ -293,7 +293,7 @@ def _write_particle_data(
         data: NapariLayerData,
         meta: NapariLayerData,
         format_func: FormatFunc,
-        write_func: Callable[[os.PathLike, pd.DataFrame], typing.Any],
+        write_func: Callable[[os.PathLike, pd.DataFrame, ...], typing.Any],
     ):
     if data.shape[1] == 2:
         data = np.insert(data, 0, 0, axis=1)
@@ -353,6 +353,9 @@ def from_napari(
 
     last_file = ""
     for data, meta, layer in layer_data:
+        print("KEYS:", meta.values())
+        import sys
+        sys.exit()
         is_filament_data = isinstance(data,list)
         if is_filament_data:
             boxsize = []

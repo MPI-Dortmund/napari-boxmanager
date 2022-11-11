@@ -163,6 +163,7 @@ class AddLayerWidget(QWidget):
 
     def _new_shapes(self):
         metadata = self._get_metadata()
+        metadata["is_filament_layer"] = True
         kwargs = {
             "metadata": metadata,
             "face_color": "transparent",

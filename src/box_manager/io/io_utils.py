@@ -258,7 +258,7 @@ def resample_filament(
         filament : pd.DataFrame,
         new_distance : float,
         coordinate_columns,
-        constant_columns
+        constant_columns=[]
 ):
     if len(filament)<=1:
         return filament
@@ -286,7 +286,10 @@ def resample_filament(
 
     alpha = np.linspace(0, 1, num)
 
-    x_regular, y_regular = fx(alpha), fy(alpha)
+    interpolated = []
+    for interp in interpolators:
+        interpolated.append(interp(alpha))
+    #x_regular, y_regular = fx(alpha), fy(alpha)
 
     new_boxes = {
         "x": [],
@@ -294,9 +297,11 @@ def resample_filament(
         "boxsize": [],
     }
 
-    for i in range(len(x_regular)):
-        new_boxes['x'].append(x_regular[i])
-        new_boxes['y'].append(y_regular[i])
+    for col_i, col in enumerate(coordinate_columns):
+        new_boxes[col] = interpolated[col_i]
+
+
+    for i in range(len(interpolated[0])):
         new_boxes['boxsize'].append(box_size)
 
     return pd.DataFrame(new_boxes)
@@ -370,22 +375,22 @@ def from_napari(
 
         is_filament_data = is_filament_layer(layer_data)
         if is_filament_data:
-            boxsize = []
-            repeat = []
-            fid = []
-            print(data)
-            print(data.shape)
-            print(meta['metadata'][0])
-            sys.exit()
+            boxsize = meta['features']['boxsize']
+            fid = meta['features']['fid']
+
+
+            '''
             for fil_index, fil in enumerate(data):
                 boxsize.extend([meta['edge_width'][fil_index]]*len(fil))
                 repeat.append(len(fil))
                 fid.extend([fil_index+1]*len(fil))
-            meta['features'] = meta['features'].loc[meta['features'].index.repeat(repeat)]
+            '''
+            #meta['features'] = meta['features'].loc[meta['features'].index.repeat(repeat)]
             meta['edge_width'] = boxsize
-            data_list = np.concatenate(data)
+            #data_list = np.concatenate(data)
             fid = np.array(fid,dtype=int)
-            data_list = np.append(data_list, np.atleast_2d(np.array(fid)).T, axis=1)
+
+            data_list = np.append(data, np.atleast_2d(np.array(fid)).T, axis=1)
             last_file = _write_particle_data(path, data_list, meta, format_func, write_func)
         else:
             last_file = _write_particle_data(path,data,meta,format_func,write_func)

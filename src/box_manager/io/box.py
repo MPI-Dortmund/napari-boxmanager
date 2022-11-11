@@ -205,7 +205,7 @@ def _get_meta_idx():
     return []
 
 def _get_feature_idx():
-    return ["fid"]
+    return ["fid","boxsize"]
 
 
 def _get_hidden_meta_idx():
@@ -287,7 +287,7 @@ def _make_df_data_filament(
     ## Resampling
     for index_fil, fil in enumerate(filaments):
         distance = int(fil['boxsize'][0] * 0.2)
-        filaments[index_fil] = coordsio.resample_filament(fil, distance)
+        filaments[index_fil] = coordsio.resample_filament(fil, distance,coordinate_columns=['x','y'],constant_columns=[])
 
     return filaments
 

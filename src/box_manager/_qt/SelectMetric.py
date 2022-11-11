@@ -524,7 +524,7 @@ class GroupView(QTreeView):
         self.selectionModel().clear()
         self.selectionModel().select(selection, flag)
 
-    def get_row_candidates(self, parent_only=True):
+    def get_row_candidates(self, parent_only=False):
         if parent_only:
             return {
                 (-1, entry.parent().row())
@@ -1474,6 +1474,7 @@ class SelectMetricWidget(QWidget):
         self.update_hist()
 
     def update_hist(self, *_):
+        rows_candidates_navigate = self.table_widget.get_row_candidates()
         rows_candidates = self.table_widget.get_row_candidates(
             self.global_checkbox.isChecked()
         )
@@ -1516,7 +1517,6 @@ class SelectMetricWidget(QWidget):
         layer_mask = {}
         min_max_vals = {}
         valid_layers = []
-        slice_indices = []
         for parent_idx, rows_idx in layer_dict.items():
             layer_name = self.table_model.get_value(-1, parent_idx, "name")
             layer = [entry for entry in self.napari_viewer.layers if entry.name == layer_name][0]  # type: ignore
@@ -1527,7 +1527,6 @@ class SelectMetricWidget(QWidget):
                     self.table_model.get_values(parent_idx, rows_idx, "slice"),
                 )
             )
-            slice_indices.extend(slice_idx)
 
             if layer.ndim == 3:
                 mask = np.isin(
@@ -1641,9 +1640,24 @@ class SelectMetricWidget(QWidget):
 
             metric_done.append(metric_name)
 
-        if len(rows_candidates) == 1 and list(rows_candidates)[0][0] != -1:
+        if (
+            len(rows_candidates_navigate) == 1
+            and list(rows_candidates_navigate)[0][0] != -1
+        ):
+            rows = self.table_widget.get_rows(rows_candidates_navigate, 0)
+            cur_selection = list(self.table_widget.get_all_rows(rows).items())[
+                0
+            ]
+            slice_idx = list(
+                map(
+                    int,
+                    self.table_model.get_values(
+                        cur_selection[0], cur_selection[1], "slice"
+                    ),
+                )
+            )
             self.napari_viewer.dims.set_point(
-                [self._cur_slice_dim], (slice_indices[0],)
+                [self._cur_slice_dim], (slice_idx[0],)
             )
 
 

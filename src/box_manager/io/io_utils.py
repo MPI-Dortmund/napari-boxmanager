@@ -265,7 +265,10 @@ def resample_filament(
     from scipy.interpolate import interp1d
     import numpy as np
     new_distance = np.sqrt(new_distance**2+new_distance**2)
-    box_size = filament['boxsize'][0]
+
+    constants = {}
+    for col in constant_columns:
+        constants[col] = filament[col][0]
 
     sqsum = 0
     for col in coordinate_columns:
@@ -291,18 +294,14 @@ def resample_filament(
         interpolated.append(interp(alpha))
     #x_regular, y_regular = fx(alpha), fy(alpha)
 
-    new_boxes = {
-        "x": [],
-        "y": [],
-        "boxsize": [],
-    }
+    new_boxes = {}
 
     for col_i, col in enumerate(coordinate_columns):
         new_boxes[col] = interpolated[col_i]
 
 
-    for i in range(len(interpolated[0])):
-        new_boxes['boxsize'].append(box_size)
+    for col in constant_columns:
+        new_boxes[col] = [constants[col]]*len(interpolated[0])
 
     return pd.DataFrame(new_boxes)
 

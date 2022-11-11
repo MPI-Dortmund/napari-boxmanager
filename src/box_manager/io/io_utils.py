@@ -54,7 +54,7 @@ def _prepare_coords_df(
     read_func: Callable[[os.PathLike], pd.DataFrame],
     prepare_napari_func: Callable,
     meta_columns: typing.List[str] = [],
-) -> tuple[typing.List[pd.DataFrame], dict, bool, bool]:
+) -> tuple[typing.List[pd.DataFrame], dict, bool]:
 
     data_df: list[pd.DataFrame] = []
     metadata: dict = {}
@@ -91,6 +91,7 @@ def _prepare_coords_df(
         metadata[idx]["path"] = entry
         metadata[idx]["name"] = os.path.basename(entry)
         metadata[idx]["write"] = checkbox
+
         try:
             metadata[idx].update(
                 {
@@ -101,8 +102,8 @@ def _prepare_coords_df(
             )
         except ValueError:
             pass
-
-    return data_df, metadata, is_3d, is_filament
+    metadata["is_filament_layer"] = is_filament
+    return data_df, metadata, is_3d
 
 
 def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
@@ -185,18 +186,17 @@ def to_napari(
     if not isinstance(path, list):
         path = sorted(glob.glob(path))  # type: ignore
 
-    input_df_list, metadata, is_3d, is_filament = _prepare_coords_df(
+    input_df_list, metadata, is_3d = _prepare_coords_df(
         path,
         read_func=read_func,
         prepare_napari_func=prepare_napari_func,
         meta_columns=meta_columns,
     )
-
     metadata["is_2d_stack"] = len(path) > 1
     metadata.update(orgbox_meta)
     features = {}
     for entry in feature_columns:
-        if is_filament:
+        if metadata["is_filament_layer"]:
             for fil in input_df_list:
                 if entry in features:
                     features[entry] = np.concatenate([features[entry], fil[entry].to_numpy()])
@@ -214,7 +214,7 @@ def to_napari(
     else:
         coord_columns = ["y", "z"]
 
-    if is_filament:
+    if metadata["is_filament_layer"]:
         dat, kwargs, layer_type = _to_napari_filament(input_df_list, coord_columns, is_3d)
     else:
         dat, kwargs, layer_type = _to_napari_particle(input_df_list, coord_columns, is_3d)

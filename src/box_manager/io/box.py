@@ -129,7 +129,7 @@ def read_helicon_boxfile(path: "os.PathLike") -> pd.DataFrame:
 
     return None
 
-def write_eman1_helicon(path: str, filaments: list[pd.DataFrame]):
+def write_eman1_helicon(path: str, filaments: list[pd.DataFrame], **kwargs):
 
     import csv
     image_filename = "NA"
@@ -238,7 +238,7 @@ def _prepare_napari_box(
     return output_data
 
 
-def _write_box(path: os.PathLike, df: pd.DataFrame):
+def _write_box(path: os.PathLike, df: pd.DataFrame, **kwargs):
     df[["x", "y", "boxsize", "boxsize"]].to_csv(
         path, sep=" ", index=None, header=None
     )

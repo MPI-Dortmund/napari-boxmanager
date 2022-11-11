@@ -5,7 +5,7 @@ from copy import deepcopy
 import napari.layers
 import numpy as np
 from napari.layers.base.base import Layer
-from napari.utils.notifications import show_info
+from napari.utils.notifications import show_info, show_error
 from qtpy.QtCore import Qt, Signal, Slot
 from qtpy.QtWidgets import (
     QComboBox,
@@ -296,6 +296,7 @@ class OrganizeBoxWidget(QWidget):
 
         if create_layer and len(new_data) != 0:
             new_state = {}
+            new_meta["matched"] = True
             for key, value in old_state.items():
                 if key == "visible":
                     new_state[key] = True
@@ -326,7 +327,7 @@ class OrganizeBoxWidget(QWidget):
             self.coord_layer.setCurrentText(new.name)
             self.coord_layer.currentTextChanged.emit(new.name)
         elif create_layer:
-            show_info("No matching entries for match_mics plugin")
+            show_error("No matching entries for match_mics plugin")
 
 
 def get_metadata(path: os.PathLike | list[os.PathLike]):

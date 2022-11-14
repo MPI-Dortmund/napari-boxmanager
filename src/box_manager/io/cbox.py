@@ -96,9 +96,15 @@ def _make_df_data_filament(
     feature_map = {
 
     }
+    other_interpolation_cols = []
     if "confidence" in features:
         data["_Confidence"] = []
         feature_map["confidence"] = "_Confidence"
+        other_interpolation_cols.append("_Confidence")
+    if "angle" in features:
+        data["_Angle"] = []
+        feature_map["angle"] = "_Angle"
+        other_interpolation_cols.append("_Angle")
 
     empty_data = copy.deepcopy(data)
     filaments = []
@@ -107,6 +113,7 @@ def _make_df_data_filament(
             coordinates,
             box_size,
     ):
+
         if len(data['_filamentid']) > 0 and data['_filamentid'][-1] != fid:
             filaments.append(pd.DataFrame(data))
             data = copy.deepcopy(empty_data)
@@ -129,7 +136,7 @@ def _make_df_data_filament(
                                                           distance,
                                                           coordinate_columns=['_CoordinateX','_CoordinateY'],
                                                           constant_columns=['_filamentid','_Width','_Height'],
-                                                          other_interpolation_col=['_Confidence'])
+                                                          other_interpolation_col=other_interpolation_cols)
 
     return pd.concat(filaments)
 
@@ -193,6 +200,9 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     if "confidence" in feature_columns:
         output_data["confidence"] = cryolo_data["_Confidence"]
 
+    if "angle" in feature_columns:
+        output_data["angle"] = cryolo_data["_Angle"]
+
     if "fid" in feature_columns:
         output_data["fid"] = cryolo_data["_filamentid"]
 
@@ -219,15 +229,23 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
         "_EstWidth" in input_df.columns and not input_df["_EstWidth"].isnull().values.any()
     ) and "size" not in meta_columns:
         meta_columns.append("size")
+
     if (
         "_Confidence" in input_df.columns and not input_df["_Confidence"].isnull().values.any()
     ) and "confidence" not in meta_columns:
         meta_columns.append("confidence")
         feature_columns.append("confidence")
+
     if (
         "_NumBoxes" in input_df.columns and not input_df["_NumBoxes"].isnull().values.any()
     ) and "num_boxes" not in feature_columns:
         feature_columns.append("num_boxes")
+
+    if (
+        "_Angle" in input_df.columns and not input_df["_Angle"].isnull().values.any()
+    ) and "angle" not in feature_columns:
+        feature_columns.append("angle")
+
     if (
         "_filamentid" in input_df.columns and "_filamentid" in input_df and not input_df["_filamentid"].isnull().values.any()
     ) and "fid" not in feature_columns:

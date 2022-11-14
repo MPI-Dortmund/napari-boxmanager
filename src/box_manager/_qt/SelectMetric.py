@@ -607,7 +607,8 @@ class SelectMetricWidget(QWidget):
         ] + self.check_box
         self.ignore_idx = [
             "boxsize",
-            'fid'
+            'fid',
+            'angle'
         ] + self.read_only
 
         self.napari_viewer.layers.events.reordered.connect(self._order_table)

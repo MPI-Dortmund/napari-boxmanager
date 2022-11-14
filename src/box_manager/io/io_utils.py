@@ -305,8 +305,9 @@ def resample_filament(
 
     for col in constant_columns:
         new_boxes[col] = [constants[col]]*len(interpolated[0])
+    new_fil = pd.DataFrame(new_boxes)
 
-    return pd.DataFrame(new_boxes)
+    return new_fil
 
 def _write_particle_data(
         path: os.PathLike,

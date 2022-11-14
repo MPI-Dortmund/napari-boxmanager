@@ -147,7 +147,7 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
 
     _fill_meta_features_idx(cryolo_data)
     is_3d = True
-    if cryolo_data["_CoordinateZ"].isnull().values.any():
+    if "_CoordinateZ" not in cryolo_data or cryolo_data["_CoordinateZ"].isnull().values.any():
         is_3d = False
 
     columns = ["z", "y"]
@@ -206,20 +206,20 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
     global feature_columns
 
     if (
-        not input_df["_EstWidth"].isnull().values.any()
+        "_EstWidth" in input_df.columns and not input_df["_EstWidth"].isnull().values.any()
     ) and "size" not in meta_columns:
         meta_columns.append("size")
     if (
-        not input_df["_Confidence"].isnull().values.any()
+        "_Confidence" in input_df.columns and not input_df["_Confidence"].isnull().values.any()
     ) and "confidence" not in meta_columns:
         meta_columns.append("confidence")
         feature_columns.append("confidence")
     if (
-        not input_df["_NumBoxes"].isnull().values.any()
+        "_NumBoxes" in input_df.columns and not input_df["_NumBoxes"].isnull().values.any()
     ) and "num_boxes" not in meta_columns:
         meta_columns.append("num_boxes")
     if (
-        "_filamentid" in input_df and not input_df["_filamentid"].isnull().values.any()
+        "_filamentid" in input_df.columns and "_filamentid" in input_df and not input_df["_filamentid"].isnull().values.any()
     ) and "fid" not in meta_columns:
         meta_columns.append("fid")
 

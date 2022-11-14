@@ -93,10 +93,16 @@ def _make_df_data_filament(
         "_Height": [],
         "_filamentid": [],
     }
+    feature_map = {
+
+    }
+    if "confidence" in features:
+        data["_Confidence"] = []
+        feature_map["confidence"] = "_Confidence"
 
     empty_data = copy.deepcopy(data)
-
     filaments = []
+    entry = 0
     for (y, x, fid), boxsize in zip(
             coordinates,
             box_size,
@@ -110,6 +116,10 @@ def _make_df_data_filament(
         data["_filamentid"].append(fid)
         data["_Width"].append(boxsize)
         data["_Height"].append(boxsize)
+        for key in feature_map:
+            data[feature_map[key]].append(features[key].iloc[entry])
+        entry = entry + 1
+
     filaments.append(pd.DataFrame(data))
 
     ## Resampling
@@ -118,8 +128,8 @@ def _make_df_data_filament(
         filaments[index_fil] = coordsio.resample_filament(fil,
                                                           distance,
                                                           coordinate_columns=['_CoordinateX','_CoordinateY'],
-                                                          constant_columns=['_filamentid','_Width','_Height'])
-
+                                                          constant_columns=['_filamentid','_Width','_Height'],
+                                                          other_interpolation_col=['_Confidence'])
 
     return pd.concat(filaments)
 

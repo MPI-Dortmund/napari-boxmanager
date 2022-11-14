@@ -256,7 +256,8 @@ def resample_filament(
         filament : pd.DataFrame,
         new_distance : float,
         coordinate_columns,
-        constant_columns=[]
+        constant_columns=[],
+        other_interpolation_col=[]
 ):
     if len(filament)<=1:
         return filament
@@ -266,7 +267,8 @@ def resample_filament(
 
     constants = {}
     for col in constant_columns:
-        constants[col] = filament[col][0]
+        if col in filament:
+            constants[col] = filament[col][0]
 
     sqsum = 0
     for col in coordinate_columns:
@@ -279,7 +281,7 @@ def resample_filament(
 
     distance = distance_elem / distance_elem[-1] #norm to 1
     interpolators = []
-    for col in coordinate_columns:
+    for col in coordinate_columns+other_interpolation_col:
         interp = interp1d(distance, filament[col].to_list())
         interpolators.append(interp)
 
@@ -290,11 +292,14 @@ def resample_filament(
     interpolated = []
     for interp in interpolators:
         interpolated.append(interp(alpha))
-    #x_regular, y_regular = fx(alpha), fy(alpha)
 
+
+
+    ####
+    # Generate new boxes
+    ####
     new_boxes = {}
-
-    for col_i, col in enumerate(coordinate_columns):
+    for col_i, col in enumerate(coordinate_columns+other_interpolation_col):
         new_boxes[col] = interpolated[col_i]
 
 

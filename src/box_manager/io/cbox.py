@@ -180,10 +180,10 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     if "num_boxes" in meta_columns:
         output_data["num_boxes"] = cryolo_data["_NumBoxes"]
 
-    if "confidence" in meta_columns:
+    if "confidence" in feature_columns:
         output_data["confidence"] = cryolo_data["_Confidence"]
 
-    if "fid" in meta_columns:
+    if "fid" in feature_columns:
         output_data["fid"] = cryolo_data["_filamentid"]
 
     return output_data
@@ -216,12 +216,12 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
         feature_columns.append("confidence")
     if (
         "_NumBoxes" in input_df.columns and not input_df["_NumBoxes"].isnull().values.any()
-    ) and "num_boxes" not in meta_columns:
-        meta_columns.append("num_boxes")
+    ) and "num_boxes" not in feature_columns:
+        feature_columns.append("num_boxes")
     if (
         "_filamentid" in input_df.columns and "_filamentid" in input_df and not input_df["_filamentid"].isnull().values.any()
-    ) and "fid" not in meta_columns:
-        meta_columns.append("fid")
+    ) and "fid" not in feature_columns:
+        feature_columns.append("fid")
 
 
 ### Writing ####

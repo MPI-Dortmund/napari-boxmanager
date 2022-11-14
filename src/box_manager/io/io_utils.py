@@ -71,7 +71,6 @@ def _prepare_coords_df(
 
         if input_data is not None:
             box_napari_data = prepare_napari_func(input_data)
-
             if "x" not in box_napari_data:
                 is_3d = False
                 box_napari_data["x"] = idx
@@ -388,6 +387,7 @@ def from_napari(
 
         is_filament_data = is_filament_layer(layer_data)
         if isinstance(data,list):
+            print("CONVERT!!")
             data, meta = convert_shape_filament_layer_to_boxlayer(data,meta)
 
         if is_filament_data:
@@ -395,7 +395,6 @@ def from_napari(
             if 'edge_width' not in meta:
                 boxsize = meta['features']['boxsize']
                 meta['edge_width'] = boxsize
-
 
             fid = meta['features']['fid']
 

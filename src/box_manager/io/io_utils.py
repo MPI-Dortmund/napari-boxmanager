@@ -7,7 +7,7 @@ import typing
 import warnings
 from collections.abc import Callable
 from typing import Protocol
-
+import itertools
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
@@ -122,8 +122,7 @@ def is_filament_layer(layer_data: typing.Union[NapariLayerData, list[NapariLayer
             raise IllegalFormatException("Only layers of the same type (either particle or filament can be saved.")
         is_filament = check(layer_data[0])
     else:
-        is_filament = check(layer_data[0])
-
+        is_filament = check(layer_data)
     return is_filament
 
 def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
@@ -345,7 +344,6 @@ def _write_particle_data(
             output_file = _generate_output_filename(
                 orignal_filename=filename, output_path=path
             )
-
             export_data[output_file] = format_func(
                 coordinates[mask, 1:],
                 boxsize[mask],
@@ -362,6 +360,21 @@ def _write_particle_data(
     last_file = outpth
     return str(last_file)
 
+def convert_shape_filament_layer_to_boxlayer(data: list[np.array], meta: dict) -> (np.array, dict):
+    repeat = []
+    for fil in data:
+        repeat.append(len(fil))
+    meta['features'] = meta['features'].loc[meta['features'].index.repeat(repeat)]
+
+    meta['edge_width'] = list(
+        itertools.chain.from_iterable([[meta['edge_width'][filid]] * len(d) for filid, d in enumerate(data)]))
+
+    meta['features']['fid'] = list(itertools.chain.from_iterable([[filid]*len(d) for filid, d in enumerate(data)]))
+
+    data = np.concatenate(data)
+
+    return data, meta
+
 def from_napari(
     path: os.PathLike,
     layer_data: list[NapariLayerData],
@@ -373,26 +386,24 @@ def from_napari(
     for data, meta, layer in layer_data:
 
         is_filament_data = is_filament_layer(layer_data)
+        if isinstance(data,list):
+            data, meta = convert_shape_filament_layer_to_boxlayer(data,meta)
+
         if is_filament_data:
-            boxsize = meta['features']['boxsize']
+
+            if 'edge_width' not in meta:
+                boxsize = meta['features']['boxsize']
+                meta['edge_width'] = boxsize
+
+
             fid = meta['features']['fid']
 
-
-            '''
-            for fil_index, fil in enumerate(data):
-                boxsize.extend([meta['edge_width'][fil_index]]*len(fil))
-                repeat.append(len(fil))
-                fid.extend([fil_index+1]*len(fil))
-            '''
-            #meta['features'] = meta['features'].loc[meta['features'].index.repeat(repeat)]
-            meta['edge_width'] = boxsize
-            #data_list = np.concatenate(data)
             fid = np.array(fid,dtype=int)
 
             data_list = np.append(data, np.atleast_2d(np.array(fid)).T, axis=1)
             last_file = _write_particle_data(path, data_list, meta, format_func, write_func)
         else:
-            last_file = _write_particle_data(path,data,meta,format_func,write_func)
+            last_file = _write_particle_data(path, data, meta, format_func, write_func)
 
 
     return str(last_file)

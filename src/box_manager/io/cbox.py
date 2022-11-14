@@ -93,7 +93,8 @@ def _make_df_data_filament(
         "_Height": [],
         "_filamentid": [],
     }
-    empty_data = data.copy()
+
+    empty_data = copy.deepcopy(data)
 
     filaments = []
     for (y, x, fid), boxsize in zip(
@@ -102,7 +103,7 @@ def _make_df_data_filament(
     ):
         if len(data['_filamentid']) > 0 and data['_filamentid'][-1] != fid:
             filaments.append(pd.DataFrame(data))
-            data = empty_data.copy()
+            data = copy.deepcopy(empty_data)
 
         data["_CoordinateX"].append(x - boxsize / 2)
         data["_CoordinateY"].append(y - boxsize / 2)

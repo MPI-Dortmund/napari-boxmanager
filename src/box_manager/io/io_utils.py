@@ -71,6 +71,7 @@ def _prepare_coords_df(
 
         if input_data is not None:
             box_napari_data = prepare_napari_func(input_data)
+
             if "x" not in box_napari_data:
                 is_3d = False
                 box_napari_data["x"] = idx

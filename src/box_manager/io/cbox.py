@@ -1,5 +1,6 @@
 import copy
 import os
+import sys
 import typing
 
 import numpy as np
@@ -83,7 +84,7 @@ def from_napari(
 
 def _make_df_data_filament(
     coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
-) -> list[pd.DataFrame]:
+) -> pd.DataFrame:
 
     data = {
         "_CoordinateX": [],
@@ -113,9 +114,13 @@ def _make_df_data_filament(
     ## Resampling
     for index_fil, fil in enumerate(filaments):
         distance = int(fil['_Width'][0] * 0.2)
-        filaments[index_fil] = coordsio.resample_filament(fil, distance)
+        filaments[index_fil] = coordsio.resample_filament(fil,
+                                                          distance,
+                                                          coordinate_columns=['_CoordinateX','_CoordinateY'],
+                                                          constant_columns=['_filamentid','_Width','_Height'])
 
-    return filaments
+
+    return pd.concat(filaments)
 
 #########################
 # PARTICLE STUFF
@@ -227,12 +232,13 @@ def write_cbox(path: os.PathLike, df: pd.DataFrame, **kwargs):
     version_df = pd.DataFrame([["1.0"]], columns=["_cbox_format_version"])
     sfile.update("global", version_df, False)
     include_slices = []
-    if not df["_CoordinateZ"].isnull().values.any():
-        include_slices = [
-            a
-            for a in np.unique(df["_CoordinateZ"]).tolist()
-            if not np.isnan(a)
-        ]
+    if "_CoordinateZ" in df.columns:
+        if not df["_CoordinateZ"].isnull().values.any():
+            include_slices = [
+                a
+                for a in np.unique(df["_CoordinateZ"]).tolist()
+                if not np.isnan(a)
+            ]
 
     sfile.update("cryolo", df, True)
 

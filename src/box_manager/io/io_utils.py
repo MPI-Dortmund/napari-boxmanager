@@ -243,7 +243,7 @@ def to_napari(
             features[entry] = all[entry].to_numpy()
     layer_name = get_coords_layer_name(path)
 
-    if (isinstance(path, list) and len(path) > 1) or is_3d:
+    if is_2d_stack or is_3d:
         # Happens for --stack option and '*.ext'
         coord_columns = ["x", "y", "z"]
     else:

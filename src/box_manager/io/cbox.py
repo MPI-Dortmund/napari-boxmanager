@@ -226,10 +226,10 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
             + np.array(cryolo_data["_EstHeight"])
         ) / 2
 
-    if "num_boxes" in feature_columns:
+    if "num_boxes" in meta_columns:
         output_data["num_boxes"] = cryolo_data["_NumBoxes"]
 
-    if "confidence" in feature_columns:
+    if "confidence" in meta_columns:
         output_data["confidence"] = cryolo_data["_Confidence"]
 
     if "angle" in feature_columns:
@@ -272,7 +272,7 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
     if (
         "_NumBoxes" in input_df.columns
         and not input_df["_NumBoxes"].isnull().values.any()
-    ) and "num_boxes" not in feature_columns:
+    ) and "num_boxes" not in meta_columns:
         meta_columns.append("num_boxes")
 
     if (

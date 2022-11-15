@@ -240,7 +240,8 @@ def to_napari(
                     features[entry] = fil[entry].to_numpy()
         else:
             all = pd.concat(input_df_list)
-            features[entry] = all[entry].to_numpy()
+            if entry in all:
+                features[entry] = all[entry].to_numpy()
     layer_name = get_coords_layer_name(path)
 
     if (isinstance(path, list) and len(path) > 1) or is_3d:

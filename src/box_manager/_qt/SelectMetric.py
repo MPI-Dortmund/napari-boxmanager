@@ -414,13 +414,18 @@ class GroupView(QTreeView):
 
         self.model.dataChanged.connect(self.update_by_edit)
         self.model.checkbox_updated.connect(self.checkbox_updated.emit)
+        self.parent_only = False
+
+    @Slot(int)
+    def set_parent_only(self, value):
+        self.parent_only = value
 
     def get_row_selection(self):
         prev_selection = {
             self.model.get_value(-1, entry[1], "name")
             if entry[0] == -1
             else self.model.get_value(-1, entry[0], "name")
-            for entry in self.get_row_candidates()
+            for entry in self.get_row_candidates(False)
         }
         return prev_selection
 
@@ -524,7 +529,9 @@ class GroupView(QTreeView):
         self.selectionModel().clear()
         self.selectionModel().select(selection, flag)
 
-    def get_row_candidates(self, parent_only=False):
+    def get_row_candidates(self, parent_only=None):
+        if parent_only is None:
+            parent_only = self.parent_only
         if parent_only:
             return {
                 (-1, entry.parent().row())
@@ -632,6 +639,9 @@ class SelectMetricWidget(QWidget):
             "Apply on layers, not on slices", self
         )
         self.option_area.addWidget(self.global_checkbox)
+        self.global_checkbox.stateChanged.connect(
+            self.table_widget.set_parent_only
+        )
         self.global_checkbox.setChecked(True)
         self.global_checkbox.stateChanged.connect(lambda _: self.update_hist())
 
@@ -1477,7 +1487,7 @@ class SelectMetricWidget(QWidget):
         self.update_hist()
 
     def update_hist(self, *_):
-        rows_candidates_navigate = self.table_widget.get_row_candidates()
+        rows_candidates_navigate = self.table_widget.get_row_candidates(False)
         rows_candidates = self.table_widget.get_row_candidates(
             self.global_checkbox.isChecked()
         )

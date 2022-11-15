@@ -230,8 +230,9 @@ def to_napari(
     )
     metadata.update(orgbox_meta)
     metadata["is_2d_stack"] = is_2d_stack
+    metadata["ignore_idx"] = feature_columns
     features = {}
-    for entry in feature_columns:
+    for entry in feature_columns + meta_columns:
         if metadata["is_filament_layer"]:
             for fil in input_df_list:
                 if entry in features:

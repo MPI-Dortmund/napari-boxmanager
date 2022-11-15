@@ -1090,9 +1090,7 @@ class SelectMetricWidget(QWidget):
                 self.prev_valid_layers[layer.name][1] = layer.data
                 for current_slice in current_slices:
                     self._update_table(layer, int(np.round(current_slice, 0)))
-                self.table_widget.selectionModel().selectionChanged.emit(
-                    QItemSelection(), QItemSelection()
-                )
+                self.update_hist(change_selection=False)
 
     def _update_editable(self, event):
         layer = event.source
@@ -1501,7 +1499,7 @@ class SelectMetricWidget(QWidget):
         self.table_model.remove_labels(invalid_labels)
         self.update_hist()
 
-    def update_hist(self, *_):
+    def update_hist(self, *_, change_selection=True):
         rows_candidates_navigate = self.table_widget.get_row_candidates(False)
         rows_candidates = self.table_widget.get_row_candidates(
             self.global_checkbox.isChecked()
@@ -1669,7 +1667,8 @@ class SelectMetricWidget(QWidget):
             metric_done.append(metric_name)
 
         if (
-            len(rows_candidates_navigate) == 1
+            change_selection
+            and len(rows_candidates_navigate) == 1
             and list(rows_candidates_navigate)[0][0] != -1
         ):
             rows = self.table_widget.get_rows(rows_candidates_navigate, 0)

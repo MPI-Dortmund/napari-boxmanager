@@ -1,20 +1,20 @@
 import copy
 import os
-import sys
-import typing
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from pyStarDB import sp_pystardb as star
-from .interface import NapariLayerData
+
 from . import io_utils as coordsio
+from .interface import NapariLayerData
 
 valid_extensions = ["cbox"]
 coords_3d_idx = ["x", "y", "z"]
 coords_2d_idx = ["y", "z"]
 meta_columns = []
 feature_columns = []
+ignore_columns = []
 
 #########################
 # GENERAL STUFF
@@ -23,8 +23,10 @@ feature_columns = []
 ### READING ####
 ################
 
+
 def get_valid_extensions() -> list[str]:
     return valid_extensions
+
 
 def to_napari(
     path: os.PathLike | list[os.PathLike],
@@ -35,15 +37,23 @@ def to_napari(
         prepare_napari_func=_prepare_napari,
         meta_columns=_get_meta_columns(),
         feature_columns=_get_feature_columns(),
+        ignore_list=_get_ignore_feature_idx(),
     )
 
     return r
 
+
+def _get_ignore_feature_idx():
+    return ignore_columns
+
+
 def _get_meta_columns():
     return meta_columns
 
+
 def _get_feature_columns():
     return feature_columns
+
 
 def read(path: os.PathLike) -> pd.DataFrame:
     try:
@@ -53,8 +63,10 @@ def read(path: os.PathLike) -> pd.DataFrame:
         return None
     return pd.DataFrame(data_dict)
 
+
 ### Writing ####
 ################
+
 
 def from_napari(
     path: os.PathLike | list[os.PathLike] | pd.DataFrame,
@@ -75,6 +87,7 @@ def from_napari(
     )
     return output_path
 
+
 #########################
 # FILAMENT STUFF
 #########################
@@ -82,11 +95,12 @@ def from_napari(
 ### WRITING ####
 ################
 
+
 def _make_df_data_filament(
     coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
 ) -> pd.DataFrame:
 
-    is_3d = coordinates.shape[1]==4
+    is_3d = coordinates.shape[1] == 4
     data = {}
     data["_CoordinateX"] = []
     data["_CoordinateY"] = []
@@ -100,14 +114,10 @@ def _make_df_data_filament(
 
     data["_filamentid"] = []
 
-
-
-    feature_map = {
-
-    }
+    feature_map = {}
     other_interpolation_cols = []
-    coord_columns = ['_CoordinateX','_CoordinateY']
-    constant_columns = ['_filamentid','_Width','_Height']
+    coord_columns = ["_CoordinateX", "_CoordinateY"]
+    constant_columns = ["_filamentid", "_Width", "_Height"]
     if is_3d:
         coord_columns.append("_CoordinateZ")
         constant_columns.append("_Depth")
@@ -125,14 +135,14 @@ def _make_df_data_filament(
     filaments = []
     entry = 0
     for coords_and_fid, boxsize in zip(
-            coordinates,
-            box_size,
+        coordinates,
+        box_size,
     ):
         if is_3d:
             z, y, x, fid = coords_and_fid
         else:
             y, x, fid = coords_and_fid
-        if len(data['_filamentid']) > 0 and data['_filamentid'][-1] != fid:
+        if len(data["_filamentid"]) > 0 and data["_filamentid"][-1] != fid:
             filaments.append(pd.DataFrame(data))
             data = copy.deepcopy(empty_data)
 
@@ -152,14 +162,17 @@ def _make_df_data_filament(
 
     ## Resampling
     for index_fil, fil in enumerate(filaments):
-        distance = int(fil['_Width'][0] * 0.2)
-        filaments[index_fil] = coordsio.resample_filament(fil,
-                                                          distance,
-                                                          coordinate_columns=coord_columns,
-                                                          constant_columns=constant_columns,
-                                                          other_interpolation_col=other_interpolation_cols)
+        distance = int(fil["_Width"][0] * 0.2)
+        filaments[index_fil] = coordsio.resample_filament(
+            fil,
+            distance,
+            coordinate_columns=coord_columns,
+            constant_columns=constant_columns,
+            other_interpolation_col=other_interpolation_cols,
+        )
 
     return pd.concat(filaments)
+
 
 #########################
 # PARTICLE STUFF
@@ -167,6 +180,7 @@ def _make_df_data_filament(
 
 ### READING ####
 ################
+
 
 def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -185,7 +199,10 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
 
     _fill_meta_features_idx(cryolo_data)
     is_3d = True
-    if "_CoordinateZ" not in cryolo_data or cryolo_data["_CoordinateZ"].isnull().values.any():
+    if (
+        "_CoordinateZ" not in cryolo_data
+        or cryolo_data["_CoordinateZ"].isnull().values.any()
+    ):
         is_3d = False
 
     columns = ["z", "y"]
@@ -217,15 +234,18 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
 
     if "num_boxes" in feature_columns:
         output_data["num_boxes"] = cryolo_data["_NumBoxes"]
+        ignore_columns.append("num_boxes")
 
     if "confidence" in feature_columns:
         output_data["confidence"] = cryolo_data["_Confidence"]
 
     if "angle" in feature_columns:
         output_data["angle"] = cryolo_data["_Angle"]
+        ignore_columns.append("angle")
 
     if "fid" in feature_columns:
         output_data["fid"] = cryolo_data["_filamentid"]
+        ignore_columns.append("fid")
 
     return output_data
 
@@ -247,34 +267,41 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
     global feature_columns
 
     if (
-        "_EstWidth" in input_df.columns and not input_df["_EstWidth"].isnull().values.any()
+        "_EstWidth" in input_df.columns
+        and not input_df["_EstWidth"].isnull().values.any()
     ) and "size" not in meta_columns:
         meta_columns.append("size")
 
     if (
-        "_Confidence" in input_df.columns and not input_df["_Confidence"].isnull().values.any()
+        "_Confidence" in input_df.columns
+        and not input_df["_Confidence"].isnull().values.any()
     ) and "confidence" not in meta_columns:
         meta_columns.append("confidence")
         feature_columns.append("confidence")
 
     if (
-        "_NumBoxes" in input_df.columns and not input_df["_NumBoxes"].isnull().values.any()
+        "_NumBoxes" in input_df.columns
+        and not input_df["_NumBoxes"].isnull().values.any()
     ) and "num_boxes" not in feature_columns:
         feature_columns.append("num_boxes")
 
     if (
-        "_Angle" in input_df.columns and not input_df["_Angle"].isnull().values.any()
+        "_Angle" in input_df.columns
+        and not input_df["_Angle"].isnull().values.any()
     ) and "angle" not in feature_columns:
         feature_columns.append("angle")
 
     if (
-        "_filamentid" in input_df.columns and "_filamentid" in input_df and not input_df["_filamentid"].isnull().values.any()
+        "_filamentid" in input_df.columns
+        and "_filamentid" in input_df
+        and not input_df["_filamentid"].isnull().values.any()
     ) and "fid" not in feature_columns:
         feature_columns.append("fid")
 
 
 ### Writing ####
 ################
+
 
 def write_cbox(path: os.PathLike, df: pd.DataFrame, **kwargs):
     sfile = star.StarFile(path)
@@ -298,6 +325,7 @@ def write_cbox(path: os.PathLike, df: pd.DataFrame, **kwargs):
     sfile.write_star_file(
         overwrite=True, tags=["global", "cryolo", "cryolo_include"]
     )
+
 
 def _make_df_data(
     coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
@@ -361,13 +389,3 @@ def _make_df_data(
             data["_Angle"].append(np.nan)
 
     return pd.DataFrame(data)
-
-
-
-
-
-
-
-
-
-

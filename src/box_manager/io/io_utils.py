@@ -211,6 +211,7 @@ def to_napari(
     prepare_napari_func: Callable,
     meta_columns: typing.List[str] = [],
     feature_columns: typing.List[str] = [],
+    ignore_list: typing.List[str] = [],
 ) -> "list[NapariLayerData]":
 
     input_df_list: list[pd.DataFrame]
@@ -230,6 +231,7 @@ def to_napari(
     )
     metadata.update(orgbox_meta)
     metadata["is_2d_stack"] = is_2d_stack
+    metadata["ignore_idx"] = ignore_list
     features = {}
     for entry in feature_columns:
         if metadata["is_filament_layer"]:

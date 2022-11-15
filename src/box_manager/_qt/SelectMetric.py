@@ -612,12 +612,12 @@ class SelectMetricWidget(QWidget):
             "name",
             "slice",
         ] + self.check_box
-        self.ignore_idx = set(
-            [
-                "boxsize",
-            ]
-            + self.read_only
-        )
+        self.ignore_idx = [
+            "boxsize",
+            "fid",
+            "angle",
+            "num_boxes",
+        ] + self.read_only
 
         self.napari_viewer.layers.events.reordered.connect(self._order_table)
         self.napari_viewer.layers.events.inserted.connect(self._handle_insert)
@@ -696,10 +696,6 @@ class SelectMetricWidget(QWidget):
         layer = event.value
         if not isinstance(layer, self.loadable_layers):
             return
-        if "ignore_idx" in layer.metadata:
-            self.ignore_idx = self.ignore_idx | set(
-                layer.metadata["ignore_idx"]
-            )
 
         try:
             # TODO: Remove try/except after https://github.com/napari/napari/pull/5028
@@ -978,12 +974,6 @@ class SelectMetricWidget(QWidget):
         ):
             select_first = True
 
-        for layer in valid_layers:
-            if "ignore_idx" in layer.metadata:
-                self.ignore_idx = self.ignore_idx | set(
-                    layer.metadata["ignore_idx"]
-                )
-
         prev_layers = [entry for entry, _ in self.prev_valid_layers.values()]
         self.prev_valid_layers = {}
         if sorted(valid_layers, key=lambda x: x.name) != sorted(
@@ -1125,9 +1115,7 @@ class SelectMetricWidget(QWidget):
             *self.napari_viewer.dims.range[0], dtype=int
         ).tolist()
         if range_list:
-            ignore_idx = layer.metadata.pop("ignore_idx")
             label_data = pd.DataFrame(layer.metadata).loc[:, range_list].T
-            layer.metadata["ignore_idx"] = ignore_idx
         else:
             label_data = pd.DataFrame()
         range_list.extend(full_range)

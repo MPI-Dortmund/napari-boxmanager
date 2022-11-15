@@ -608,7 +608,8 @@ class SelectMetricWidget(QWidget):
         self.ignore_idx = [
             "boxsize",
             'fid',
-            'angle'
+            'angle',
+            'num_boxes'
         ] + self.read_only
 
         self.napari_viewer.layers.events.reordered.connect(self._order_table)

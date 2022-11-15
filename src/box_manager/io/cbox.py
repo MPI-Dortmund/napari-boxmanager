@@ -86,17 +86,32 @@ def _make_df_data_filament(
     coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
 ) -> pd.DataFrame:
 
-    data = {
-        "_CoordinateX": [],
-        "_CoordinateY": [],
-        "_Width": [],
-        "_Height": [],
-        "_filamentid": [],
-    }
+    is_3d = coordinates.shape[1]==4
+    data = {}
+    data["_CoordinateX"] = []
+    data["_CoordinateY"] = []
+    if is_3d:
+        data["_CoordinateZ"] = []
+
+    data["_Width"] = []
+    data["_Height"] = []
+    if is_3d:
+        data["_Depth"] = []
+
+    data["_filamentid"] = []
+
+
+
     feature_map = {
 
     }
     other_interpolation_cols = []
+    coord_columns = ['_CoordinateX','_CoordinateY']
+    constant_columns = ['_filamentid','_Width','_Height']
+    if is_3d:
+        coord_columns.append("_CoordinateZ")
+        constant_columns.append("_Depth")
+
     if "confidence" in features:
         data["_Confidence"] = []
         feature_map["confidence"] = "_Confidence"
@@ -109,11 +124,14 @@ def _make_df_data_filament(
     empty_data = copy.deepcopy(data)
     filaments = []
     entry = 0
-    for (y, x, fid), boxsize in zip(
+    for coords_and_fid, boxsize in zip(
             coordinates,
             box_size,
     ):
-
+        if is_3d:
+            z, y, x, fid = coords_and_fid
+        else:
+            y, x, fid = coords_and_fid
         if len(data['_filamentid']) > 0 and data['_filamentid'][-1] != fid:
             filaments.append(pd.DataFrame(data))
             data = copy.deepcopy(empty_data)
@@ -123,6 +141,9 @@ def _make_df_data_filament(
         data["_filamentid"].append(fid)
         data["_Width"].append(boxsize)
         data["_Height"].append(boxsize)
+        if is_3d:
+            data["_Depth"].append(boxsize)
+            data["_CoordinateZ"].append(z)
         for key in feature_map:
             data[feature_map[key]].append(features[key].iloc[entry])
         entry = entry + 1
@@ -134,8 +155,8 @@ def _make_df_data_filament(
         distance = int(fil['_Width'][0] * 0.2)
         filaments[index_fil] = coordsio.resample_filament(fil,
                                                           distance,
-                                                          coordinate_columns=['_CoordinateX','_CoordinateY'],
-                                                          constant_columns=['_filamentid','_Width','_Height'],
+                                                          coordinate_columns=coord_columns,
+                                                          constant_columns=constant_columns,
                                                           other_interpolation_col=other_interpolation_cols)
 
     return pd.concat(filaments)

@@ -91,7 +91,9 @@ def _prepare_coords_df(
 
         if is_filament:
             data_df.extend(box_napari_data)
+            min_max_data = pd.concat(box_napari_data)
         else:
+            min_max_data = box_napari_data
             data_df.append(box_napari_data)
 
         metadata[idx] = {}
@@ -102,9 +104,9 @@ def _prepare_coords_df(
         try:
             metadata[idx].update(
                 {
-                    f"{entry}_{func.__name__}": func(data_df[idx][entry])
+                    f"{col}_{func.__name__}": func(min_max_data[col])
                     for func in [min, max]
-                    for entry in meta_columns
+                    for col in meta_columns
                 }
             )
         except ValueError:

@@ -1124,9 +1124,12 @@ class SelectMetricWidget(QWidget):
             *self.napari_viewer.dims.range[0], dtype=int
         ).tolist()
         if range_list:
-            ignore_idx = layer.metadata.pop("ignore_idx")
-            label_data = pd.DataFrame(layer.metadata).loc[:, range_list].T
-            layer.metadata["ignore_idx"] = ignore_idx
+            if "ignore_idx" in layer.metadata:
+                ignore_idx = layer.metadata.pop("ignore_idx")
+                label_data = pd.DataFrame(layer.metadata).loc[:, range_list].T
+                layer.metadata["ignore_idx"] = ignore_idx
+            else:
+                label_data = pd.DataFrame(layer.metadata).loc[:, range_list].T
         else:
             label_data = pd.DataFrame()
         range_list.extend(full_range)
@@ -1344,9 +1347,16 @@ class SelectMetricWidget(QWidget):
                 *self.napari_viewer.dims.range[0], dtype=int
             ).tolist()
             if range_list:
-                ignore_idx = layer.metadata.pop("ignore_idx")
-                label_data = pd.DataFrame(layer.metadata).loc[:, range_list].T
-                layer.metadata["ignore_idx"] = ignore_idx
+                if "ignore_idx" in layer.metadata:
+                    ignore_idx = layer.metadata.pop("ignore_idx")
+                    label_data = (
+                        pd.DataFrame(layer.metadata).loc[:, range_list].T
+                    )
+                    layer.metadata["ignore_idx"] = ignore_idx
+                else:
+                    label_data = (
+                        pd.DataFrame(layer.metadata).loc[:, range_list].T
+                    )
             else:
                 label_data = pd.DataFrame()
             range_list.extend(full_range)

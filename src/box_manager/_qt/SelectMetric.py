@@ -607,9 +607,9 @@ class SelectMetricWidget(QWidget):
         ] + self.check_box
         self.ignore_idx = [
             "boxsize",
-            'fid',
-            'angle',
-            'num_boxes'
+            "fid",
+            "angle",
+            "num_boxes",
         ] + self.read_only
 
         self.napari_viewer.layers.events.reordered.connect(self._order_table)
@@ -1860,6 +1860,9 @@ class HistogramMinMaxView(QWidget):
             data_upper = label_data[label_data > quantile_upper]
             data_list = [data_lower, data_center, data_upper]
             n_data = len([entry for entry in data_list if not entry.empty])
+            do_idx = [
+                idx for idx, entry in enumerate(data_list) if not entry.empty
+            ]
 
             axis_idx = -1
             cum_width = 0
@@ -1913,10 +1916,30 @@ class HistogramMinMaxView(QWidget):
                     ) * 0.05
 
                 entry["axis"].set_xticks(ticks)
-                entry["axis"].set_xlim(
-                    np.min(data_list[idx]) - max(margin, 0.002),
-                    np.max(data_list[idx]) + max(margin, 0.002),
-                )
+                if n_data != 1:
+                    if idx == 0:
+                        min_val = np.min(data_list[idx]) - max(margin, 0.002)
+                        max_val = np.min(data_list[1])
+                    elif idx == 1:
+                        if 0 in do_idx:
+                            tmp_margin = 0
+                        else:
+                            tmp_margin = max(margin, 0.002)
+                        min_val = np.min(data_list[idx]) - tmp_margin
+                        if 2 in do_idx:
+                            tmp_margin = 0
+                        else:
+                            tmp_margin = max(margin, 0.002)
+                        max_val = np.max(data_list[idx]) + tmp_margin
+                    elif idx == 2:
+                        min_val = np.max(data_list[1])
+                        max_val = np.max(data_list[idx]) + max(margin, 0.002)
+                    else:
+                        assert False, idx
+                else:
+                    min_val = np.min(data_list[idx]) - max(margin, 0.002)
+                    max_val = np.max(data_list[idx]) + max(margin, 0.002)
+                entry["axis"].set_xlim(min_val, max_val)
 
                 if n_data != 1:
                     if n_data == 2 or idx == 1:

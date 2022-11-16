@@ -26,7 +26,7 @@ def _prepare_napari_coords(
     input_df: pd.DataFrame,
 ) -> pd.DataFrame:
     is_3d = '_rlnCoordinateZ' in input_df.columns
-
+    is_filament = '_rlnHelicalTubeID' in input_df.columns
     columns = ["z", "y"]
     if is_3d:
         columns.append("x")
@@ -36,6 +36,9 @@ def _prepare_napari_coords(
     output_data["y"] = input_df["_rlnCoordinateY"]
     if is_3d:
         output_data["x"] = input_df["_rlnCoordinateZ"]
+
+    if is_filament:
+        output_data["fid"] = input_df["_rlnHelicalTubeID"]
 
     output_data["boxsize"] = DEFAULT_BOXSIZE
 
@@ -51,13 +54,13 @@ def to_napari(
         read_func=read,
         prepare_napari_func=_prepare_napari_coords,
         meta_columns=[],
-        feature_columns=[],
+        feature_columns=["fid","boxsize"],
     )
 
 ###################
 # WRITE FUNCTIONS
 ###################
-def _make_df_data(
+def _make_df_data_particle(
     coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
 ) -> pd.DataFrame:
     data = {
@@ -83,6 +86,51 @@ def _make_df_data(
 
     return pd.DataFrame(data)
 
+def _make_df_data_filament(
+    coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
+) -> pd.DataFrame:
+    data = {
+        "_rlnCoordinateX": [],
+        "_rlnCoordinateY": [],
+        "_rlnHelicalTubeID": [],
+    }
+    filaments = []
+    box_size_per_filament = []
+    for (y, x, fid), boxsize in zip(
+            coordinates,
+            box_size,
+    ):
+        if len(data["_rlnHelicalTubeID"]) > 0 and data["_rlnHelicalTubeID"][-1] != fid:
+            filaments.append(pd.DataFrame(data))
+            box_size_per_filament.append(last_box_size)
+            data = {
+                "_rlnCoordinateX": [],
+                "_rlnCoordinateY": [],
+                "_rlnHelicalTubeID": [],
+            }
+
+
+        data["_rlnCoordinateX"].append(x)
+        data["_rlnCoordinateY"].append(y)
+        data["_rlnHelicalTubeID"].append(fid)
+        last_box_size = box_size
+
+    # Resampling
+
+    filaments.append(pd.DataFrame(data))
+
+    ## Resampling
+    for index_fil, fil in enumerate(filaments):
+        distance = int(box_size_per_filament[index_fil] * 0.2)
+        filaments[index_fil] = coordsio.resample_filament(
+            fil,
+            distance,
+            coordinate_columns=["_rlnCoordinateX", "_rlnCoordinateY"],
+            constant_columns=["_rlnHelicalTubeID"],
+        )
+
+    return filaments
+
 def _write_star(path: os.PathLike, df: pd.DataFrame, **kwargs):
     sfile = star.StarFile(path)
 
@@ -95,11 +143,17 @@ def _write_star(path: os.PathLike, df: pd.DataFrame, **kwargs):
 def from_napari(
     path: os.PathLike, layer_data: list[NapariLayerData]
 ):
+    is_filament = coordsio.is_filament_layer(layer_data)
+    if is_filament:
+        format_func = _make_df_data_filament
+    else:
+        format_func = _make_df_data_particle
+
     path = coordsio.from_napari(
         path=path,
         layer_data=layer_data,
         write_func=_write_star,
-        format_func=_make_df_data,
+        format_func=format_func,
     )
 
     return path

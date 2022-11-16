@@ -1,3 +1,5 @@
+import sys
+
 import pandas as pd
 from pyStarDB import sp_pystardb as star
 import os
@@ -113,11 +115,12 @@ def _make_df_data_filament(
         data["_rlnCoordinateX"].append(x)
         data["_rlnCoordinateY"].append(y)
         data["_rlnHelicalTubeID"].append(fid)
-        last_box_size = box_size
+        last_box_size = boxsize
 
     # Resampling
 
     filaments.append(pd.DataFrame(data))
+    box_size_per_filament.append(last_box_size)
 
     ## Resampling
     for index_fil, fil in enumerate(filaments):
@@ -129,9 +132,10 @@ def _make_df_data_filament(
             constant_columns=["_rlnHelicalTubeID"],
         )
 
-    return filaments
+    return pd.concat(filaments)
 
 def _write_star(path: os.PathLike, df: pd.DataFrame, **kwargs):
+
     sfile = star.StarFile(path)
 
     sfile.update("", df, True)

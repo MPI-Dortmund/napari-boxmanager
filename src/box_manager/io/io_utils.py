@@ -3,6 +3,7 @@ import io
 import itertools
 import os
 import pathlib
+import sys
 import typing
 import warnings
 from collections.abc import Callable
@@ -434,7 +435,6 @@ def from_napari(
 
         is_filament_data = is_filament_layer(layer_data)
         if isinstance(data, list):
-            print("CONVERT!!")
             data, meta = convert_shape_filament_layer_to_boxlayer(data, meta)
 
         if is_filament_data:

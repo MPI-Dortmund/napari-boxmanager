@@ -75,13 +75,22 @@ def _write_coords(path: os.PathLike, df: pd.DataFrame, **kwargs):
 
 
 def _make_df_data(
-    coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: dict
+    coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
 ) -> pd.DataFrame:
     data = {"x": [], "y": [], "z": [], "boxsize": []}
-    for (z, y, x), boxsize in zip(
+
+    is_filament_data = coordinates.shape[1] == 4
+
+
+    for coords, boxsize in zip(
         coordinates,
         box_size,
     ):
+        if is_filament_data:
+            z, y, x, _ = coords
+        else:
+            z, y, x = coords
+
         data["x"].append(x)
         data["y"].append(y)
         data["z"].append(z)

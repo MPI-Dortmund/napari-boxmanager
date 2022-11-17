@@ -108,6 +108,7 @@ def _prepare_coords_df(
                     f"{col}_{func.__name__}": func(min_max_data[col])
                     for func in [min, max]
                     for col in meta_columns
+                    if col in min_max_data
                 }
             )
         except ValueError:
@@ -371,6 +372,8 @@ def _write_particle_data(
             z = int(z)
             mask = coordinates[:, 0] == z
             filename = meta["metadata"][z]["name"]
+            if meta["metadata"][z]['write'] == False:
+                continue
             kwargs["image_name"] = filename
             output_file = _generate_output_filename(
                 orignal_filename=filename, output_path=path

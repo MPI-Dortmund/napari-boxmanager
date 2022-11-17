@@ -30,7 +30,7 @@ contributions:
 
   readers:
     - command: napari-boxmanager.get_reader
-      accepts_directories: false
+      accepts_directories: True
       filename_patterns: ['*.tloc', '*.temb', '*.tmap','*.cbox', '*.box', '*.star', '*.mrc', "*.mrcs", "*.st","*.coords","*.rec","*.cs"]
   writers:
     - command: napari-boxmanager.get_writer

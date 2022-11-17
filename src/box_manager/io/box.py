@@ -202,6 +202,7 @@ def to_napari(
         prepare_napari_func=_prepare_napari_box,
         meta_columns=_get_meta_idx(),
         feature_columns=_get_feature_idx(),
+        valid_extensions=get_valid_extensions()
     )
     return r
 

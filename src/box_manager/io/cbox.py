@@ -36,6 +36,7 @@ def to_napari(
         prepare_napari_func=_prepare_napari,
         meta_columns=_get_meta_columns(),
         feature_columns=_get_feature_columns(),
+        valid_extensions=get_valid_extensions()
     )
 
     return r

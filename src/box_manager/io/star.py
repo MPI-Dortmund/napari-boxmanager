@@ -21,7 +21,10 @@ def get_valid_extensions():
 
 def read(path: "os.PathLike") -> pd.DataFrame:
     sfile = star.StarFile(path)
-    box_data = sfile['']
+    if 'particles' in sfile:
+        box_data = sfile['particles']
+    else:
+        box_data = sfile['']
 
     return box_data
 
@@ -42,6 +45,9 @@ def _prepare_napari_coords(
 
     if is_filament:
         output_data["fid"] = input_df["_rlnHelicalTubeID"]
+
+    if '_rlnAutopickFigureOfMerit':
+        output_data["confidence"] = input_df["_rlnAutopickFigureOfMerit"]
 
     output_data["boxsize"] = DEFAULT_BOXSIZE
 
@@ -84,7 +90,7 @@ def to_napari(
             path=path,
             read_func=read,
             prepare_napari_func=_prepare_napari_coords,
-            meta_columns=[],
+            meta_columns=["confidence"],
             feature_columns=["fid","boxsize"],
         )
 

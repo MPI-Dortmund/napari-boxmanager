@@ -8,17 +8,23 @@ if typing.TYPE_CHECKING:
 
 
 def napari_get_writer(
-    path: os.PathLike, data: list[tuple[typing.Any, dict, str]]
+    path: os.PathLike,
+    data: list[tuple[typing.Any, dict, str]],
+    provided_extension=None,
+    suffix="",
 ):
-    basename, extension = os.path.splitext(os.path.basename(path))
-    if not extension:
-        extension = basename
+    if provided_extension:
+        extension = provided_extension
+    else:
+        basename, extension = os.path.splitext(os.path.basename(path))
+        if not extension:
+            extension = basename
     load_type = extension[1:]
     writer = bm_readers.get_writer(load_type)
     if not writer:
         return None
     else:
-        return writer(path, data)
+        return writer(path, data, suffix)
 
 
 # """

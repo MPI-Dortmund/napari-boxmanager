@@ -9,6 +9,7 @@ from qtpy.QtCore import Slot
 from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import (
     QComboBox,
+    QFileDialog,
     QFormLayout,
     QLabel,
     QLineEdit,
@@ -16,6 +17,8 @@ from qtpy.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from .._writer import napari_get_writer
 
 ICON_DIR = f"{os.path.dirname(napari.__file__)}/resources/icons"
 
@@ -97,7 +100,6 @@ class OrganizeLayerWidget(QWidget):
         layout = QFormLayout()
         for name, widget in self.save_layers.items():
             layout.addRow(name.capitalize(), widget)
-        # layout.addRow("Create label layer:", self._add_label)
         inner_layout.addLayout(layout)
         inner_layout.addWidget(self.save_run_btn)
 
@@ -150,7 +152,25 @@ class OrganizeLayerWidget(QWidget):
 
     @Slot()
     def _run_save(self):
-        print("WRITE HERE")
+        dir_path = QFileDialog.getExistingDirectory(
+            self,
+            "Open directory",
+            os.getcwd(),
+            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
+        )
+        if not dir_path:
+            return
+
+        cur_format = self.save_layers["format"].currentText().split(" ", 1)[0]
+        cur_layer = self.napari_viewer.layers[
+            self.save_layers["layer"].currentText()
+        ]
+        napari_get_writer(
+            dir_path,
+            [cur_layer.as_layer_data_tuple()],
+            cur_format,
+            self.save_layers["suffix"],
+        )
 
     @Slot(object)
     def _update_layer_combo(self, _):

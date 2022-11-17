@@ -144,7 +144,6 @@ def is_filament_layer(
 
 def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
     if isinstance(path, list) and len(path) > 1:
-        name = "Coordinates"
         name = (os.path.splitext(path[0])[1]).upper()[1:]
     elif isinstance(path, list):
         if len(path[0]) >= MAX_LAYER_NAME + 3:

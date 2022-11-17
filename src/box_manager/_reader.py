@@ -44,15 +44,6 @@ def napari_get_reader(
         path = path[0]
 
     if os.path.isdir(path):
-        '''
-        load_type = None
-        load_type_max = None
-        for file_ext in bm_readers._VALID_IOS.keys():
-            files = glob.glob(os.path.join(path,f"*.{file_ext}"))
-            if load_type_max is None or len(files)>load_type_max:
-                load_type_max=len(files)
-                load_type=file_ext
-        '''
         return get_dir
     else:
         load_type = os.path.splitext(path)[-1][1:]

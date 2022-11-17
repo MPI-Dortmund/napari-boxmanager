@@ -213,14 +213,25 @@ def to_napari(
     prepare_napari_func: Callable,
     meta_columns: typing.List[str] = [],
     feature_columns: typing.List[str] = [],
+    valid_extensions: typing.List[str] = []
 ) -> "list[NapariLayerData]":
 
     input_df_list: list[pd.DataFrame]
     features: dict[str, typing.Any]
 
-    orgbox_meta = orgbox.get_metadata(path)
+
+
+
+
+    if os.path.isdir(path):
+        files = []
+        for ext in valid_extensions:
+            files.extend(glob.glob(os.path.join(path, "*." + ext)))
+        path = sorted(files)
 
     is_2d_stack = isinstance(path, list) or "*" in path
+    orgbox_meta = orgbox.get_metadata(path)
+
     if not isinstance(path, list):
         path = sorted(glob.glob(path))  # type: ignore
 

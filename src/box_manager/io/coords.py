@@ -54,6 +54,7 @@ def to_napari(
         prepare_napari_func=_prepare_napari_coords,
         meta_columns=[],
         feature_columns=[],
+        valid_extensions=get_valid_extensions()
     )
 
 

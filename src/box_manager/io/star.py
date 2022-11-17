@@ -46,7 +46,7 @@ def _prepare_napari_coords(
     if is_filament:
         output_data["fid"] = input_df["_rlnHelicalTubeID"]
 
-    if '_rlnAutopickFigureOfMerit':
+    if '_rlnAutopickFigureOfMerit' in input_df.columns:
         output_data["confidence"] = input_df["_rlnAutopickFigureOfMerit"]
 
     output_data["boxsize"] = DEFAULT_BOXSIZE

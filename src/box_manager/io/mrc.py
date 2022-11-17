@@ -28,13 +28,7 @@ def to_napari(
             name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
         else:
             name = path  # type: ignore
-        if os.path.isdir(path):
-            files = []
-            for ext in get_valid_extensions():
-                files.extend(glob.glob(os.path.join(path, "*."+ext)))
-            path = sorted(files)
-        else:
-            path = sorted(glob.glob(path))  # type: ignore
+        path = sorted(glob.glob(path))  # type: ignore
         if len(path) > 1:
             name = "mrcfiles"
     else:

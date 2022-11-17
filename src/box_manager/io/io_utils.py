@@ -145,6 +145,7 @@ def is_filament_layer(
 def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
     if isinstance(path, list) and len(path) > 1:
         name = "Coordinates"
+        name = (os.path.splitext(path[0])[1]).upper()[1:]
     elif isinstance(path, list):
         if len(path[0]) >= MAX_LAYER_NAME + 3:
             name = f"...{path[0][-MAX_LAYER_NAME:]}"  # type: ignore
@@ -223,7 +224,7 @@ def to_napari(
 
 
 
-    if os.path.isdir(path):
+    if not isinstance(path, list) and os.path.isdir(path):
         files = []
         for ext in valid_extensions:
             files.extend(glob.glob(os.path.join(path, "*." + ext)))

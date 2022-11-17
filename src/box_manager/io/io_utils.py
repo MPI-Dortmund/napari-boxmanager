@@ -219,16 +219,6 @@ def to_napari(
     input_df_list: list[pd.DataFrame]
     features: dict[str, typing.Any]
 
-
-
-
-
-    if not isinstance(path, list) and os.path.isdir(path):
-        files = []
-        for ext in valid_extensions:
-            files.extend(glob.glob(os.path.join(path, "*." + ext)))
-        path = sorted(files)
-
     is_2d_stack = isinstance(path, list) or "*" in path
     orgbox_meta = orgbox.get_metadata(path)
 
@@ -396,6 +386,7 @@ def _write_particle_data(
             )
             export_data[output_file] = d
     else:
+
         export_data[path] = format_func(coordinates, boxsize, meta["features"])
 
     for outpth in export_data:

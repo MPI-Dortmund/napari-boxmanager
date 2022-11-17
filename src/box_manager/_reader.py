@@ -18,7 +18,7 @@ def get_dir(path):
             if not files:
                continue
             print("ext", file_ext)
-            layers.extend(bm_readers.get_reader(file_ext)(files))
+            layers.extend(bm_readers.get_reader(file_ext)(sorted(files)))
     return layers
 
 def napari_get_reader(

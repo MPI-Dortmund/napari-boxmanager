@@ -23,8 +23,8 @@ contributions:
     - id: napari-boxmanager.bandpass_filter
       python_name: box_manager._qt.FilterImage:FilterImageWidget
       title: Filter image layer
-    - id: napari-boxmanager.add_layer
-      python_name: box_manager._qt.AddLayer:AddLayerWidget
+    - id: napari-boxmanager.organize_layer
+      python_name: box_manager._qt.OrganizeLayer:OrganizeLayerWidget
       title: Add new layers with default values
 
 
@@ -40,8 +40,8 @@ contributions:
   widgets:
     - command: napari-boxmanager.select_metric
       display_name: boxmanager
-    - command: napari-boxmanager.add_layer
-      display_name: add_layer
+    - command: napari-boxmanager.organize_layer
+      display_name: organize_layer
     - command: napari-boxmanager.bandpass_filter
       display_name: bandpass_filter
     - command: napari-boxmanager.organize_box

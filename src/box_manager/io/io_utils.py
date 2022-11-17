@@ -371,6 +371,8 @@ def _write_particle_data(
             z = int(z)
             mask = coordinates[:, 0] == z
             filename = meta["metadata"][z]["name"]
+            if meta["metadata"][z]['write'] == False:
+                continue
             kwargs["image_name"] = filename
             output_file = _generate_output_filename(
                 orignal_filename=filename, output_path=path

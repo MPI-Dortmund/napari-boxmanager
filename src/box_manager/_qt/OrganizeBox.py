@@ -121,7 +121,8 @@ class OrganizeBoxWidget(QWidget):
             for idx in range(self.coord_layer.count()):
                 layers.append(self.coord_layer.itemText(idx))
             for layer in layers:
-                self._update_table(coord_layer_name=layer)
+                self.coord_layer.setCurrentText(layer)
+                self._update_table()
 
     @Slot(object)
     @Slot(str)
@@ -189,7 +190,7 @@ class OrganizeBoxWidget(QWidget):
 
         self._update_table(create_layer=False)
 
-    def _update_table(self, create_layer=True, coord_layer_name=None):
+    def _update_table(self, create_layer=True):
         self.table_widget.clear()
         if not self.image_layer.currentText():
             return
@@ -208,10 +209,7 @@ class OrganizeBoxWidget(QWidget):
             if isinstance(idx, int)
         }
 
-        if coord_layer_name is None:
-            coord_layer_name = self.coord_layer.currentText()
-
-        layer_coord = self.napari_viewer.layers[coord_layer_name]
+        layer_coord = self.napari_viewer.layers[self.coord_layer.currentText()]
         prefix_coord = self.coord_layer.prefix
         suffix_coord = self.coord_layer.suffix
         coord_dict = {

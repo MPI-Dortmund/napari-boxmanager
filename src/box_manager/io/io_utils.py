@@ -108,6 +108,7 @@ def _prepare_coords_df(
                     f"{col}_{func.__name__}": func(min_max_data[col])
                     for func in [min, max]
                     for col in meta_columns
+                    if col in min_max_data
                 }
             )
         except ValueError:

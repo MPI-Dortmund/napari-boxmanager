@@ -8,11 +8,12 @@ import typing
 from .interface import NapariLayerData
 import numpy as np
 import numpy.typing as npt
+import tempfile
 
 DEFAULT_BOXSIZE=200
 
 def get_valid_extensions():
-    return ["star"]
+    return ["star", "cs"]
 
 ###################
 # READ FUNCTIONS
@@ -46,18 +47,48 @@ def _prepare_napari_coords(
 
     return output_data
 
+def _split_star(path_star: str, output_dir : str) -> typing.Union[typing.List[str], str]:
+    """
+    Splits star file in case it contains coordinates for multiple micrographs
+    """
+    data = read(path_star)
+    if '_rlnMicrographName' not in data.columns:
+        return path_star
+
+    unique_micrographs = np.unique(data['_rlnMicrographName']).tolist()
+    if len(unique_micrographs) == 1:
+        return path_star
+    os.makedirs(output_dir,exist_ok=True)
+    file_extension = os.path.splitext(os.path.basename(path_star))[1]
+    new_paths = []
+    for mic in unique_micrographs:
+        mask = data['_rlnMicrographName']==mic
+        mic_data = data[mask]
+        pth = os.path.join(output_dir, os.path.splitext(os.path.basename(mic))[0] + file_extension)
+        _write_star(pth, mic_data)
+        new_paths.append(pth)
+    return new_paths
+
+
 
 def to_napari(
     path: typing.Union[os.PathLike, list[os.PathLike]],
 ) -> "list[NapariLayerData]":
 
-    return coordsio.to_napari(
-        path=path,
-        read_func=read,
-        prepare_napari_func=_prepare_napari_coords,
-        meta_columns=[],
-        feature_columns=["fid","boxsize"],
-    )
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        if not isinstance(path,list):
+            path = _split_star(path, tmpdir)
+
+        r = coordsio.to_napari(
+            path=path,
+            read_func=read,
+            prepare_napari_func=_prepare_napari_coords,
+            meta_columns=[],
+            feature_columns=["fid","boxsize"],
+        )
+
+    return r
 
 ###################
 # WRITE FUNCTIONS

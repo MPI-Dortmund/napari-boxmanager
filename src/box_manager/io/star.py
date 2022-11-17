@@ -22,6 +22,7 @@ def get_valid_extensions():
 def read(path: "os.PathLike") -> pd.DataFrame:
     sfile = star.StarFile(path)
     if 'particles' in sfile:
+        #relion 3.1
         box_data = sfile['particles']
     else:
         box_data = sfile['']

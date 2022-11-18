@@ -184,7 +184,7 @@ def _write_star(path: os.PathLike, df: pd.DataFrame, **kwargs):
     )
 
 def from_napari(
-    path: os.PathLike, layer_data: list[NapariLayerData]
+    path: os.PathLike, layer_data: list[NapariLayerData], suffix: str
 ):
     is_filament = coordsio.is_filament_layer(layer_data)
     if is_filament:
@@ -197,6 +197,7 @@ def from_napari(
         layer_data=layer_data,
         write_func=_write_star,
         format_func=format_func,
+        suffix=suffix
     )
 
     return path

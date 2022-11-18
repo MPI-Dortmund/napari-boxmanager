@@ -100,12 +100,13 @@ def _make_df_data(
 
 
 def from_napari(
-    path: os.PathLike, layer_data: list[NapariLayerData]
+    path: os.PathLike, layer_data: list[NapariLayerData], suffix: str
 ):
     path = coordsio.from_napari(
         path=path,
         layer_data=layer_data,
         write_func=_write_coords,
         format_func=_make_df_data,
+        suffix=suffix
     )
     return path

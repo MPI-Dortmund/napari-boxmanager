@@ -66,6 +66,7 @@ def read(path: os.PathLike) -> pd.DataFrame:
 def from_napari(
     path: os.PathLike | list[os.PathLike] | pd.DataFrame,
     layer_data: list[NapariLayerData],
+    suffix: str
 ):
     is_filament = coordsio.is_filament_layer(layer_data)
 
@@ -79,6 +80,7 @@ def from_napari(
         layer_data=layer_data,
         write_func=write_cbox,
         format_func=format_func,
+        suffix=suffix
     )
     return output_path
 

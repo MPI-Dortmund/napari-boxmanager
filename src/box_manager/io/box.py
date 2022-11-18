@@ -299,7 +299,10 @@ def _make_df_data_filament(
     return filaments
 
 
-def from_napari(path: os.PathLike, layer_data: list[NapariLayerData]):
+def from_napari(path: os.PathLike,
+                layer_data: list[NapariLayerData],
+                suffix: str
+                ):
     is_filament = coordsio.is_filament_layer(layer_data)
     if is_filament:
         format_func = _make_df_data_filament
@@ -307,12 +310,12 @@ def from_napari(path: os.PathLike, layer_data: list[NapariLayerData]):
     else:
         format_func = _make_df_data_particle
         write_func = _write_box
-
     path = coordsio.from_napari(
         path=path,
         layer_data=layer_data,
         write_func=write_func,
         format_func=format_func,
+        suffix=suffix
     )
 
     return path

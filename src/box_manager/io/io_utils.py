@@ -271,11 +271,15 @@ def to_napari(
     return [(dat, kwargs, layer_type)]
 
 
-def _generate_output_filename(orignal_filename: str, output_path: os.PathLike):
-    dirname = os.path.dirname(output_path)
-    basename, extension = os.path.splitext(os.path.basename(output_path))
-    if not extension:  # in case '.box' is provided as output path.
-        basename, extension = extension, basename
+def _generate_output_filename(orignal_filename: str, output_path: os.PathLike, suffix=""):
+    if not os.path.isdir(output_path):
+        dirname = os.path.dirname(output_path)
+        basename, extension = os.path.splitext(os.path.basename(output_path))
+        if not extension:  # in case '.box' is provided as output path.
+            basename, extension = extension, basename
+    else:
+        extension = suffix
+        dirname = output_path
 
     file_base = os.path.splitext(os.path.basename(orignal_filename))[0]
     output_file = pathlib.Path(dirname, file_base + extension)
@@ -343,6 +347,7 @@ def _write_particle_data(
     meta: NapariLayerData,
     format_func: FormatFunc,
     write_func: Callable[[os.PathLike, pd.DataFrame, ...], typing.Any],
+    suffix: str = ""
 ):
     if data.shape[1] == 2:
         data = np.insert(data, 0, 0, axis=1)
@@ -377,8 +382,9 @@ def _write_particle_data(
                 continue
             kwargs["image_name"] = filename
             output_file = _generate_output_filename(
-                orignal_filename=filename, output_path=path
+                orignal_filename=filename, output_path=path, suffix=suffix
             )
+
             d = format_func(
                 coordinates[mask, 1:],
                 boxsize[mask],
@@ -386,7 +392,6 @@ def _write_particle_data(
             )
             export_data[output_file] = d
     else:
-
         export_data[path] = format_func(coordinates, boxsize, meta["features"])
 
     for outpth in export_data:
@@ -433,6 +438,7 @@ def from_napari(
     write_func: Callable[
         [os.PathLike, pd.DataFrame | list[pd.DataFrame]], typing.Any
     ],
+    suffix=""
 ) -> os.PathLike:
 
     last_file = ""
@@ -454,11 +460,11 @@ def from_napari(
 
             data_list = np.append(data, np.atleast_2d(np.array(fid)).T, axis=1)
             last_file = _write_particle_data(
-                path, data_list, meta, format_func, write_func
+                path, data_list, meta, format_func, write_func, suffix
             )
         else:
             last_file = _write_particle_data(
-                path, data, meta, format_func, write_func
+                path, data, meta, format_func, write_func, suffix
             )
 
     return str(last_file)

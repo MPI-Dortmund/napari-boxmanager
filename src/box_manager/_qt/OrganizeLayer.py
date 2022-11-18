@@ -169,7 +169,7 @@ class OrganizeLayerWidget(QWidget):
             dir_path,
             [cur_layer.as_layer_data_tuple()],
             cur_format,
-            self.save_layers["suffix"],
+            self.save_layers["suffix"].text(),
         )
 
     @Slot(object)

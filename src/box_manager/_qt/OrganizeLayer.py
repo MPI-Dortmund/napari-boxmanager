@@ -76,7 +76,7 @@ class OrganizeLayerWidget(QWidget):
                     ".cbox",
                     ".box",
                     ".star (Relion)",
-                    ".cs (cryoSPARC)",
+                    #".cs (cryoSPARC)",
                 ],
                 "Filaments": [".cbox", ".box (helicon)", ".star (Relion)"],
             },

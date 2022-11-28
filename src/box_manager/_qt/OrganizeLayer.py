@@ -76,7 +76,7 @@ class OrganizeLayerWidget(QWidget):
                     ".cbox",
                     ".box",
                     ".star (Relion)",
-                    #".cs (cryoSPARC)",
+                    # ".cs (cryoSPARC)",
                 ],
                 "Filaments": [".cbox", ".box (helicon)", ".star (Relion)"],
             },
@@ -95,13 +95,14 @@ class OrganizeLayerWidget(QWidget):
         self.save_layers["layer"].currentTextChanged.connect(
             self._update_format
         )
-        self._update_format()
 
         layout = QFormLayout()
         for name, widget in self.save_layers.items():
             layout.addRow(name.capitalize(), widget)
         inner_layout.addLayout(layout)
         inner_layout.addWidget(self.save_run_btn)
+
+        self._update_layer_combo()
 
     def _add_seperator(self):
         _ = QWidget(self)
@@ -173,7 +174,7 @@ class OrganizeLayerWidget(QWidget):
         )
 
     @Slot(object)
-    def _update_layer_combo(self, _):
+    def _update_layer_combo(self, *_):
         names = [
             entry.name
             for entry in self.napari_viewer.layers
@@ -181,6 +182,12 @@ class OrganizeLayerWidget(QWidget):
         ]
         self.save_layers["layer"].clear()
         self.save_layers["layer"].addItems([""] + names)
+        try:
+            self.save_layers["layer"].setCurrentText(
+                self.napari_viewer.layers.selection.active.name
+            )
+        except AttributeError:
+            pass
 
     @Slot(object)
     def _save_layer_changed(self, _):

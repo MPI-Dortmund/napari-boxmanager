@@ -1,4 +1,4 @@
-from box_manager.io.box import resample_filament
+from box_manager.io.io_utils import resample_filament
 import pandas as pd
 from unittest import TestCase
 import pytest
@@ -17,7 +17,7 @@ def test_resampling_simple_distance_1():
 
     fil = pd.DataFrame(input)
 
-    output = resample_filament(fil,1)
+    output = resample_filament(fil,1,["x","y"])
 
     exp_x_float = np.array(expected_output['x']).astype(float)
     exp_y_float = np.array(expected_output['y']).astype(float)
@@ -38,7 +38,7 @@ def test_resampling_simple_distance_2():
 
     fil = pd.DataFrame(input)
 
-    output = resample_filament(fil,2)
+    output = resample_filament(fil,2,["x","y"])
 
     exp_x_float = np.array(expected_output['x']).astype(float)
     exp_y_float = np.array(expected_output['y']).astype(float)

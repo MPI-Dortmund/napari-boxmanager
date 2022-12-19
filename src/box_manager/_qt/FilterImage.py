@@ -67,7 +67,6 @@ class FilterImageWidget(QWidget):
         self.napari_viewer.layers.events.removed.connect(self._update_combo)
 
         self._update_combo()
-        self.mask = None
 
     @Slot()
     def _run(self):

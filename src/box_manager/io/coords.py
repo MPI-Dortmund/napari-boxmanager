@@ -100,7 +100,9 @@ def _make_df_data(
 
 
 def from_napari(
-    path: os.PathLike, layer_data: list[NapariLayerData], suffix: str
+    path: os.PathLike,
+    layer_data: list[NapariLayerData],
+    suffix: str
 ):
     path = coordsio.from_napari(
         path=path,

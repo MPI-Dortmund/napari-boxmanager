@@ -29,7 +29,7 @@ def get_mask(lp_filter_resolution_ang: float, hp_filter_resolution_ang: float, p
         mask = (
                        (new_shape // 2 * 2 * hp_filter_frequency) ** 2 <= mesh_dist
                ) & mask
-    mask = gaussian_filter(mask.astype(float), sigma=4)
+    #mask = gaussian_filter(mask.astype(float), sigma=4)
     return mask
 
 def bandpass_filter(
@@ -48,10 +48,7 @@ def bandpass_filter(
             f"{lp_filter_resolution_ang} cannot be greater than {hp_filter_resolution_ang}"
         )
         return None
-    old_shape = input_data.shape
-    new_shape = np.max(old_shape)
 
-    # input_data = np.array(input_data)
     mask = get_mask(
         lp_filter_resolution_ang=lp_filter_resolution_ang,
         hp_filter_resolution_ang=hp_filter_resolution_ang,
@@ -61,26 +58,22 @@ def bandpass_filter(
 
 
     pad_list = []
-    for shape_i in old_shape:
-        diff_i = new_shape - shape_i
+    for shape_i in input_data.shape:
+        diff_i = np.max(input_data.shape) - shape_i
         pad_list.append([diff_i // 2, diff_i // 2 + diff_i % 2])
 
     pad_image = np.pad(input_data, pad_list, "symmetric")
 
-    print("fft")
     pad_image = fft.fftn(pad_image, workers=-1)
-    print("done")
     pad_image = fft.fftshift(pad_image)
 
-
     pad_image *= mask
-    print("fft")
     pad_image = fft.ifftshift(pad_image)
-    print("done")
     pad_image = fft.ifftn(pad_image, workers=-1)
 
     unpad_list = []
-    for pad_i, shape_i in zip(pad_list, old_shape):
-        unpad_list.append(np.s_[pad_i[0] : pad_i[0] + shape_i])
 
-    return pad_image.real[tuple(unpad_list)], mask
+    for pad_i, shape_i in zip(pad_list, input_data.shape):
+        unpad_list.append(np.s_[pad_i[0] : pad_i[0] + shape_i])
+    filtered = pad_image.real[tuple(unpad_list)]
+    return filtered, mask

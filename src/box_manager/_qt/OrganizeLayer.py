@@ -81,7 +81,7 @@ class OrganizeLayerWidget(QWidget):
                 "Filaments": [".cbox", ".box (helicon)", ".star (Relion)"],
             },
             "3D": {
-                "Particles": [".coords", ".tloc"],
+                "Particles": [".coords", ".tloc", ".cbox"],
                 "Filaments": [".box", ".coords"],
             },
         }

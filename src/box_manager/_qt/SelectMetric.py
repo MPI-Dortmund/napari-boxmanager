@@ -661,8 +661,8 @@ class SelectMetricWidget(QWidget):
         self.show_mode = QComboBox(self)
         self.show_mode.addItems(
             [
-                "Occupied",
                 "All",
+                "Occupied",
             ]
         )
         self.show_mode.currentTextChanged.connect(self._update_sync)

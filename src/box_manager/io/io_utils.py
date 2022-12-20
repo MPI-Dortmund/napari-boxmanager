@@ -392,8 +392,11 @@ def _write_particle_data(
             )
             export_data[output_file] = d
     else:
-        # gen filename here
-        export_data[path] = format_func(coordinates, boxsize, meta["features"])
+        filename = meta["metadata"]['original_path']
+        output_file = _generate_output_filename(
+            orignal_filename=filename, output_path=path, suffix=suffix
+        )
+        export_data[output_file] = format_func(coordinates, boxsize, meta["features"])
 
     for outpth in export_data:
         df = export_data[outpth]

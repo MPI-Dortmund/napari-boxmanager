@@ -72,6 +72,9 @@ def _prepare_napari_coords(
 
 
 def _write_coords(path: os.PathLike, df: pd.DataFrame, **kwargs):
+    if "empty_slices" in kwargs:
+        print(".coords does not support empty slices.")
+
     df[["x", "y", "z"]].to_csv(path, sep=" ", header=None, index=None)
 
 

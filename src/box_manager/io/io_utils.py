@@ -374,12 +374,14 @@ def _write_particle_data(
         is_2d_stacked = False
 
     if is_2d_stacked:
-        for z in np.unique(coordinates[:, 0]):
-            z = int(z)
-            mask = coordinates[:, 0] == z
-            filename = meta["metadata"][z]["name"]
-            if meta["metadata"][z]['write'] == False:
+        for z in meta["metadata"]:
+            if not isinstance(z,int) or meta["metadata"][z]['write'] == False:
                 continue
+            mask = coordinates[:, 0] == z
+            if np.sum(mask) == 0 and meta["metadata"][z]['write'] is not True:
+                continue
+
+            filename = meta["metadata"][z]["name"]
             kwargs["image_name"] = filename
             output_file = _generate_output_filename(
                 orignal_filename=filename, output_path=path, suffix=suffix
@@ -391,6 +393,7 @@ def _write_particle_data(
                 meta["features"].loc[mask, :],
             )
             export_data[output_file] = d
+
     else:
         filename = meta["metadata"]['original_path']
         output_file = _generate_output_filename(
@@ -447,7 +450,6 @@ def from_napari(
 
     last_file = ""
     for data, meta, layer in layer_data:
-
         is_filament_data = is_filament_layer(layer_data)
         if isinstance(data, list):
             data, meta = convert_shape_filament_layer_to_boxlayer(data, meta)

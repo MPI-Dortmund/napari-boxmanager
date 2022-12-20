@@ -392,18 +392,30 @@ def _write_particle_data(
                 boxsize[mask],
                 meta["features"].loc[mask, :],
             )
-            export_data[output_file] = d
+            export_data[output_file] = (d,{})
 
     else:
         filename = meta["metadata"]['original_path']
         output_file = _generate_output_filename(
             orignal_filename=filename, output_path=path, suffix=suffix
         )
-        export_data[output_file] = format_func(coordinates, boxsize, meta["features"])
+        empty_slices = []
+        slices_with_coords = np.unique(coordinates[:,0]).tolist()
+        for z in meta["metadata"]:
+            if not isinstance(z,int) or meta["metadata"][z]['write'] != True:
+                continue
+            if z in slices_with_coords:
+                continue
+            empty_slices.append(z)
+
+        export_data[output_file] = (
+            format_func(coordinates, boxsize, meta["features"]),
+            {"empty_slices": empty_slices}
+        )
 
     for outpth in export_data:
-        df = export_data[outpth]
-        write_func(outpth, df, **kwargs)
+        df = export_data[outpth][0]
+        write_func(outpth, df, **export_data[outpth][1])
     last_file = outpth
     return str(last_file)
 

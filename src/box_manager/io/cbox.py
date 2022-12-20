@@ -1,5 +1,6 @@
 import copy
 import os
+import sys
 
 import numpy as np
 import numpy.typing as npt
@@ -297,6 +298,7 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
 
 
 def write_cbox(path: os.PathLike, df: pd.DataFrame, **kwargs):
+
     sfile = star.StarFile(path)
 
     version_df = pd.DataFrame([["1.0"]], columns=["_cbox_format_version"])
@@ -309,6 +311,10 @@ def write_cbox(path: os.PathLike, df: pd.DataFrame, **kwargs):
                 for a in np.unique(df["_CoordinateZ"]).tolist()
                 if not np.isnan(a)
             ]
+
+    if "empty_slices" in kwargs:
+        include_slices.extend(kwargs["empty_slices"])
+    include_slices.sort()
 
     sfile.update("cryolo", df, True)
 

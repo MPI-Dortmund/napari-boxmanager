@@ -41,10 +41,6 @@ def to_napari(
         "pixel_spacing": voxel_size,
         "original_path": original_path,
     }
-    for idx, file_name in enumerate(path):
-        metadata[idx] = {}
-        metadata[idx]["path"] = file_name
-        metadata[idx]["name"] = os.path.basename(file_name)
 
     with mrcfile.open(path[0], permissive=True, header_only=True) as mrc:
         metadata["pixel_spacing"] = (
@@ -65,9 +61,15 @@ def to_napari(
                 data_list.append(tmp_data)
         data = np.squeeze(np.stack(data_list))
 
-
     metadata["is_3d"] = len(path) == 1 and data.ndim == 3
     metadata["is_2d_stack"] = len(path) > 1 and data.ndim == 3
+
+    if not metadata["is_3d"]:
+        for idx, file_name in enumerate(path):
+            metadata[idx] = {}
+            metadata[idx]["path"] = file_name
+            metadata[idx]["name"] = os.path.basename(file_name)
+
     add_kwargs = {"metadata": metadata, "name": name}
 
     layer_type = "image"  # optional, default is "image"

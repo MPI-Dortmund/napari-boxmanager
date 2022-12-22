@@ -1166,6 +1166,10 @@ class SelectMetricWidget(QWidget):
             for e1, e2 in features_copy.groupby("identifier", sort=False)
         }
 
+        try:
+            max_slice = max(loop_var)
+        except ValueError:
+            max_slice = 0
         for identifier in loop_var:
             try:
                 ident_df = slice_dict[identifier]
@@ -1183,6 +1187,7 @@ class SelectMetricWidget(QWidget):
                     identifier,
                     label_data,
                     name is not None,
+                    max_slice,
                 )
             )
 
@@ -1202,19 +1207,27 @@ class SelectMetricWidget(QWidget):
                     identifier,
                     label_data,
                     name is not None,
+                    0,
                 )
             )
 
         return output_list
 
     def _prepare_columns(
-        self, size, features, name, slice_idx, label_data, is_main_group
+        self,
+        size,
+        features,
+        name,
+        slice_idx,
+        label_data,
+        is_main_group,
+        max_slice,
     ) -> dict:
         output_dict = {}
         output_dict["write"] = ""
         output_dict["name"] = name
         if isinstance(slice_idx, int):
-            output_dict["slice"] = f"{slice_idx:0{len(str(len(label_data)))}d}"
+            output_dict["slice"] = f"{slice_idx:0{len(str(max_slice))}d}"
         else:
             output_dict["slice"] = str(slice_idx)
         output_dict["boxes"] = str(len(features))

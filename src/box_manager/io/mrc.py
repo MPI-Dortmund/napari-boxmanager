@@ -22,6 +22,8 @@ def to_napari(
     path: os.PathLike | list[os.PathLike],
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
 
+    is_2d_stack = isinstance(path, list) or "*" in path
+
     if not isinstance(path, list):
         original_path = path
         if len(path) >= MAX_LAYER_NAME + 3:
@@ -62,7 +64,10 @@ def to_napari(
         data = np.squeeze(np.stack(data_list))
 
     metadata["is_3d"] = len(path) == 1 and data.ndim == 3
-    metadata["is_2d_stack"] = len(path) > 1 and data.ndim == 3
+    metadata["is_2d_stack"] = is_2d_stack
+
+    if metadata["is_3d"] or metadata["is_2d_stack"] and data.ndim != 3:
+        data = np.expand_dims(data, axis=0)
 
     if not metadata["is_3d"]:
         for idx, file_name in enumerate(path):

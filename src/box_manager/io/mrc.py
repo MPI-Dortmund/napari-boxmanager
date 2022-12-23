@@ -66,7 +66,7 @@ def to_napari(
     metadata["is_3d"] = len(path) == 1 and data.ndim == 3
     metadata["is_2d_stack"] = is_2d_stack
 
-    if metadata["is_3d"] or metadata["is_2d_stack"] and data.ndim != 3:
+    if (metadata["is_3d"] or metadata["is_2d_stack"]) and data.ndim == 2:
         data = np.expand_dims(data, axis=0)
 
     if not metadata["is_3d"]:

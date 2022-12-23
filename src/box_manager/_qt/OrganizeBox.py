@@ -206,7 +206,7 @@ class OrganizeBoxWidget(QWidget):
                 .removeprefix(prefix_image)
             ): idx
             for idx, value in layer_image.metadata.items()
-            if isinstance(idx, int)
+            if isinstance(idx, int) and "path" in value
         }
 
         layer_coord = self.napari_viewer.layers[self.coord_layer.currentText()]
@@ -219,7 +219,7 @@ class OrganizeBoxWidget(QWidget):
                 .removeprefix(prefix_coord)
             ): idx
             for idx, value in layer_coord.metadata.items()
-            if isinstance(idx, int)
+            if isinstance(idx, int) and "path" in value
         }
 
         old_data, old_state, old_type_str = layer_coord.as_layer_data_tuple()

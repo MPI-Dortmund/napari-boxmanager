@@ -1,6 +1,5 @@
 import glob
 import os
-import sys
 import typing
 from collections.abc import Callable
 
@@ -11,15 +10,17 @@ from . import io as bm_readers
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
+
 def get_dir(path):
     layers = []
     for file_ext in bm_readers._VALID_IOS.keys():
-            files = glob.glob(os.path.join(path,f"*.{file_ext}"))
-            if not files:
-               continue
-            print("ext", file_ext)
-            layers.extend(bm_readers.get_reader(file_ext)(sorted(files)))
+        files = glob.glob(os.path.join(path, f"*.{file_ext}"))
+        if not files:
+            continue
+        print("ext", file_ext)
+        layers.extend(bm_readers.get_reader(file_ext)(sorted(files)))
     return layers
+
 
 def napari_get_reader(
     path: os.PathLike | list[os.PathLike],

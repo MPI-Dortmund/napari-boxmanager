@@ -7,10 +7,12 @@ import numpy as np
 import pandas as pd
 
 from .._utils import general
+from . import io_utils as coordsio
+from .interface import NapariLayerData
 from .io_utils import MAX_LAYER_NAME
 
 if typing.TYPE_CHECKING:
-    import numpy.typing as npt
+    pass
 
 
 def write(path: "os.PathLike", output_df: pd.DataFrame):
@@ -41,12 +43,18 @@ def get_valid_extensions():
     return ["tloc"]
 
 
+def _get_meta_idx():
+    return ["metric", "size"]
+
+
+def _get_feature_idx():
+    return ["grp_idx"]
+
+
 def to_napari(
     path: os.PathLike | list[os.PathLike],
-) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
-    input_df: pd.DataFrame
-    name: str
-    features: dict[str, typing.Any]
+) -> "list[NapariLayerData]":
+    file_name: str
 
     if not isinstance(path, list):
         path = sorted(glob.glob(path))  # type: ignore
@@ -54,46 +62,60 @@ def to_napari(
     output_dfs = []
     for file_name in path:  # type: ignore
         input_df = read(file_name)
-        napari_df = _prepare_napari(input_df)
-        for cluster_id, cluster_df in napari_df.groupby("grp_idx", sort=False):
+        r = coordsio.to_napari(
+            path=path,
+            read_func=read,
+            prepare_napari_func=_prepare_napari_box,
+            meta_columns=_get_meta_idx(),
+            feature_columns=_get_feature_idx(),
+            valid_extensions=get_valid_extensions(),
+        )
+
+        data, kwargs, napari_type = r[0]
+        metadata = kwargs["metadata"]
+        features = pd.DataFrame(kwargs["features"])
+        for cluster_id, cluster_df in features.groupby("grp_idx", sort=False):
+            new_kwargs = kwargs.copy()
+            new_metadata = {}
+            for key, value in metadata.items():
+                if isinstance(key, int):
+                    if key in set(cluster_df.index):
+                        new_metadata[key] = value
+                else:
+                    new_metadata[key] = value
+
             path = input_df.attrs["references"][cluster_id]
-            if len(path) >= MAX_LAYER_NAME + 3:
+            if len(file_name) >= MAX_LAYER_NAME + 3:
                 name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
             else:
                 name = path  # type: ignore
+
+            new_metadata["is_2d_stack"] = False
+            new_metadata["references"] = input_df.attrs
+            new_metadata["predicted_class"] = cluster_id
+
+            new_kwargs["name"] = name
+            new_kwargs["metadata"] = new_metadata
+            new_kwargs["features"] = cluster_df.drop(
+                columns=["grp_idx"]
+            ).reset_index(drop=True)
             output_dfs.append(
                 (
-                    cluster_id,
-                    file_name,
-                    name,
-                    cluster_df,
-                    input_df.attrs,
+                    data.iloc[cluster_df.index].reset_index(drop=True),
+                    new_kwargs,
+                    napari_type,
                 )
             )
 
     colors = mcm.get_cmap("gist_rainbow")
     n_layers = np.maximum(len(output_dfs), 2)  # Avoid zero division
 
-    output_layers = []
-    for idx, (
-        cluster_id,
-        file_name,
-        cluster_name,
-        cluster_df,
-        attrs,
-    ) in enumerate(output_dfs):
-        cur_color = colors(idx / (n_layers - 1))
-        metadata = {
-            "input_attrs": attrs,
-            "predicted_class": cluster_id,
-            "set_lock": True,
-        }
-        for idx in range(
-            int(cluster_df[["x", "y", "z"]].max().max().round(0)) + 1
-        ):
-            idx_view_df = cluster_df.loc[cluster_df["x"].round(0) == idx, :]
+    for cidx, (data, kwargs, _) in enumerate(output_dfs):
+        metadata = kwargs["metadata"]
+        for idx in range(int(data[["x", "y", "z"]].max().max().round(0)) + 1):
+            idx_view_df = kwargs["features"].loc[data["x"].round(0) == idx, :]
             metadata[idx] = {
-                "path": file_name,
+                "path": kwargs["metadata"]["original_path"],
                 "name": "slice",
                 "write": None,
             }
@@ -106,30 +128,103 @@ def to_napari(
                     for entry in _get_meta_idx()
                 }
             )
-        features = {
-            entry: cluster_df[entry].to_numpy()
-            for entry in _get_meta_idx() + _get_hidden_meta_idx()
-        }
-        kwargs = {
-            "edge_color": [cur_color],
-            "face_color": "transparent",
-            "symbol": "disc",
-            "edge_width": 2,
-            "edge_width_is_relative": False,
-            "size": cluster_df["boxsize"],
-            "out_of_slice_display": True,
-            "opacity": 0.5,
-            "name": cluster_name,
-            "metadata": metadata,
-            "features": features,
-        }
-        output_layers.append(
-            (cluster_df[_get_3d_coords_idx()], kwargs, "points")
-        )
 
-    return output_layers
+        cur_color = colors(cidx / (n_layers - 1))
+        kwargs["edge_color"] = [cur_color]
+
+    return output_dfs
 
 
+# def to_napari_old(
+#    path: os.PathLike | list[os.PathLike],
+# ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
+#    print("OLD")
+#    input_df: pd.DataFrame
+#    name: str
+#    features: dict[str, typing.Any]
+#
+#    if not isinstance(path, list):
+#        path = sorted(glob.glob(path))  # type: ignore
+#
+#    output_dfs = []
+#    for file_name in path:  # type: ignore
+#        input_df = read(file_name)
+#        napari_df = _prepare_napari(input_df)
+#        for cluster_id, cluster_df in napari_df.groupby("grp_idx", sort=False):
+#            path = input_df.attrs["references"][cluster_id]
+#            if len(path) >= MAX_LAYER_NAME + 3:
+#                name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
+#            else:
+#                name = path  # type: ignore
+#            output_dfs.append(
+#                (
+#                    cluster_id,
+#                    file_name,
+#                    name,
+#                    cluster_df,
+#                    input_df.attrs,
+#                )
+#            )
+#
+#    colors = mcm.get_cmap("gist_rainbow")
+#    n_layers = np.maximum(len(output_dfs), 2)  # Avoid zero division
+#
+#    output_layers = []
+#    for idx, (
+#        cluster_id,
+#        file_name,
+#        cluster_name,
+#        cluster_df,
+#        attrs,
+#    ) in enumerate(output_dfs):
+#        cur_color = colors(idx / (n_layers - 1))
+#        metadata = {
+#            "input_attrs": attrs,
+#            "predicted_class": cluster_id,
+#            "set_lock": True,
+#        }
+#        for idx in range(
+#            int(cluster_df[["x", "y", "z"]].max().max().round(0)) + 1
+#        ):
+#            idx_view_df = cluster_df.loc[cluster_df["x"].round(0) == idx, :]
+#            metadata[idx] = {
+#                "path": file_name,
+#                "name": "slice",
+#                "write": None,
+#            }
+#            metadata[idx].update(
+#                {
+#                    f"{entry}_{'min' if 'min' in func.__name__ else 'max'}": func(
+#                        idx_view_df[entry]
+#                    )
+#                    for func in [general.get_min_floor, general.get_max_floor]
+#                    for entry in _get_meta_idx()
+#                }
+#            )
+#        features = {
+#            entry: cluster_df[entry].to_numpy()
+#            for entry in _get_meta_idx() + _get_hidden_meta_idx()
+#        }
+#        kwargs = {
+#            "edge_color": [cur_color],
+#            "face_color": "transparent",
+#            "symbol": "disc",
+#            "edge_width": 2,
+#            "edge_width_is_relative": False,
+#            "size": cluster_df["boxsize"],
+#            "out_of_slice_display": True,
+#            "opacity": 0.5,
+#            "name": cluster_name,
+#            "metadata": metadata,
+#            "features": features,
+#        }
+#        output_layers.append(
+#            (cluster_df[_get_3d_coords_idx()], kwargs, "points")
+#        )
+#
+#    return output_layers
+#
+#
 def from_napari(
     path: os.PathLike,
     layer_data: typing.Any,
@@ -168,7 +263,7 @@ def from_napari(
     return path
 
 
-def _prepare_napari(
+def _prepare_napari_box(
     input_df: pd.DataFrame,
 ) -> pd.DataFrame:
     output_data: pd.DataFrame = pd.DataFrame(
@@ -191,16 +286,8 @@ def _prepare_napari(
     return output_data
 
 
-def _prepare_df(input_df: pd.DataFrame):
-    pass
-
-
 def _get_3d_coords_idx():
     return ["x", "y", "z"]
-
-
-def _get_meta_idx():
-    return ["metric", "size"]
 
 
 def _get_hidden_meta_idx():

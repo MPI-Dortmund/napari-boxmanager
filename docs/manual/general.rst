@@ -34,5 +34,3 @@ Matching Module
 ^^^^^^^^^^^^^^^
 
 Describe how it works. Important: The star has to be at the same position for images and box
-
-

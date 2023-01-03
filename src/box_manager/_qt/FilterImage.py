@@ -1,6 +1,7 @@
 import typing
 
 import napari.layers
+import numpy as np
 from napari.utils.notifications import show_info
 from qtpy.QtCore import QRegularExpression, Slot
 from qtpy.QtGui import QRegularExpressionValidator
@@ -12,7 +13,6 @@ from qtpy.QtWidgets import (
     QPushButton,
     QWidget,
 )
-import numpy as np
 
 from .._utils import filters
 
@@ -180,7 +180,9 @@ class FilterImageWidget(QWidget):
                 log=show_info,
                 **kwargs,
             )
-            filtered_image = (filtered_image-np.mean(filtered_image))/np.std(filtered_image)
+            filtered_image = (
+                filtered_image - np.mean(filtered_image)
+            ) / np.std(filtered_image)
         except TypeError:
             return None, None
 

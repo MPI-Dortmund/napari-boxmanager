@@ -1,9 +1,14 @@
 import numpy as np
 import numpy.typing as npt
 import scipy.fft as fft
-from scipy.ndimage import gaussian_filter
 
-def get_mask(lp_filter_resolution_ang: float, hp_filter_resolution_ang: float, pixel_size: float, input_shape) -> np.array:
+
+def get_mask(
+    lp_filter_resolution_ang: float,
+    hp_filter_resolution_ang: float,
+    pixel_size: float,
+    input_shape,
+) -> np.array:
     old_shape = input_shape
     new_shape = np.max(old_shape)
     box_range = np.arange(-new_shape // 2 + 1, 1 + new_shape // 2)
@@ -21,16 +26,17 @@ def get_mask(lp_filter_resolution_ang: float, hp_filter_resolution_ang: float, p
     if lp_filter_resolution_ang != 0:
         lp_filter_frequency = pixel_size / lp_filter_resolution_ang
         mask = (
-                       mesh_dist <= (new_shape // 2 * 2 * lp_filter_frequency) ** 2
-               ) & mask
+            mesh_dist <= (new_shape // 2 * 2 * lp_filter_frequency) ** 2
+        ) & mask
 
     if hp_filter_resolution_ang != 0:
         hp_filter_frequency = pixel_size / hp_filter_resolution_ang
         mask = (
-                       (new_shape // 2 * 2 * hp_filter_frequency) ** 2 <= mesh_dist
-               ) & mask
-    #mask = gaussian_filter(mask.astype(float), sigma=4)
+            (new_shape // 2 * 2 * hp_filter_frequency) ** 2 <= mesh_dist
+        ) & mask
+    # mask = gaussian_filter(mask.astype(float), sigma=4)
     return mask
+
 
 def bandpass_filter(
     input_data: npt.ArrayLike,
@@ -53,9 +59,8 @@ def bandpass_filter(
         lp_filter_resolution_ang=lp_filter_resolution_ang,
         hp_filter_resolution_ang=hp_filter_resolution_ang,
         pixel_size=pixel_size,
-        input_shape=input_data.shape
+        input_shape=input_data.shape,
     )
-
 
     pad_list = []
     for shape_i in input_data.shape:

@@ -1,12 +1,14 @@
 import os
 import typing
 
+import numpy.typing as npt
 import pandas as pd
 
-import numpy.typing as npt
-
 NapariMetaData = dict[str, typing.Any]
-NapariLayerData = tuple[npt.ArrayLike | list[npt.ArrayLike], NapariMetaData, str]
+NapariLayerData = tuple[
+    npt.ArrayLike | list[npt.ArrayLike], NapariMetaData, str
+]
+
 
 class IOInterface(typing.Protocol):
     def to_napari(

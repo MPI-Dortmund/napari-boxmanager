@@ -4,6 +4,7 @@ import typing
 
 import matplotlib.cm as mcm
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from .._utils import general
@@ -225,10 +226,14 @@ def to_napari(
 #    return output_layers
 #
 #
-def from_napari(
-    path: os.PathLike,
-    layer_data: typing.Any,
-):
+
+
+def _format_tloc(
+    coordinates: pd.DataFrame,
+    box_size: npt.ArrayLike,
+    features: pd.DataFrame,
+    metadata: dict[str, typing.Any],
+) -> pd.DataFrame:
     column_names = [
         "X",
         "Y",
@@ -240,27 +245,77 @@ def from_napari(
         "height",
         "depth",
     ]
-    output_dfs = []
-    for coords, meta, _ in layer_data:
-        shown_mask = meta["shown"]
-        data_df = pd.DataFrame(columns=column_names)
-        features = meta["features"]
-        data_df["X"] = coords[shown_mask, 2]
-        data_df["Y"] = coords[shown_mask, 1]
-        data_df["Z"] = coords[shown_mask, 0]
-        data_df["predicted_class"] = meta["metadata"]["predicted_class"]
-        data_df["size"] = features.loc[shown_mask, "size"].to_numpy()
-        data_df["metric_best"] = features.loc[shown_mask, "metric"].to_numpy()
-        data_df["width"] = meta["size"][shown_mask, 2]
-        data_df["height"] = meta["size"][shown_mask, 1]
-        data_df["depth"] = meta["size"][shown_mask, 0]
-        data_df.attrs = meta["metadata"]["input_attrs"]
-        output_dfs.append(data_df)
 
-    output_df = pd.concat(output_dfs, ignore_index=True, axis=0)
-    write(path, output_df)
+    data_df = pd.DataFrame(columns=column_names)
+    data_df["X"] = coordinates[..., 2]
+    data_df["Y"] = coordinates[..., 1]
+    data_df["Z"] = coordinates[..., 0]
 
+    data_df["size"] = features["size"].to_numpy()
+    data_df["metric_best"] = features["metric"].to_numpy()
+
+    data_df["predicted_class"] = metadata["predicted_class"]
+    data_df["width"] = box_size
+    data_df["height"] = box_size
+    data_df["depth"] = box_size
+    data_df.attrs = metadata["references"]
+
+    return data_df
+
+
+def _write_tloc(path: os.PathLike, df: pd.DataFrame, **kwargs):
+    write(path, df)
+
+
+def from_napari(
+    path: os.PathLike, layer_data: list[NapariLayerData], suffix: str
+):
+    path = coordsio.from_napari(
+        path=path,
+        layer_data=layer_data,
+        write_func=_write_tloc,
+        format_func=_format_tloc,
+        suffix=suffix,
+    )
     return path
+
+
+# def from_napari_old(
+#    path: os.PathLike,
+#    layer_data: typing.Any,
+# ):
+#    column_names = [
+#        "X",
+#        "Y",
+#        "Z",
+#        "predicted_class",
+#        "size",
+#        "metric_best",
+#        "width",
+#        "height",
+#        "depth",
+#    ]
+#    output_dfs = []
+#    for coords, meta, _ in layer_data:
+#        shown_mask = meta["shown"]
+#        data_df = pd.DataFrame(columns=column_names)
+#        features = meta["features"]
+#        data_df["X"] = coords[shown_mask, 2]
+#        data_df["Y"] = coords[shown_mask, 1]
+#        data_df["Z"] = coords[shown_mask, 0]
+#        data_df["predicted_class"] = meta["metadata"]["predicted_class"]
+#        data_df["size"] = features.loc[shown_mask, "size"].to_numpy()
+#        data_df["metric_best"] = features.loc[shown_mask, "metric"].to_numpy()
+#        data_df["width"] = meta["size"][shown_mask, 2]
+#        data_df["height"] = meta["size"][shown_mask, 1]
+#        data_df["depth"] = meta["size"][shown_mask, 0]
+#        data_df.attrs = meta["metadata"]["input_attrs"]
+#        output_dfs.append(data_df)
+#
+#    output_df = pd.concat(output_dfs, ignore_index=True, axis=0)
+#    write(path, output_df)
+#
+#    return path
 
 
 def _prepare_napari_box(

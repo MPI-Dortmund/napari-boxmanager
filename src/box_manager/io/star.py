@@ -1,39 +1,43 @@
-import sys
-
-import pandas as pd
-from pyStarDB import sp_pystardb as star
 import os
-from . import io_utils as coordsio
+import tempfile
 import typing
-from .interface import NapariLayerData
+
 import numpy as np
 import numpy.typing as npt
-import tempfile
+import pandas as pd
+from pyStarDB import sp_pystardb as star
 
-DEFAULT_BOXSIZE=200
+from . import io_utils as coordsio
+from .interface import NapariLayerData
+
+DEFAULT_BOXSIZE = 200
+
 
 def get_valid_extensions():
     return ["star", "cs"]
+
 
 ###################
 # READ FUNCTIONS
 ###################
 
+
 def read(path: "os.PathLike") -> pd.DataFrame:
     sfile = star.StarFile(path)
-    if 'particles' in sfile:
-        #relion 3.1
-        box_data = sfile['particles']
+    if "particles" in sfile:
+        # relion 3.1
+        box_data = sfile["particles"]
     else:
-        box_data = sfile['']
+        box_data = sfile[""]
 
     return box_data
+
 
 def _prepare_napari_coords(
     input_df: pd.DataFrame,
 ) -> pd.DataFrame:
-    is_3d = '_rlnCoordinateZ' in input_df.columns
-    is_filament = '_rlnHelicalTubeID' in input_df.columns
+    is_3d = "_rlnCoordinateZ" in input_df.columns
+    is_filament = "_rlnHelicalTubeID" in input_df.columns
     columns = ["z", "y"]
     if is_3d:
         columns.append("x")
@@ -47,44 +51,48 @@ def _prepare_napari_coords(
     if is_filament:
         output_data["fid"] = input_df["_rlnHelicalTubeID"]
 
-    if '_rlnAutopickFigureOfMerit' in input_df.columns:
+    if "_rlnAutopickFigureOfMerit" in input_df.columns:
         output_data["confidence"] = input_df["_rlnAutopickFigureOfMerit"]
 
     output_data["boxsize"] = DEFAULT_BOXSIZE
 
     return output_data
 
-def _split_star(path_star: str, output_dir : str) -> typing.Union[typing.List[str], str]:
+
+def _split_star(
+    path_star: str, output_dir: str
+) -> typing.Union[typing.List[str], str]:
     """
     Splits star file in case it contains coordinates for multiple micrographs
     """
     data = read(path_star)
-    if '_rlnMicrographName' not in data.columns:
+    if "_rlnMicrographName" not in data.columns:
         return path_star
 
-    unique_micrographs = np.unique(data['_rlnMicrographName']).tolist()
+    unique_micrographs = np.unique(data["_rlnMicrographName"]).tolist()
     if len(unique_micrographs) == 1:
         return path_star
-    os.makedirs(output_dir,exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
     file_extension = os.path.splitext(os.path.basename(path_star))[1]
     new_paths = []
     for mic in unique_micrographs:
-        mask = data['_rlnMicrographName']==mic
+        mask = data["_rlnMicrographName"] == mic
         mic_data = data[mask]
-        pth = os.path.join(output_dir, os.path.splitext(os.path.basename(mic))[0] + file_extension)
+        pth = os.path.join(
+            output_dir,
+            os.path.splitext(os.path.basename(mic))[0] + file_extension,
+        )
         _write_star(pth, mic_data)
         new_paths.append(pth)
     return new_paths
-
 
 
 def to_napari(
     path: typing.Union[os.PathLike, list[os.PathLike]],
 ) -> "list[NapariLayerData]":
 
-
     with tempfile.TemporaryDirectory() as tmpdir:
-        if not isinstance(path,list):
+        if not isinstance(path, list):
             path = _split_star(path, tmpdir)
 
         r = coordsio.to_napari(
@@ -92,17 +100,21 @@ def to_napari(
             read_func=read,
             prepare_napari_func=_prepare_napari_coords,
             meta_columns=["confidence"],
-            feature_columns=["fid","boxsize"],
-            valid_extensions=get_valid_extensions()
+            feature_columns=["fid", "boxsize"],
+            valid_extensions=get_valid_extensions(),
         )
 
     return r
+
 
 ###################
 # WRITE FUNCTIONS
 ###################
 def _make_df_data_particle(
-    coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
+    coordinates: pd.DataFrame,
+    box_size: npt.ArrayLike,
+    features: pd.DataFrame,
+    **kwargs
 ) -> pd.DataFrame:
     data = {
         "_rlnCoordinateX": [],
@@ -127,8 +139,12 @@ def _make_df_data_particle(
 
     return pd.DataFrame(data)
 
+
 def _make_df_data_filament(
-    coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
+    coordinates: pd.DataFrame,
+    box_size: npt.ArrayLike,
+    features: pd.DataFrame,
+    **kwargs
 ) -> pd.DataFrame:
     data = {
         "_rlnCoordinateX": [],
@@ -137,11 +153,15 @@ def _make_df_data_filament(
     }
     filaments = []
     box_size_per_filament = []
+    last_box_size = -1
     for (y, x, fid), boxsize in zip(
-            coordinates,
-            box_size,
+        coordinates,
+        box_size,
     ):
-        if len(data["_rlnHelicalTubeID"]) > 0 and data["_rlnHelicalTubeID"][-1] != fid:
+        if (
+            len(data["_rlnHelicalTubeID"]) > 0
+            and data["_rlnHelicalTubeID"][-1] != fid
+        ):
             filaments.append(pd.DataFrame(data))
             box_size_per_filament.append(last_box_size)
             data = {
@@ -149,7 +169,6 @@ def _make_df_data_filament(
                 "_rlnCoordinateY": [],
                 "_rlnHelicalTubeID": [],
             }
-
 
         data["_rlnCoordinateX"].append(x)
         data["_rlnCoordinateY"].append(y)
@@ -173,15 +192,15 @@ def _make_df_data_filament(
 
     return pd.concat(filaments)
 
+
 def _write_star(path: os.PathLike, df: pd.DataFrame, **kwargs):
 
     sfile = star.StarFile(path)
 
     sfile.update("", df, True)
 
-    sfile.write_star_file(
-        overwrite=True, tags=[""]
-    )
+    sfile.write_star_file(overwrite=True, tags=[""])
+
 
 def from_napari(
     path: os.PathLike, layer_data: list[NapariLayerData], suffix: str
@@ -197,7 +216,7 @@ def from_napari(
         layer_data=layer_data,
         write_func=_write_star,
         format_func=format_func,
-        suffix=suffix
+        suffix=suffix,
     )
 
     return path

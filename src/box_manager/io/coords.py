@@ -1,11 +1,10 @@
 import os
-import typing
 
 import numpy.typing as npt
 import pandas as pd
 
-from .interface import NapariLayerData
 from . import io_utils as coordsio
+from .interface import NapariLayerData
 
 
 class BoxFileNumberOfColumnsError(pd.errors.IntCastingNaNError):
@@ -54,7 +53,7 @@ def to_napari(
         prepare_napari_func=_prepare_napari_coords,
         meta_columns=[],
         feature_columns=[],
-        valid_extensions=get_valid_extensions()
+        valid_extensions=get_valid_extensions(),
     )
 
 
@@ -79,12 +78,14 @@ def _write_coords(path: os.PathLike, df: pd.DataFrame, **kwargs):
 
 
 def _make_df_data(
-    coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
+    coordinates: pd.DataFrame,
+    box_size: npt.ArrayLike,
+    features: pd.DataFrame,
+    **kwargs
 ) -> pd.DataFrame:
     data = {"x": [], "y": [], "z": [], "boxsize": []}
 
     is_filament_data = coordinates.shape[1] == 4
-
 
     for coords, boxsize in zip(
         coordinates,
@@ -103,15 +104,13 @@ def _make_df_data(
 
 
 def from_napari(
-    path: os.PathLike,
-    layer_data: list[NapariLayerData],
-    suffix: str
+    path: os.PathLike, layer_data: list[NapariLayerData], suffix: str
 ):
     path = coordsio.from_napari(
         path=path,
         layer_data=layer_data,
         write_func=_write_coords,
         format_func=_make_df_data,
-        suffix=suffix
+        suffix=suffix,
     )
     return path

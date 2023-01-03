@@ -3,7 +3,6 @@ import io
 import itertools
 import os
 import pathlib
-import sys
 import typing
 import warnings
 from collections.abc import Callable
@@ -43,6 +42,7 @@ class FormatFunc(Protocol):
         coordinates: pd.DataFrame,
         boxsize: npt.ArrayLike,
         features: pd.DataFrame,
+        **kwargs: dict,
     ) -> pd.DataFrame:
         ...
 
@@ -213,7 +213,7 @@ def to_napari(
     prepare_napari_func: Callable,
     meta_columns: typing.List[str] = [],
     feature_columns: typing.List[str] = [],
-    valid_extensions: typing.List[str] = []
+    valid_extensions: typing.List[str] = [],
 ) -> "list[NapariLayerData]":
 
     input_df_list: list[pd.DataFrame]
@@ -271,7 +271,9 @@ def to_napari(
     return [(dat, kwargs, layer_type)]
 
 
-def _generate_output_filename(orignal_filename: str, output_path: os.PathLike, suffix=""):
+def _generate_output_filename(
+    orignal_filename: str, output_path: os.PathLike, suffix=""
+):
     if not os.path.isdir(output_path):
         dirname = os.path.dirname(output_path)
         basename, extension = os.path.splitext(os.path.basename(output_path))
@@ -347,7 +349,7 @@ def _write_particle_data(
     meta: NapariLayerData,
     format_func: FormatFunc,
     write_func: Callable[[os.PathLike, pd.DataFrame, ...], typing.Any],
-    suffix: str = ""
+    suffix: str = "",
 ):
     if data.shape[1] == 2:
         data = np.insert(data, 0, 0, axis=1)
@@ -375,10 +377,10 @@ def _write_particle_data(
 
     if is_2d_stacked:
         for z in meta["metadata"]:
-            if not isinstance(z,int) or meta["metadata"][z]['write'] == False:
+            if not isinstance(z, int) or meta["metadata"][z]["write"] is False:
                 continue
             mask = coordinates[:, 0] == z
-            if np.sum(mask) == 0 and meta["metadata"][z]['write'] is not True:
+            if np.sum(mask) == 0 and meta["metadata"][z]["write"] is not True:
                 continue
 
             filename = meta["metadata"][z]["name"]
@@ -388,29 +390,38 @@ def _write_particle_data(
             )
 
             d = format_func(
-                coordinates[mask, 1:],
-                boxsize[mask],
-                meta["features"].loc[mask, :],
+                coordinates=coordinates[mask, 1:],
+                box_size=boxsize[mask],
+                features=meta["features"].loc[mask, :],
+                metadata=meta["metadata"],
             )
-            export_data[output_file] = (d,{})
+            export_data[output_file] = (d, {})
 
     else:
-        filename = meta["metadata"]['original_path']
+        filename = meta["metadata"]["original_path"]
         output_file = _generate_output_filename(
             orignal_filename=filename, output_path=path, suffix=suffix
         )
         empty_slices = []
-        slices_with_coords = np.unique(coordinates[:,0]).tolist()
+        slices_with_coords = np.unique(coordinates[:, 0]).tolist()
         for z in meta["metadata"]:
-            if not isinstance(z,int) or meta["metadata"][z]['write'] != True:
+            if (
+                not isinstance(z, int)
+                or meta["metadata"][z]["write"] is not True
+            ):
                 continue
             if z in slices_with_coords:
                 continue
             empty_slices.append(z)
 
         export_data[output_file] = (
-            format_func(coordinates, boxsize, meta["features"]),
-            {"empty_slices": empty_slices}
+            format_func(
+                coordinates=coordinates,
+                box_size=boxsize,
+                features=meta["features"],
+                metadata=meta["metadata"],
+            ),
+            {"empty_slices": empty_slices},
         )
 
     for outpth in export_data:
@@ -457,7 +468,7 @@ def from_napari(
     write_func: Callable[
         [os.PathLike, pd.DataFrame | list[pd.DataFrame]], typing.Any
     ],
-    suffix=""
+    suffix="",
 ) -> os.PathLike:
 
     last_file = ""

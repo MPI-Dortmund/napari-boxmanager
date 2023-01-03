@@ -1,6 +1,5 @@
 import copy
 import os
-import sys
 
 import numpy as np
 import numpy.typing as npt
@@ -37,7 +36,7 @@ def to_napari(
         prepare_napari_func=_prepare_napari,
         meta_columns=_get_meta_columns(),
         feature_columns=_get_feature_columns(),
-        valid_extensions=get_valid_extensions()
+        valid_extensions=get_valid_extensions(),
     )
 
     return r
@@ -67,7 +66,7 @@ def read(path: os.PathLike) -> pd.DataFrame:
 def from_napari(
     path: os.PathLike | list[os.PathLike] | pd.DataFrame,
     layer_data: list[NapariLayerData],
-    suffix: str
+    suffix: str,
 ):
     is_filament = coordsio.is_filament_layer(layer_data)
 
@@ -81,7 +80,7 @@ def from_napari(
         layer_data=layer_data,
         write_func=write_cbox,
         format_func=format_func,
-        suffix=suffix
+        suffix=suffix,
     )
     return output_path
 
@@ -95,7 +94,10 @@ def from_napari(
 
 
 def _make_df_data_filament(
-    coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
+    coordinates: pd.DataFrame,
+    box_size: npt.ArrayLike,
+    features: pd.DataFrame,
+    **kwargs
 ) -> pd.DataFrame:
 
     is_3d = coordinates.shape[1] == 4
@@ -327,7 +329,10 @@ def write_cbox(path: os.PathLike, df: pd.DataFrame, **kwargs):
 
 
 def _make_df_data(
-    coordinates: pd.DataFrame, box_size: npt.ArrayLike, features: pd.DataFrame
+    coordinates: pd.DataFrame,
+    box_size: npt.ArrayLike,
+    features: pd.DataFrame,
+    **kwargs
 ) -> pd.DataFrame:
     data = {
         "_CoordinateX": [],

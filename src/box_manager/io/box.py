@@ -202,7 +202,7 @@ def to_napari(
         prepare_napari_func=_prepare_napari_box,
         meta_columns=_get_meta_idx(),
         feature_columns=_get_feature_idx(),
-        valid_extensions=get_valid_extensions()
+        valid_extensions=get_valid_extensions(),
     )
     return r
 
@@ -253,7 +253,10 @@ def _write_box(path: os.PathLike, df: pd.DataFrame, **kwargs):
 
 
 def _make_df_data_particle(
-    coordinates: pd.DataFrame, box_size: npt.ArrayLike, feature: pd.DataFrame
+    coordinates: pd.DataFrame,
+    box_size: npt.ArrayLike,
+    features: pd.DataFrame,
+    **kwargs
 ) -> pd.DataFrame:
     data = {"x": [], "y": [], "boxsize": []}
     for (y, x), boxsize in zip(
@@ -267,7 +270,10 @@ def _make_df_data_particle(
 
 
 def _make_df_data_filament(
-    coordinates: pd.DataFrame, box_size: npt.ArrayLike, feature: pd.DataFrame
+    coordinates: pd.DataFrame,
+    box_size: npt.ArrayLike,
+    features: pd.DataFrame,
+    **kwargs
 ) -> list[pd.DataFrame]:
     data = {"x": [], "y": [], "fid": [], "boxsize": []}
     filaments = []
@@ -299,10 +305,9 @@ def _make_df_data_filament(
     return filaments
 
 
-def from_napari(path: os.PathLike,
-                layer_data: list[NapariLayerData],
-                suffix: str
-                ):
+def from_napari(
+    path: os.PathLike, layer_data: list[NapariLayerData], suffix: str
+):
     is_filament = coordsio.is_filament_layer(layer_data)
     if is_filament:
         format_func = _make_df_data_filament
@@ -315,7 +320,7 @@ def from_napari(path: os.PathLike,
         layer_data=layer_data,
         write_func=write_func,
         format_func=format_func,
-        suffix=suffix
+        suffix=suffix,
     )
 
     return path

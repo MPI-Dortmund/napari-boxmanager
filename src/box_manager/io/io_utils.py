@@ -276,14 +276,14 @@ def _generate_output_filename(
 ):
     if not os.path.isdir(output_path):
         dirname = os.path.dirname(output_path)
-        basename, extension = os.path.splitext(os.path.basename(output_path))
+        file_base, extension = os.path.splitext(os.path.basename(output_path))
         if not extension:  # in case '.box' is provided as output path.
-            basename, extension = extension, basename
+            file_base, extension = extension, file_base
     else:
         extension = suffix
         dirname = output_path
+        file_base = os.path.splitext(os.path.basename(orignal_filename))[0]
 
-    file_base = os.path.splitext(os.path.basename(orignal_filename))[0]
     output_file = pathlib.Path(dirname, file_base + extension)
     return output_file
 

@@ -260,9 +260,9 @@ class OrganizeLayerWidget(QWidget):
         self.save_layers["type"].blockSignals(prev_signal)
 
         if self.save_layers["type"].currentText() == "Filaments":
-            self.save_layers["filament spacing"].setEnabled(True)
+            self.save_layers["filament spacing"].setVisible(True)
         else:
-            self.save_layers["filament spacing"].setEnabled(False)
+            self.save_layers["filament spacing"].setVisible(False)
 
         self.save_layers["format"].clear()
         try:

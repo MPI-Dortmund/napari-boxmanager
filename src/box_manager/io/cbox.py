@@ -67,6 +67,7 @@ def from_napari(
     path: os.PathLike | list[os.PathLike] | pd.DataFrame,
     layer_data: list[NapariLayerData],
     suffix: str,
+    filament_spacing: float,
 ):
     is_filament = coordsio.is_filament_layer(layer_data)
 
@@ -81,6 +82,7 @@ def from_napari(
         write_func=write_cbox,
         format_func=format_func,
         suffix=suffix,
+        filament_spacing=filament_spacing,
     )
     return output_path
 

@@ -268,7 +268,10 @@ def _write_tloc(path: os.PathLike, df: pd.DataFrame, **kwargs):
 
 
 def from_napari(
-    path: os.PathLike, layer_data: list[NapariLayerData], suffix: str
+    path: os.PathLike,
+    layer_data: list[NapariLayerData],
+    suffix: str,
+    filament_spacing: float,
 ):
     path = coordsio.from_napari(
         path=path,
@@ -276,6 +279,7 @@ def from_napari(
         write_func=_write_tloc,
         format_func=_format_tloc,
         suffix=suffix,
+        filament_spacing=filament_spacing,
     )
     return path
 

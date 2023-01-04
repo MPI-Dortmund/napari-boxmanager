@@ -23,6 +23,8 @@ class IOInterface(typing.Protocol):
     def from_napari(
         self,
         path: os.PathLike | list[os.PathLike] | pd.DataFrame,
-        data: list[NapariLayerData],
+        layer_data: list[NapariLayerData],
+        suffix: str,
+        filament_spacing: float,
     ):
         ...

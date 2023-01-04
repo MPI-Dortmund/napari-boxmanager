@@ -42,7 +42,7 @@ class FormatFunc(Protocol):
         coordinates: pd.DataFrame,
         boxsize: npt.ArrayLike,
         features: pd.DataFrame,
-        **kwargs: dict,
+        metadata: dict,
     ) -> pd.DataFrame:
         ...
 
@@ -469,6 +469,7 @@ def from_napari(
         [os.PathLike, pd.DataFrame | list[pd.DataFrame]], typing.Any
     ],
     suffix="",
+    filament_spacing=0,
 ) -> os.PathLike:
 
     last_file = ""

@@ -104,7 +104,10 @@ def _make_df_data(
 
 
 def from_napari(
-    path: os.PathLike, layer_data: list[NapariLayerData], suffix: str
+    path: os.PathLike,
+    layer_data: list[NapariLayerData],
+    suffix: str,
+    filament_spacing: float,
 ):
     path = coordsio.from_napari(
         path=path,
@@ -112,5 +115,6 @@ def from_napari(
         write_func=_write_coords,
         format_func=_make_df_data,
         suffix=suffix,
+        filament_spacing=filament_spacing,
     )
     return path

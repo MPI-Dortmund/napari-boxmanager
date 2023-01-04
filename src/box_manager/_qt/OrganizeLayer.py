@@ -5,8 +5,9 @@ import napari
 import napari.layers
 import numpy as np
 from napari.layers.shapes._shapes_constants import Mode
+from napari.utils.notifications import show_error
 from qtpy.QtCore import Slot
-from qtpy.QtGui import QIcon
+from qtpy.QtGui import QDoubleValidator, QIcon
 from qtpy.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -63,12 +64,17 @@ class OrganizeLayerWidget(QWidget):
             "dimension": QComboBox(self),
             "type": QComboBox(self),
             "format": QComboBox(self),
+            "filament spacing": QLineEdit(self),
             "suffix": QLineEdit(self),
         }
         self.save_layers["layer"].addItems([""])
         self.save_layers["dimension"].addItems(["", "2D", "3D"])
         self.save_layers["type"].addItems(["", "Particles", "Filaments"])
         self.save_layers["suffix"].setPlaceholderText("e.g., _suffix")
+        self.save_layers["filament spacing"].setPlaceholderText(
+            "spacing in pixel"
+        )
+        self.save_layers["filament spacing"].setValidator(QDoubleValidator())
 
         self.formats = {
             "2D": {
@@ -93,7 +99,7 @@ class OrganizeLayerWidget(QWidget):
             self._update_format
         )
         self.save_layers["layer"].currentTextChanged.connect(
-            self._update_format
+            lambda x: self._update_format(x, is_layer=True)
         )
 
         layout = QFormLayout()
@@ -153,6 +159,17 @@ class OrganizeLayerWidget(QWidget):
 
     @Slot()
     def _run_save(self):
+        cur_format = self.save_layers["format"].currentText().split(" ", 1)[0]
+        cur_layer = self.napari_viewer.layers[
+            self.save_layers["layer"].currentText()
+        ]
+
+        cur_spacing = self.save_layers["filament spacing"].text()
+        cur_type = self.save_layers["type"].currentText()
+        if cur_type == "Filaments" and not cur_spacing:
+            show_error("Filament format requires Filament spacing")
+            return
+
         dir_path = QFileDialog.getExistingDirectory(
             self,
             "Open directory",
@@ -162,10 +179,6 @@ class OrganizeLayerWidget(QWidget):
         if not dir_path:
             return
 
-        cur_format = self.save_layers["format"].currentText().split(" ", 1)[0]
-        cur_layer = self.napari_viewer.layers[
-            self.save_layers["layer"].currentText()
-        ]
         napari_get_writer(
             dir_path,
             [cur_layer.as_layer_data_tuple()],
@@ -198,7 +211,7 @@ class OrganizeLayerWidget(QWidget):
             self.save_layers["layer"].setCurrentText(current_layer.name)
 
     @Slot(str)
-    def _update_format(self, _=None):
+    def _update_format(self, _=None, is_layer=False):
         cur_layer = self.save_layers["layer"].currentText()
 
         if not cur_layer:
@@ -224,7 +237,9 @@ class OrganizeLayerWidget(QWidget):
         except KeyError:
             is_filament_layer = False
 
-        if ndim == 2 or is_2d_stack:
+        if not is_layer:
+            cur_dim = self.save_layers["dimension"].currentText()
+        elif ndim == 2 or is_2d_stack:
             cur_dim = "2D"
         elif ndim == 3:
             cur_dim = "3D"
@@ -234,13 +249,20 @@ class OrganizeLayerWidget(QWidget):
         self.save_layers["dimension"].setCurrentText(cur_dim)
         self.save_layers["dimension"].blockSignals(prev_signal)
 
-        if is_filament_layer:
+        if not is_layer:
+            cur_type = self.save_layers["type"].currentText()
+        elif is_filament_layer:
             cur_type = "Filaments"
         else:
             cur_type = "Particles"
         prev_signal = self.save_layers["type"].blockSignals(True)
         self.save_layers["type"].setCurrentText(cur_type)
         self.save_layers["type"].blockSignals(prev_signal)
+
+        if self.save_layers["type"].currentText() == "Filaments":
+            self.save_layers["filament spacing"].setEnabled(True)
+        else:
+            self.save_layers["filament spacing"].setEnabled(False)
 
         self.save_layers["format"].clear()
         try:

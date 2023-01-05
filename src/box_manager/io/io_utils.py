@@ -43,6 +43,7 @@ class FormatFunc(Protocol):
         boxsize: npt.ArrayLike,
         features: pd.DataFrame,
         metadata: dict,
+        filament_spacing: int,
     ) -> pd.DataFrame:
         ...
 
@@ -350,6 +351,7 @@ def _write_particle_data(
     format_func: FormatFunc,
     write_func: Callable[[os.PathLike, pd.DataFrame, ...], typing.Any],
     suffix: str = "",
+    filament_spacing: float = 0,
 ):
     if data.shape[1] == 2:
         data = np.insert(data, 0, 0, axis=1)
@@ -394,6 +396,7 @@ def _write_particle_data(
                 box_size=boxsize[mask],
                 features=meta["features"].loc[mask, :],
                 metadata=meta["metadata"],
+                filament_spacing=filament_spacing,
             )
             export_data[output_file] = (d, {})
 
@@ -420,6 +423,7 @@ def _write_particle_data(
                 box_size=boxsize,
                 features=meta["features"],
                 metadata=meta["metadata"],
+                filament_spacing=filament_spacing,
             ),
             {"empty_slices": empty_slices},
         )
@@ -468,8 +472,8 @@ def from_napari(
     write_func: Callable[
         [os.PathLike, pd.DataFrame | list[pd.DataFrame]], typing.Any
     ],
-    suffix="",
-    filament_spacing=0,
+    suffix: str = "",
+    filament_spacing: int = 0,
 ) -> os.PathLike:
 
     last_file = ""
@@ -490,11 +494,23 @@ def from_napari(
 
             data_list = np.append(data, np.atleast_2d(np.array(fid)).T, axis=1)
             last_file = _write_particle_data(
-                path, data_list, meta, format_func, write_func, suffix
+                path,
+                data_list,
+                meta,
+                format_func,
+                write_func,
+                suffix,
+                filament_spacing,
             )
         else:
             last_file = _write_particle_data(
-                path, data, meta, format_func, write_func, suffix
+                path,
+                data,
+                meta,
+                format_func,
+                write_func,
+                suffix,
+                filament_spacing,
             )
 
     return str(last_file)

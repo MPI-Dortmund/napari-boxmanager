@@ -7,7 +7,7 @@ import numpy as np
 from napari.layers.shapes._shapes_constants import Mode
 from napari.utils.notifications import show_error
 from qtpy.QtCore import Slot
-from qtpy.QtGui import QDoubleValidator, QIcon
+from qtpy.QtGui import QIcon, QIntValidator
 from qtpy.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -76,7 +76,14 @@ class OrganizeLayerWidget(QWidget):
         self.save_layers["filament spacing"].setPlaceholderText(
             "spacing in pixel"
         )
-        self.save_layers["filament spacing"].setValidator(QDoubleValidator())
+
+        int_validator = QIntValidator()
+        int_validator.setBottom(0)
+        self.save_layers["filament spacing"].setValidator(int_validator)
+        self.save_layers["filament spacing"].setText("0")
+        self.save_layers["filament spacing"].setToolTip(
+            "If 0, an overlap of 80% is used."
+        )
 
         self.formats = {
             "2D": {
@@ -189,6 +196,7 @@ class OrganizeLayerWidget(QWidget):
             [cur_layer.as_layer_data_tuple()],
             cur_format,
             self.save_layers["suffix"].text() + cur_format,
+            cur_spacing=int(cur_spacing),
         )
 
     @Slot(object)

@@ -25,6 +25,6 @@ class IOInterface(typing.Protocol):
         path: os.PathLike | list[os.PathLike] | pd.DataFrame,
         layer_data: list[NapariLayerData],
         suffix: str,
-        filament_spacing: float,
+        filament_spacing: int,
     ):
         ...

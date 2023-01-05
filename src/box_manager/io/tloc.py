@@ -233,6 +233,7 @@ def _format_tloc(
     box_size: npt.ArrayLike,
     features: pd.DataFrame,
     metadata: dict[str, typing.Any],
+    **kwargs,
 ) -> pd.DataFrame:
     column_names = [
         "X",
@@ -271,7 +272,7 @@ def from_napari(
     path: os.PathLike,
     layer_data: list[NapariLayerData],
     suffix: str,
-    filament_spacing: float,
+    filament_spacing: int,
 ):
     path = coordsio.from_napari(
         path=path,

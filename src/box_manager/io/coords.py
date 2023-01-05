@@ -78,10 +78,7 @@ def _write_coords(path: os.PathLike, df: pd.DataFrame, **kwargs):
 
 
 def _make_df_data(
-    coordinates: pd.DataFrame,
-    box_size: npt.ArrayLike,
-    features: pd.DataFrame,
-    **kwargs
+    coordinates: pd.DataFrame, box_size: npt.ArrayLike, **kwargs
 ) -> pd.DataFrame:
     data = {"x": [], "y": [], "z": [], "boxsize": []}
 
@@ -107,7 +104,7 @@ def from_napari(
     path: os.PathLike,
     layer_data: list[NapariLayerData],
     suffix: str,
-    filament_spacing: float,
+    filament_spacing: int,
 ):
     path = coordsio.from_napari(
         path=path,

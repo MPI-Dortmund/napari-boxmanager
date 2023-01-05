@@ -67,7 +67,7 @@ def from_napari(
     path: os.PathLike | list[os.PathLike] | pd.DataFrame,
     layer_data: list[NapariLayerData],
     suffix: str,
-    filament_spacing: float,
+    filament_spacing: int,
 ):
     is_filament = coordsio.is_filament_layer(layer_data)
 
@@ -99,7 +99,8 @@ def _make_df_data_filament(
     coordinates: pd.DataFrame,
     box_size: npt.ArrayLike,
     features: pd.DataFrame,
-    **kwargs
+    filament_spacing: int,
+    **kwargs,
 ) -> pd.DataFrame:
 
     is_3d = coordinates.shape[1] == 4
@@ -164,7 +165,10 @@ def _make_df_data_filament(
 
     ## Resampling
     for index_fil, fil in enumerate(filaments):
-        distance = int(fil["_Width"][0] * 0.2)
+        if not filament_spacing:
+            distance = int(fil["_Width"][0] * 0.2)
+        else:
+            distance = filament_spacing
         filaments[index_fil] = coordsio.resample_filament(
             fil,
             distance,
@@ -334,7 +338,7 @@ def _make_df_data(
     coordinates: pd.DataFrame,
     box_size: npt.ArrayLike,
     features: pd.DataFrame,
-    **kwargs
+    **kwargs,
 ) -> pd.DataFrame:
     data = {
         "_CoordinateX": [],

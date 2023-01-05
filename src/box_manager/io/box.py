@@ -253,10 +253,7 @@ def _write_box(path: os.PathLike, df: pd.DataFrame, **kwargs):
 
 
 def _make_df_data_particle(
-    coordinates: pd.DataFrame,
-    box_size: npt.ArrayLike,
-    features: pd.DataFrame,
-    **kwargs
+    coordinates: pd.DataFrame, box_size: npt.ArrayLike, **kwargs
 ) -> pd.DataFrame:
     data = {"x": [], "y": [], "boxsize": []}
     for (y, x), boxsize in zip(
@@ -272,8 +269,8 @@ def _make_df_data_particle(
 def _make_df_data_filament(
     coordinates: pd.DataFrame,
     box_size: npt.ArrayLike,
-    features: pd.DataFrame,
-    **kwargs
+    filament_spacing: int,
+    **kwargs,
 ) -> list[pd.DataFrame]:
     data = {"x": [], "y": [], "fid": [], "boxsize": []}
     filaments = []
@@ -294,7 +291,10 @@ def _make_df_data_filament(
 
     ## Resampling
     for index_fil, fil in enumerate(filaments):
-        distance = int(fil["boxsize"][0] * 0.2)
+        if not filament_spacing:
+            distance = int(fil["boxsize"][0] * 0.2)
+        else:
+            distance = filament_spacing
         filaments[index_fil] = coordsio.resample_filament(
             fil,
             distance,
@@ -309,7 +309,7 @@ def from_napari(
     path: os.PathLike,
     layer_data: list[NapariLayerData],
     suffix: str,
-    filament_spacing: float,
+    filament_spacing: int,
 ):
     is_filament = coordsio.is_filament_layer(layer_data)
     if is_filament:

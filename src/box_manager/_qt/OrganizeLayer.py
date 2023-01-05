@@ -33,6 +33,7 @@ class OrganizeLayerWidget(QWidget):
         self.setLayout(QVBoxLayout())
         self.separators = []
 
+        self._save_form_layout = QFormLayout()
         self._add_ui()
         self._add_seperator()
         self._save_ui()
@@ -65,6 +66,7 @@ class OrganizeLayerWidget(QWidget):
             "type": QComboBox(self),
             "format": QComboBox(self),
             "filament spacing": QLineEdit(self),
+            "dummyf": QLabel(self),
             "suffix": QLineEdit(self),
         }
         self.save_layers["layer"].addItems([""])
@@ -102,10 +104,13 @@ class OrganizeLayerWidget(QWidget):
             lambda x: self._update_format(x, is_layer=True)
         )
 
-        layout = QFormLayout()
+        max_length = max(len(x) for x in self.save_layers)
         for name, widget in self.save_layers.items():
-            layout.addRow(name.capitalize(), widget)
-        inner_layout.addLayout(layout)
+            self._save_form_layout.addRow(
+                f"<pre>{name.capitalize():<{max_length}s}</pre>", widget
+            )
+            # self._save_form_layout.addRow(f"<pre>{name.capitalize()}</pre>", widget)
+        inner_layout.addLayout(self._save_form_layout)
         inner_layout.addWidget(self.save_run_btn)
 
         self._update_layer_combo()
@@ -259,10 +264,20 @@ class OrganizeLayerWidget(QWidget):
         self.save_layers["type"].setCurrentText(cur_type)
         self.save_layers["type"].blockSignals(prev_signal)
 
+        type_field_d = self.save_layers["dummyf"]
+        type_label_d = self._save_form_layout.labelForField(type_field_d)
+        type_field = self.save_layers["filament spacing"]
+        type_label = self._save_form_layout.labelForField(type_field)
         if self.save_layers["type"].currentText() == "Filaments":
-            self.save_layers["filament spacing"].setVisible(True)
+            type_field.show()
+            type_label.show()
+            type_field_d.hide()
+            type_label_d.hide()
         else:
-            self.save_layers["filament spacing"].setVisible(False)
+            type_field.hide()
+            type_label.hide()
+            type_field_d.show()
+            type_label_d.hide()
 
         self.save_layers["format"].clear()
         try:
@@ -293,6 +308,15 @@ class OrganizeLayerWidget(QWidget):
         self._add_shape.setEnabled(enabled)
         # self._add_label.setEnabled(enabled)
 
+    def get_theme_color(self):
+        if self.napari_viewer.theme.lower() == "light":
+            # argb
+            color = "#7D000000"
+        else:
+            # argb
+            color = "#7DFFFFFF"
+        return color
+
     def _apply_icons(self, *_):
         theme_dir = pathlib.Path(
             ICON_DIR, f"_themes/{self.napari_viewer.theme}"
@@ -304,12 +328,8 @@ class OrganizeLayerWidget(QWidget):
         point_icon = QIcon(os.path.join(theme_dir, "new_shapes.svg"))
         self._add_shape.setIcon(point_icon)
 
-        if self.napari_viewer.theme.lower() == "light":
-            # argb
-            color = "#7D000000"
-        else:
-            # argb
-            color = "#7DFFFFFF"
+        color = self.get_theme_color()
+
         for separator in self.separators:
             separator.setStyleSheet(f"background-color: {color}")
 

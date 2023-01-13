@@ -315,7 +315,11 @@ class GroupModel(QStandardItemModel):
             child_item = root_element
         else:
             child_item = root_element.child(parent_idx, 0)
-        return child_item.child(row_idx, self.label_dict[col_name]).text()
+        child = child_item.child(row_idx, self.label_dict[col_name])
+        if child is None:
+            return child
+        else:
+            return child.text()
 
     def add_group(self, group_name, columns: dict) -> bool:
         if group_name in self.group_items:
@@ -1598,7 +1602,7 @@ class SelectMetricWidget(QWidget):
                     for entry in self.table_model.get_values(
                         parent_idx, rows_idx, label
                     )
-                    if entry not in ("-",)
+                    if entry not in ("-",) and entry is not None
                 ]
                 min_max_vals.setdefault(label, []).extend(vals)
 

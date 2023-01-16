@@ -833,7 +833,7 @@ class SelectMetricWidget(QWidget):
                 )
 
             for z_slice in slice_idx:
-                layer.metadata[z_slice][col_name] = layer_vals
+                layer.metadata.setdefault(z_slice, {})[col_name] = layer_vals
 
             if layer.ndim == 3:
                 mask_dimension = np.isin(
@@ -1397,7 +1397,7 @@ class SelectMetricWidget(QWidget):
         self.table_model.set_value(parent_idx, child_idx, "boxes", boxes)
         self.table_model.set_value(parent_idx, child_idx, "selected", selected)
 
-        write_val = layer.metadata[current_slice]["write"]
+        write_val = layer.metadata.setdefault(current_slice, {}).setdefault("write", None)
         check_value = write_val if write_val is not None else bool(selected)
         if check_value != self.table_model.get_checkstate(
             parent_idx, child_idx, "write"

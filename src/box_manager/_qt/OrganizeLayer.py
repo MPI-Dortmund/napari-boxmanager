@@ -34,6 +34,7 @@ class OrganizeLayerWidget(QWidget):
         self.separators = []
 
         self._save_form_layout = QFormLayout()
+        self._save_form_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         self._add_ui()
         self._add_seperator()
         self._save_ui()
@@ -154,6 +155,7 @@ class OrganizeLayerWidget(QWidget):
         self._layer = QComboBox(self)
 
         layout = QFormLayout()
+        layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         layout.addRow("Target image layer:", self._layer)
         layout.addRow("Create particle layer:", self._add_point)
         layout.addRow("Create filament layer:", self._add_shape)

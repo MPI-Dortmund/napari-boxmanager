@@ -1763,6 +1763,7 @@ class HistogramMinMaxView(QWidget):
         self.slider_max.value_changed.connect(self._handle_value_changed)
 
         layout = QFormLayout()
+        layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         layout.addRow(f"{label_name} min", self.slider_min)
         layout.addRow(f"{label_name} max", self.slider_max)
 

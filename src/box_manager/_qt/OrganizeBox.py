@@ -30,7 +30,9 @@ class PrefixSuffixCount(QWidget):
     def __init__(self, name: str, parent=None):
         super().__init__(parent)
 
-        self.setLayout(QFormLayout())
+        layout = QFormLayout()
+        layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        self.setLayout(layout)
         self.dirname = ""
 
         self.combo = QComboBox(self)

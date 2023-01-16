@@ -1,13 +1,13 @@
 import os
-import pathlib
 
 import napari
 import napari.layers
 import numpy as np
+from napari._qt.qt_resources._svg import QColoredSVGIcon
 from napari.layers.shapes._shapes_constants import Mode
 from napari.utils.notifications import show_error
 from qtpy.QtCore import Slot
-from qtpy.QtGui import QIcon, QIntValidator
+from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -326,14 +326,14 @@ class OrganizeLayerWidget(QWidget):
         return color
 
     def _apply_icons(self, *_):
-        theme_dir = pathlib.Path(
-            ICON_DIR, f"_themes/{self.napari_viewer.theme}"
+        point_icon = QColoredSVGIcon.from_resources("new_points").colored(
+            theme=self.napari_viewer.theme
         )
-
-        point_icon = QIcon(os.path.join(theme_dir, "new_points.svg"))
         self._add_point.setIcon(point_icon)
 
-        point_icon = QIcon(os.path.join(theme_dir, "new_shapes.svg"))
+        point_icon = QColoredSVGIcon.from_resources("new_shapes").colored(
+            theme=self.napari_viewer.theme
+        )
         self._add_shape.setIcon(point_icon)
 
         color = self.get_theme_color()
@@ -341,7 +341,7 @@ class OrganizeLayerWidget(QWidget):
         for separator in self.separators:
             separator.setStyleSheet(f"background-color: {color}")
 
-        # point_icon = QIcon(os.path.join(theme_dir, "new_labels.svg"))
+        # point_icon = QColoredSVGIcon.from_resources('new_labels').colored(theme=self.napari_viewer.theme)
         # self._add_label.setIcon(point_icon)
 
     def _get_metadata(self):

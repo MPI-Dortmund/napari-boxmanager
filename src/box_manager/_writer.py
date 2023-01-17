@@ -12,7 +12,7 @@ def napari_get_writer(
     data: list[tuple[typing.Any, dict, str]],
     provided_extension=None,
     suffix="",
-    filament_spacing=0,
+    cur_spacing=0,
 ):
     if provided_extension:
         extension = provided_extension
@@ -25,7 +25,7 @@ def napari_get_writer(
     if not writer:
         return None
     else:
-        return writer(path, data, suffix, filament_spacing)
+        return writer(path, data, suffix, cur_spacing)
 
 
 # """

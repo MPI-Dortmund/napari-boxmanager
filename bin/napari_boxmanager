@@ -1,3 +1,8 @@
 #!/usr/bin/env bash
 napari_exe=$(which napari)
-${napari_exe} "${@}" -w napari-boxmanager __all__ --plugin napari-boxmanager
+if [ -z "${@}" ]
+then
+      ${napari_exe} "${@}" -w napari-boxmanager __all__
+else
+      ${napari_exe} "${@}" -w napari-boxmanager __all__ --plugin napari-boxmanager
+fi

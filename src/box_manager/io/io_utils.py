@@ -91,7 +91,10 @@ def _prepare_coords_df(
         elif box_napari_data.empty:
             checkbox = True
 
-        if is_filament:
+        if checkbox:
+            # needs initialization if input file is empty
+            min_max_data = set()
+        elif is_filament:
             data_df.extend(box_napari_data)
             min_max_data = pd.concat(box_napari_data)
         else:

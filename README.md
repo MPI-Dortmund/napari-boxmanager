@@ -25,8 +25,8 @@ https://napari.org/plugins/index.html
 
 Here is how to install napari together with the boxmanager plugin:
 
-    mamba create -y -n napari-cryolo -c conda-forge python=3.10 napari=0.4.17 pyqt pip
-    conda activate napari-cryolo
+    mamba create -y -n napari -c conda-forge python=3.10 napari=0.4.17 pyqt pip
+    conda activate napari
     pip install napari-boxmanager
 
 ## Contributing

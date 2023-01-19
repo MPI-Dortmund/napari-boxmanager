@@ -1,0 +1,28 @@
+
+data_global
+
+_cbox_format_version   1.0 
+
+data_cryolo
+
+loop_
+_CoordinateX #1
+_CoordinateY #2
+_CoordinateZ #3
+_Width #4
+_Height #5
+_Depth #6
+_EstWidth #7
+_EstHeight #8
+_Confidence #9
+_NumBoxes #10
+_Angle #11
+ 11.687700  27.959892  0.000000  25.000000  25.000000  25.000000 <NA>         <NA>         <NA>         <NA>         <NA>         
+ 66.566470  39.127084  0.000000  25.000000  25.000000  25.000000 <NA>         <NA>         <NA>         <NA>         <NA>         
+ 24.343850  48.911671  0.000000  25.000000  25.000000  25.000000 <NA>         <NA>         <NA>         <NA>         <NA>         
+
+data_cryolo_include
+
+loop_
+_slice_index #1
+ 0.000000 

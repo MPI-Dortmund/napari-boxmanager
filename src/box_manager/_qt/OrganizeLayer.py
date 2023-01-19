@@ -98,7 +98,7 @@ class OrganizeLayerWidget(QWidget):
             },
             "3D": {
                 "Particles": [".coords", ".tloc", ".cbox"],
-                "Filaments": [".box", ".coords"],
+                "Filaments": [".cbox", ".coords"],
             },
         }
 

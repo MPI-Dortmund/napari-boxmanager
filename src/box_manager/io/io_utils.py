@@ -424,7 +424,7 @@ def _write_particle_data(
             format_func(
                 coordinates=coordinates,
                 box_size=boxsize,
-                features=meta["features"],
+                features=meta["features"].loc[mask, :],
                 metadata=meta["metadata"],
                 filament_spacing=filament_spacing,
             ),

@@ -1,11 +1,10 @@
-import glob
 import os
 import typing
 import tifffile
 import numpy as np
 import pandas as pd
-from .io_utils import MAX_LAYER_NAME, PROXY_THRESHOLD_GB, LoaderProxy, to_napari_image
-import imageio.v2 as imageio
+from .io_utils import to_napari_image
+
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 

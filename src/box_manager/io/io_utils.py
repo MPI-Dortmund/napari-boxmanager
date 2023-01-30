@@ -210,8 +210,67 @@ def _to_napari_particle(input_df, coord_columns, is_3d):
 
     return dat, kwargs, layer_type
 
+def to_napari_image(
+    path: os.PathLike | list[os.PathLike],
+    load_image: typing.Callable[[str], np.array],
+    get_pixel_size: typing.Callable[[str], float]
 
-def to_napari(
+) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
+
+    is_2d_stack = isinstance(path, list) or "*" in path
+
+    if not isinstance(path, list):
+        original_path = path
+        if len(path) >= MAX_LAYER_NAME + 3:
+            name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
+        else:
+            name = path  # type: ignore
+        path = sorted(glob.glob(path))  # type: ignore
+        if len(path) > 1:
+            name = "images"
+    else:
+        original_path = path[0]
+        name = "images"
+
+    # arrays = []
+    voxel_size = 1
+    metadata: dict = {
+        "pixel_spacing": voxel_size,
+        "original_path": original_path,
+    }
+    metadata["pixel_spacing"] = get_pixel_size(path[0])
+
+    file_size = (
+        sum(os.stat(file_name).st_size for file_name in path) / 1024**3
+    )
+    if len(path) > 1 and file_size > PROXY_THRESHOLD_GB:
+        data = LoaderProxy(path, load_image)
+    else:
+        data_list = []
+        for file_name in path:
+            tmp_data = load_image(file_name)
+            tmp_data = (tmp_data - np.mean(tmp_data)) / np.std(tmp_data)
+            data_list.append(tmp_data)
+        data = np.squeeze(np.stack(data_list))
+
+    metadata["is_3d"] = len(path) == 1 and data.ndim == 3
+    metadata["is_2d_stack"] = is_2d_stack
+
+    if (metadata["is_3d"] or metadata["is_2d_stack"]) and data.ndim == 2:
+        data = np.expand_dims(data, axis=0)
+
+    if not metadata["is_3d"]:
+        for idx, file_name in enumerate(path):
+            metadata[idx] = {}
+            metadata[idx]["path"] = file_name
+            metadata[idx]["name"] = os.path.basename(file_name)
+
+    add_kwargs = {"metadata": metadata, "name": name}
+
+    layer_type = "image"  # optional, default is "image"
+    return [(data, add_kwargs, layer_type)]
+
+def to_napari_coordinates(
     path: os.PathLike | list[os.PathLike],
     read_func: Callable[[os.PathLike], pd.DataFrame],
     prepare_napari_func: Callable,

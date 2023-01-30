@@ -95,7 +95,7 @@ def to_napari(
         if not isinstance(path, list):
             path = _split_star(path, tmpdir)
 
-        r = coordsio.to_napari(
+        r = coordsio.to_napari_coordinates(
             path=path,
             read_func=read,
             prepare_napari_func=_prepare_napari_coords,

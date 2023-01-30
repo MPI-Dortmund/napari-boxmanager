@@ -63,7 +63,7 @@ def to_napari(
     output_dfs = []
     for file_name in path:  # type: ignore
         input_df = read(file_name)
-        r = coordsio.to_napari(
+        r = coordsio.to_napari_coordinates(
             path=path,
             read_func=read,
             prepare_napari_func=_prepare_napari_box,

@@ -12,7 +12,7 @@ TEST_DATA = pathlib.Path(os.path.dirname(__file__), "test_data")
 def test_to_napari_file_correct_returns():
     tlpkl_file = pathlib.Path(TEST_DATA, "valid.tlpkl")
 
-    points1, points2 = nrt.to_napari(tlpkl_file, nrt.valid_readers[".tlpkl"])
+    points1, points2 = nrt.to_napari_coordinates(tlpkl_file, nrt.valid_readers[".tlpkl"])
     assert all([len(entry) == 3 for entry in (points1, points2)])
 
     x = [86, 88, 6, 24, 78, 46, 30, 60, 76, 76, 70, 66, 30, 76]

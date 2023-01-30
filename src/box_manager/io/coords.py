@@ -47,7 +47,7 @@ def to_napari(
     path: os.PathLike | list[os.PathLike],
 ) -> "list[NapariLayerData]":
 
-    return coordsio.to_napari(
+    return coordsio.to_napari_coordinates(
         path=path,
         read_func=read,
         prepare_napari_func=_prepare_napari_coords,

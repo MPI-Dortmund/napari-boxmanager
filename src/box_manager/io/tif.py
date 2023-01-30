@@ -22,8 +22,6 @@ def load_image(path: str) -> np.ndarray:
 
 
 def get_pixel_size(path: str) -> float:
-    #with mrcfile.open(path, permissive=True, header_only=True) as mrc:
-    #    return mrc.voxel_size.x if mrc.voxel_size.x != 0 else 1
     with tifffile.TiffFile(path) as tif:
         try:
             return tif.pages[0].tags['TVIPS'].value['PixelSizeX']*10
@@ -40,7 +38,7 @@ def to_napari(
     return to_napari_image(path, load_image=load_image, get_pixel_size=get_pixel_size)
 
 
-def get_valid_extensions():
+def get_valid_extensions() -> typing.List[str]:
     return ["tif", "tiff"]
 
 

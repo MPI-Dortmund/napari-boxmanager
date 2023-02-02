@@ -27,8 +27,10 @@ def read(path: "os.PathLike") -> pd.DataFrame:
     if "particles" in sfile:
         # relion 3.1
         box_data = sfile["particles"]
-    else:
+    elif "" in sfile:
         box_data = sfile[""]
+    else:
+        return pd.DataFrame()
 
     return box_data
 

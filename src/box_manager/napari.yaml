@@ -31,11 +31,11 @@ contributions:
   readers:
     - command: napari-boxmanager.get_reader
       accepts_directories: True
-      filename_patterns: ['*.tloc', '*.temb', '*.tmap','*.cbox', '*.box', '*.star', '*.mrc', "*.mrcs", "*.st","*.coords","*.rec","*.cs",'*.tif','*.tiff']
+      filename_patterns: ['*.tloc', '*.temb', '*.tmap','*.cbox', '*.box', '*.star', '*.mrc', "*.mrcs", "*.st","*.coords","*.rec","*.cs",'*.tif','*.tiff', '*.mrci']
   writers:
     - command: napari-boxmanager.get_writer
       layer_types: ['points*', 'image*', 'shapes*']
-      filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star', '.mrc', '.mrcs', '.st','.coords','.rec']
+      filename_extensions: ['.tloc', '.temb', '.tmap', '.cbox', '.box', '.star', '.mrc', '.mrcs', '.st','.coords','.rec', '.mrci']
   sample_data: []
   widgets:
     - command: napari-boxmanager.select_metric

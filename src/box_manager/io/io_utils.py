@@ -210,11 +210,12 @@ def _to_napari_particle(input_df, coord_columns, is_3d):
 
     return dat, kwargs, layer_type
 
+
 def to_napari_image(
     path: os.PathLike | list[os.PathLike],
     load_image: typing.Callable[[str], np.array],
-    get_pixel_size: typing.Callable[[str], float]
-
+    get_pixel_size: typing.Callable[[str], float],
+    do_normalize: bool = True,
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
 
     is_2d_stack = isinstance(path, list) or "*" in path
@@ -244,12 +245,13 @@ def to_napari_image(
         sum(os.stat(file_name).st_size for file_name in path) / 1024**3
     )
     if len(path) > 1 and file_size > PROXY_THRESHOLD_GB:
-        data = LoaderProxy(path, load_image)
+        data = LoaderProxy(path, load_image, do_normalize)
     else:
         data_list = []
         for file_name in path:
             tmp_data = load_image(file_name)
-            tmp_data = (tmp_data - np.mean(tmp_data)) / np.std(tmp_data)
+            if do_normalize:
+                tmp_data = (tmp_data - np.mean(tmp_data)) / np.std(tmp_data)
             data_list.append(tmp_data)
         data = np.squeeze(np.stack(data_list))
 
@@ -269,6 +271,7 @@ def to_napari_image(
 
     layer_type = "image"  # optional, default is "image"
     return [(data, add_kwargs, layer_type)]
+
 
 def to_napari_coordinates(
     path: os.PathLike | list[os.PathLike],
@@ -579,9 +582,10 @@ def from_napari(
 
 
 class LoaderProxy(Array):
-    def __init__(self, files, reader_func):
+    def __init__(self, files, reader_func, do_normalize):
         self.reader_func = reader_func
         self.files = files
+        self.do_normalize = do_normalize
         if len(self.files) == 0:
             raise AttributeError("Cannot provide empty files list")
 
@@ -599,7 +603,10 @@ class LoaderProxy(Array):
     def load_image(self, index) -> Array:
         data = self.reader_func(self.files[index])
         self._array = np.empty((1, 1, 1), dtype=data.dtype)
-        return (data - np.mean(data)) / np.std(data)
+        if self.do_normalize:
+            return (data - np.mean(data)) / np.std(data)
+        else:
+            return data
 
     def __len__(self):
         return len(self.files)

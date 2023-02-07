@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-napari_exe=$(which napari)
+napari_exe=${NAPARI_EXE:-$(which napari)}
 if [[ -z "${@}" ]]
 then
       ${napari_exe} "${@}" -w napari-boxmanager __all__

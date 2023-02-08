@@ -427,13 +427,14 @@ class OrganizeLayerWidget(QWidget):
     def _new_shapes(self):
         metadata = self._get_metadata()
         metadata["is_filament_layer"] = True
+
         kwargs = {
             "metadata": metadata,
             "face_color": "transparent",
             "edge_color": "red",
             "edge_width": 20,
             "opacity": 0.4,
-            "name": "filaments",
+            "name": f"filaments ({os.path.basename(metadata['original_path'])})",
             "shape_type": "path",
         }
         shape = self.napari_viewer.add_shapes(

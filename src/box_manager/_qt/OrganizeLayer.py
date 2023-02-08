@@ -392,7 +392,7 @@ class OrganizeLayerWidget(QWidget):
             "edge_width": 0.05,
             "edge_width_is_relative": True,
             "size": 128,
-            "name": "coordinates",
+            "name": f"coordinates ({os.path.basename(metadata['original_path'])})",
             "out_of_slice_display": self._get_out_of_slice_display(),
             "opacity": 0.8,
             "metadata": metadata,

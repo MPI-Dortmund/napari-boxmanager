@@ -5,7 +5,7 @@ import napari.layers
 import numpy as np
 from napari._qt.qt_resources._svg import QColoredSVGIcon
 from napari.layers.shapes._shapes_constants import Mode
-from napari.utils.notifications import show_error
+from napari.utils.notifications import show_error, show_info
 from qtpy.QtCore import Slot
 from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (
@@ -40,9 +40,51 @@ class OrganizeLayerWidget(QWidget):
         self._add_ui()
         self._add_seperator()
         self._save_ui()
+        self._add_seperator()
+        self._link_ui()
 
         self._apply_icons()
         self.layout().addStretch(True)
+
+    def _link_ui(self):
+        self.napari_viewer.layers.events.inserted.connect(
+            self._update_link_combo
+        )
+        self.napari_viewer.layers.events.removed.connect(
+            self._update_link_combo
+        )
+
+        self.link_layers = {"image": QComboBox(self), "layer": QComboBox(self)}
+
+        self.link_run_btn = QPushButton("Link layers", self)
+        self.link_run_btn.clicked.connect(self._link_layers)
+
+        layout = QFormLayout()
+        layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        layout.addRow("Target image layer:", self.link_layers["image"])
+        layout.addRow("Target other layer:", self.link_layers["layer"])
+        # layout.addRow("Create label layer:", self._add_label)
+
+        inner_layout = QVBoxLayout()
+        inner_layout.setContentsMargins(0, 0, 0, 0)
+        self.layout().addLayout(inner_layout)
+
+        inner_layout.addWidget(QLabel("Link layers", self))
+        inner_layout.addLayout(layout)
+        inner_layout.addWidget(self.link_run_btn)
+
+    @Slot()
+    def _link_layers(self):
+        inner_layout = QVBoxLayout()
+        inner_layout.setContentsMargins(0, 0, 0, 0)
+        self.layout().addLayout(inner_layout)
+
+        image_name = self.link_layers["image"].currentText()
+        layer_name = self.link_layers["layer"].currentText()
+        self.napari_viewer.layers[layer_name].metadata[
+            "layer_name"
+        ] = image_name
+        show_info("link succesfull")
 
     def _save_ui(self):
         self.napari_viewer.layers.selection.events.changed.connect(
@@ -202,6 +244,27 @@ class OrganizeLayerWidget(QWidget):
             self.save_layers["suffix"].text() + cur_format,
             cur_spacing=int(cur_spacing),
         )
+
+    @Slot(object)
+    def _update_link_combo(self, *_):
+        for entry in self.napari_viewer.layers:
+            entry.events.name.disconnect(self._update_link_combo)
+            entry.events.name.connect(self._update_link_combo)
+
+        names_image = [
+            entry.name
+            for entry in self.napari_viewer.layers
+            if isinstance(entry, napari.layers.Image)
+        ]
+        names_others = [
+            entry.name
+            for entry in self.napari_viewer.layers
+            if not isinstance(entry, napari.layers.Image)
+        ]
+        self.link_layers["image"].clear()
+        self.link_layers["image"].addItems(names_image)
+        self.link_layers["layer"].clear()
+        self.link_layers["layer"].addItems(names_others)
 
     @Slot(object)
     def _update_layer_combo(self, *_):

@@ -174,7 +174,7 @@ def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns, is_3d):
         color.extend([c] * len(fil))
         boxsize.extend([bs] * len(fil))
     input_df = pd.concat([fil[coord_columns] for fil in input_df])
-    color = [(r, g, b, 50) for r, g, b in color]
+    color = [(r, g, b, 255) for r, g, b in color]
 
     kwargs: NapariMetaData = {
         "edge_color": color,

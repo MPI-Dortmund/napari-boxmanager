@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import tqdm
 from matplotlib.backends.backend_qt5agg import FigureCanvas
+from napari.utils.notifications import show_info
 from qtpy.QtCore import (
     QItemSelection,
     QItemSelectionModel,
@@ -1397,7 +1398,9 @@ class SelectMetricWidget(QWidget):
         self.table_model.set_value(parent_idx, child_idx, "boxes", boxes)
         self.table_model.set_value(parent_idx, child_idx, "selected", selected)
 
-        write_val = layer.metadata.setdefault(current_slice, {}).setdefault("write", None)
+        write_val = layer.metadata.setdefault(current_slice, {}).setdefault(
+            "write", None
+        )
         check_value = write_val if write_val is not None else bool(selected)
         if check_value != self.table_model.get_checkstate(
             parent_idx, child_idx, "write"
@@ -1639,8 +1642,25 @@ class SelectMetricWidget(QWidget):
             layer.events.visible.connect(self._update_visible)
 
         self.napari_viewer.layers.selection.clear()
+        valid_images = []
         for layer in valid_layers:
             self.napari_viewer.layers.selection.add(layer)
+            try:
+                image_name = layer.metadata["layer_name"]
+            except KeyError:
+                show_info(
+                    f"Layer {layer.name} does not have an 'layer_name' entry."
+                )
+            else:
+                valid_images.append(image_name)
+
+        for layer in self.napari_viewer.layers:
+            if not isinstance(layer, napari.layers.Image):
+                continue
+            elif layer.name not in valid_images:
+                layer.visible = False
+            else:
+                layer.visible = True
 
         metric_done = []
         if "boxsize" in self.metric_dict:

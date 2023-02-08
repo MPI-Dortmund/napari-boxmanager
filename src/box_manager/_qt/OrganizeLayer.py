@@ -34,7 +34,9 @@ class OrganizeLayerWidget(QWidget):
         self.separators = []
 
         self._save_form_layout = QFormLayout()
-        self._save_form_layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        self._save_form_layout.setFieldGrowthPolicy(
+            QFormLayout.AllNonFixedFieldsGrow
+        )
         self._add_ui()
         self._add_seperator()
         self._save_ui()
@@ -350,6 +352,7 @@ class OrganizeLayerWidget(QWidget):
         layer_name = self._layer.currentText()
         metadata = {
             "do_activate_on_insert": True,
+            "layer_name": layer_name,
         }
         if not layer_name:
             return metadata

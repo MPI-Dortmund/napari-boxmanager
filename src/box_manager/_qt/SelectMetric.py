@@ -1332,12 +1332,15 @@ class SelectMetricWidget(QWidget):
                 )
             except TypeError:
                 layer_data = np.array([row[0] for row in layer.data])
-                mask = (
-                    np.round(
-                        layer_data[:, self.napari_viewer.dims.order[0]], 0
+                if layer_data.size:
+                    mask = (
+                        np.round(
+                            layer_data[:, self.napari_viewer.dims.order[0]], 0
+                        )
+                        == current_slice
                     )
-                    == current_slice
-                )
+                else:
+                    mask = np.array(layer_data, dtype=bool)
             boxes = np.count_nonzero(mask)
             try:
                 selected = np.count_nonzero(layer.shown[mask])

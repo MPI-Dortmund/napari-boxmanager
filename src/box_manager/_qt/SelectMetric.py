@@ -1653,9 +1653,12 @@ class SelectMetricWidget(QWidget):
             except KeyError:
                 show_info(
                     f"Layer {layer.name} does not have an 'layer_name' entry."
+                    "Use the link layers tool to allow image highlighting in the boxmanager"
                 )
+                layer.metadata["layer_name"] = None
             else:
-                valid_images.append(image_name)
+                if image_name is not None:
+                    valid_images.append(image_name)
 
         if valid_images:
             for layer in self.napari_viewer.layers:

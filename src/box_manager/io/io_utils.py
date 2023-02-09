@@ -145,20 +145,12 @@ def is_filament_layer(
         is_filament = check(layer_data)
     return is_filament
 
-
-def get_coords_layer_name(path: os.PathLike | list[os.PathLike]) -> str:
-    if isinstance(path, list) and len(path) > 1:
-        name = (os.path.splitext(path[0])[1]).upper()[1:]
-    elif isinstance(path, list):
-        if len(path[0]) >= MAX_LAYER_NAME + 3:
-            name = f"...{path[0][-MAX_LAYER_NAME:]}"  # type: ignore
-        else:
-            name = path[0]  # type: ignore
+def get_layers_name(path: os.PathLike):
+    if len(path) >= MAX_LAYER_NAME + 3:
+        name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
     else:
-        assert False, path
-
+        name = path  # type: ignore
     return name
-
 
 def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns, is_3d):
     # boxsize_ = [np.mean(fil['boxsize']) for fil in input_df]
@@ -222,10 +214,7 @@ def to_napari_image(
 
     if not isinstance(path, list):
         original_path = path
-        if len(path) >= MAX_LAYER_NAME + 3:
-            name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
-        else:
-            name = path  # type: ignore
+        name = get_layers_name(path)
         path = sorted(glob.glob(path))  # type: ignore
     else:
         original_path = path[0]
@@ -287,6 +276,11 @@ def to_napari_coordinates(
     orgbox_meta = orgbox.get_metadata(path)
 
     if not isinstance(path, list):
+        layer_name = get_layers_name(path)
+    else:
+        layer_name = (os.path.splitext(path[0])[1]).upper()[1:]
+
+    if not isinstance(path, list):
         path = sorted(glob.glob(path))  # type: ignore
 
     input_df_list, metadata, is_3d = _prepare_coords_df(
@@ -312,7 +306,6 @@ def to_napari_coordinates(
             all = pd.concat(input_df_list)
             if entry in all:
                 features[entry] = all[entry].to_numpy()
-    layer_name = get_coords_layer_name(path)
 
     if is_2d_stack or is_3d:
         # Happens for --stack option and '*.ext'

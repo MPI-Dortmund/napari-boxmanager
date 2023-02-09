@@ -4,6 +4,8 @@ import os
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 from pyStarDB import sp_pystardb as star
 
 from . import io_utils as coordsio

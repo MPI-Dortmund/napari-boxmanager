@@ -5,6 +5,7 @@ from copy import deepcopy
 import napari.layers
 import numpy as np
 from napari.layers.base.base import Layer
+from napari.utils.events.event import Event
 from napari.utils.notifications import show_error
 from qtpy.QtCore import Qt, Signal, Slot
 from qtpy.QtWidgets import (
@@ -128,7 +129,20 @@ class OrganizeBoxWidget(QWidget):
 
     @Slot(object)
     @Slot(str)
-    def _update_combo(self, *_):
+    def _update_combo(self, *_, do_match=True):
+        match_mic_name = None
+        if _:
+            if isinstance(_[0], Event):
+                layer = _[0].value
+                if (
+                    isinstance(layer, self.loadable_layers)
+                    and layer.ndim == 3
+                    and "is_2d_stack" in layer.metadata
+                    and layer.metadata["is_2d_stack"]
+                    and "skip_match" not in layer.metadata
+                    and "original_path" in layer.metadata
+                ):
+                    match_mic_name = layer.name
 
         for widget, valid_types in (
             (self.coord_layer, self.loadable_layers),
@@ -191,6 +205,10 @@ class OrganizeBoxWidget(QWidget):
             widget.dirname = dirname
 
         self._update_table(create_layer=False)
+
+        if self.image_layer.count() == 1 and match_mic_name and do_match:
+            self.coord_layer.setCurrentText(match_mic_name)
+            self._update_table()
 
     def _update_table(self, create_layer=True):
         self.table_widget.clear()
@@ -329,14 +347,25 @@ class OrganizeBoxWidget(QWidget):
 
             layer_coord.visible = False
             new = Layer.create(new_data, new_state, old_type_str)
+            self.napari_viewer.layers.events.inserted.disconnect(
+                self._update_combo
+            )
             self.napari_viewer.layers.insert(
                 self.napari_viewer.layers.index(layer_coord) + 1, new
             )
+            self.napari_viewer.layers.events.inserted.connect(
+                self._update_combo
+            )
             self.coord_layer.setCurrentText(new.name)
             self.coord_layer.currentTextChanged.emit(new.name)
+            self._update_combo(do_match=False)
         elif create_layer:
             show_error("No matching entries for match_mics plugin")
 
 
 def get_metadata(path: os.PathLike | list[os.PathLike]):
-    return {"original_path": path[0] if isinstance(path, list) else path}
+    return {
+        "original_path": f"{os.path.dirname(path[0])}/*{os.path.splitext(path[0])[1]}"
+        if isinstance(path, list)
+        else path
+    }

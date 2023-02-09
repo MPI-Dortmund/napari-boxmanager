@@ -145,12 +145,14 @@ def is_filament_layer(
         is_filament = check(layer_data)
     return is_filament
 
+
 def get_layers_name(path: os.PathLike):
     if len(path) >= MAX_LAYER_NAME + 3:
         name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
     else:
         name = path  # type: ignore
     return name
+
 
 def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns, is_3d):
     # boxsize_ = [np.mean(fil['boxsize']) for fil in input_df]
@@ -217,7 +219,9 @@ def to_napari_image(
         name = get_layers_name(path)
         path = sorted(glob.glob(path))  # type: ignore
     else:
-        original_path = path[0]
+        original_path = (
+            f"{os.path.dirname(path[0])}/*{os.path.splitext(path[0])[1]}"
+        )
         name = "images"
 
     # arrays = []

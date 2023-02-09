@@ -465,14 +465,17 @@ class GroupView(QTreeView):
 
         prev_selection = self.get_row_selection()
         prev_expansion = self.get_expansion_state()
-        for new_idx, row_name in enumerate(reversed(columns)):
+        new_idx = -1
+        for row_name in reversed(columns):
             old_idx = -1
-            for row_idx in reversed(range(root_item.rowCount())):
+            for row_idx in range(root_item.rowCount()):
                 cur_item = root_item.child(row_idx, model.label_dict["name"])
                 if row_name == cur_item.text():
                     old_idx = row_idx
                     break
-            assert old_idx >= 0
+            if old_idx < 0:
+                continue
+            new_idx += 1
             if new_idx == old_idx:
                 continue
             row = model.takeRow(old_idx)

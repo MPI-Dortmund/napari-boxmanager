@@ -6,6 +6,7 @@ import numpy as np
 from napari._qt.qt_resources._svg import QColoredSVGIcon
 from napari.layers.shapes._shapes_constants import Mode
 from napari.utils.notifications import show_error, show_info
+from pathlib import Path
 from qtpy.QtCore import Slot
 from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (
@@ -450,6 +451,8 @@ class OrganizeLayerWidget(QWidget):
     def _new_points(self):
         # if len(self.napari_viewer.layers) == 0:
         #    return
+
+
         metadata = self._get_metadata()
         kwargs = {
             "edge_color": "red",
@@ -458,7 +461,7 @@ class OrganizeLayerWidget(QWidget):
             "edge_width": 0.05,
             "edge_width_is_relative": True,
             "size": 128,
-            "name": f"coordinates ({os.path.basename(metadata['original_path'])})",
+            "name": f"coordinates ({Path(*Path(metadata['original_path']).parts[-2:])})",
             "out_of_slice_display": self._get_out_of_slice_display(),
             "opacity": 0.8,
             "metadata": metadata,
@@ -500,7 +503,8 @@ class OrganizeLayerWidget(QWidget):
             "edge_color": "red",
             "edge_width": 20,
             "opacity": 0.4,
-            "name": f"filaments ({os.path.basename(metadata['original_path'])})",
+
+            "name": f"filaments ({Path(*Path(metadata['original_path']).parts[-2:])})",
             "shape_type": "path",
         }
         shape = self.napari_viewer.add_shapes(

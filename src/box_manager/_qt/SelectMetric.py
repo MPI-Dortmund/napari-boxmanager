@@ -746,6 +746,8 @@ class SelectMetricWidget(QWidget):
 
         self._update_slider()
         self._order_table()
+        self.table_widget.restore_selection({layer.name})
+        self.table_widget.select_first()
 
     @Slot(str, int, str, object)
     def _update_check_state(self, layer_name, slice_idx, attr_name, value):

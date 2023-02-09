@@ -6,7 +6,7 @@ import napari.layers
 import numpy as np
 from napari.layers.base.base import Layer
 from napari.utils.events.event import Event
-from napari.utils.notifications import show_error
+from napari.utils.notifications import show_error, show_info
 from qtpy.QtCore import Qt, Signal, Slot
 from qtpy.QtWidgets import (
     QComboBox,
@@ -209,6 +209,10 @@ class OrganizeBoxWidget(QWidget):
         if self.image_layer.count() == 1 and match_mic_name and do_match:
             self.coord_layer.setCurrentText(match_mic_name)
             self._update_table()
+        elif self.image_layer.count() > 1 and match_mic_name and do_match:
+            show_info(
+                "Cannot perform automatic matching with multiple images open. Please match manually."
+            )
 
     def _update_table(self, create_layer=True):
         self.table_widget.clear()

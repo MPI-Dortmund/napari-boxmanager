@@ -190,7 +190,15 @@ class OrganizeBoxWidget(QWidget):
             widget.suffix = suffix
             widget.dirname = dirname
 
-        self._update_table(create_layer=False)
+        if self.image_layer.count() == 1 and self.coord_layer.count() >= 1:
+            layers = []
+            for idx in range(self.coord_layer.count()):
+                layers.append(self.coord_layer.itemText(idx))
+            for layer in layers:
+                self.coord_layer.setCurrentText(layer)
+                self._update_table()
+        else:
+            self._update_table(create_layer=False)
 
     def _update_table(self, create_layer=True):
         self.table_widget.clear()

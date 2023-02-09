@@ -1657,13 +1657,14 @@ class SelectMetricWidget(QWidget):
             else:
                 valid_images.append(image_name)
 
-        for layer in self.napari_viewer.layers:
-            if not isinstance(layer, napari.layers.Image):
-                continue
-            elif layer.name not in valid_images:
-                layer.visible = False
-            else:
-                layer.visible = True
+        if valid_images:
+            for layer in self.napari_viewer.layers:
+                if not isinstance(layer, napari.layers.Image):
+                    continue
+                elif layer.name not in valid_images:
+                    layer.visible = False
+                else:
+                    layer.visible = True
 
         metric_done = []
         if "boxsize" in self.metric_dict:

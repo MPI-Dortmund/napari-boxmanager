@@ -227,8 +227,6 @@ def to_napari_image(
         else:
             name = path  # type: ignore
         path = sorted(glob.glob(path))  # type: ignore
-        if len(path) > 1:
-            name = "images"
     else:
         original_path = path[0]
         name = "images"

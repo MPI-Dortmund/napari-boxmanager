@@ -89,7 +89,6 @@ class OrganizeBoxWidget(QWidget):
         self.napari_viewer = napari_viewer
         self.loadable_layers = (napari.layers.Points, napari.layers.Shapes)
 
-        self.napari_viewer.layers.events.inserted.connect(self._check_run)
         self.napari_viewer.layers.events.inserted.connect(self._update_combo)
         self.napari_viewer.layers.events.removed.connect(self._update_combo)
 
@@ -119,10 +118,6 @@ class OrganizeBoxWidget(QWidget):
 
         self._update_combo()
 
-        self._check_run()
-
-    @Slot()
-    def _check_run(self, *_):
         if self.image_layer.count() == 1 and self.coord_layer.count() >= 1:
             layers = []
             for idx in range(self.coord_layer.count()):

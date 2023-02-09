@@ -132,7 +132,7 @@ class OrganizeBoxWidget(QWidget):
     def _update_combo(self, *_, do_match=True):
         match_mic_name = None
         if _:
-            if isinstance(_[0], Event):
+            if isinstance(_[0], Event) and _[0].type == "inserted":
                 layer = _[0].value
                 if (
                     isinstance(layer, self.loadable_layers)
@@ -354,8 +354,9 @@ class OrganizeBoxWidget(QWidget):
             self.napari_viewer.layers.events.inserted.disconnect(
                 self._update_combo
             )
-            self.napari_viewer.layers.insert(
-                self.napari_viewer.layers.index(layer_coord) + 1, new
+            self.napari_viewer.layers.append(
+                # self.napari_viewer.layers.index(layer_coord) + 1, new
+                new
             )
             self.napari_viewer.layers.events.inserted.connect(
                 self._update_combo

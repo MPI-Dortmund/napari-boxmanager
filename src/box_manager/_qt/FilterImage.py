@@ -61,7 +61,7 @@ class FilterImageWidget(QWidget):
         self.layout().addRow("Pixel size [A/px]:", self._pixel_size)
         self.layout().addRow("Live filter 2D slices", self._filter_2d)
         self.layout().addRow("Show mask", self._show_mask)
-        self.layout().addRow("", self._run_btn)
+        self.layout().addRow(self._run_btn)
 
         self._layer.currentTextChanged.connect(self._update_pixel_size)
         self._run_btn.clicked.connect(self._run)

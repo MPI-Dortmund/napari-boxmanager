@@ -189,8 +189,8 @@ class OrganizeLayerWidget(QWidget):
 
         inner_layout.addWidget(QLabel("Add a new layer", self))
 
-        self._add_point = QPushButton(self)
-        self._add_shape = QPushButton(self)
+        self._add_point = QPushButton("Create particle layer", self)
+        self._add_shape = QPushButton("Create filament layer", self)
         # self._add_label = QPushButton(self)
 
         self._add_point.clicked.connect(self._new_points)
@@ -202,8 +202,8 @@ class OrganizeLayerWidget(QWidget):
         layout = QFormLayout()
         layout.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
         layout.addRow("Target image layer:", self._layer)
-        layout.addRow("Create particle layer:", self._add_point)
-        layout.addRow("Create filament layer:", self._add_shape)
+        layout.addRow(self._add_point)
+        layout.addRow(self._add_shape)
         # layout.addRow("Create label layer:", self._add_label)
         inner_layout.addLayout(layout)
 

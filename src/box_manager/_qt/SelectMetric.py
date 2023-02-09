@@ -730,24 +730,24 @@ class SelectMetricWidget(QWidget):
         layer.events.visible.connect(self._update_visible)
         self.prev_valid_layers[layer.name] = [layer, layer.data]
 
+        self.table_widget.selectionModel().selectionChanged.disconnect(
+            self.update_hist
+        )
         if "do_activate_on_insert" in layer.metadata:
-            self.table_widget.selectionModel().selectionChanged.disconnect(
-                self.update_hist
-            )
             self.table_widget.restore_selection({layer.name})
             self.table_widget.restore_expansion(prev_expansion)
-            self.table_widget.selectionModel().selectionChanged.connect(
-                self.update_hist
-            )
-            self.table_widget.selectionModel().selectionChanged.emit(
-                QItemSelection(), QItemSelection()
-            )
             del layer.metadata["do_activate_on_insert"]
 
-        self._update_slider()
+        self._update_slider(do_update_hist=False)
         self._order_table()
-        self.table_widget.restore_selection({layer.name})
+        # self.table_widget.restore_selection({layer.name})
         self.table_widget.select_first()
+        self.table_widget.selectionModel().selectionChanged.connect(
+            self.update_hist
+        )
+        self.table_widget.selectionModel().selectionChanged.emit(
+            QItemSelection(), QItemSelection()
+        )
 
     @Slot(str, int, str, object)
     def _update_check_state(self, layer_name, slice_idx, attr_name, value):
@@ -1482,7 +1482,7 @@ class SelectMetricWidget(QWidget):
                     )
         return pd.concat(layer_features, ignore_index=True)
 
-    def _update_slider(self):
+    def _update_slider(self, do_update_hist=True):
         invalid_labels = []
         for col_idx, label in enumerate(self.table_model.label_dict):
             if label in self.read_only:
@@ -1535,7 +1535,8 @@ class SelectMetricWidget(QWidget):
             else:
                 assert False, label
         self.table_model.remove_labels(invalid_labels)
-        self.update_hist()
+        if do_update_hist:
+            self.update_hist()
 
     def update_hist(self, *_, change_selection=True):
         rows_candidates_navigate = self.table_widget.get_row_candidates(False)

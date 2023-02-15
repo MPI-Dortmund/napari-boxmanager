@@ -1709,7 +1709,7 @@ class SelectMetricWidget(QWidget):
             else:
                 self.metric_dict[metric_name].setVisible(True)
 
-            if labels_data.empty:
+            if labels_data.empty or labels_data.isnull().all():
                 labels_data = pd.Series([0], dtype=int)
                 self.metric_dict[metric_name].setVisible(False)
                 continue

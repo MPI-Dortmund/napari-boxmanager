@@ -1,6 +1,10 @@
 Changes
 =======
 
+v0.3.5:
+*******
+ - Fix error that occurs when coordinate layers are deleted and then reloaded.
+
 v0.3.4:
 *******
  - Make "Add" mode default when clicking on "Create Particle Layer"

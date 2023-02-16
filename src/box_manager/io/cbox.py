@@ -1,5 +1,6 @@
 import copy
 import os
+import typing
 
 import numpy as np
 import numpy.typing as npt
@@ -14,8 +15,8 @@ from .interface import NapariLayerData
 valid_extensions = ["cbox"]
 coords_3d_idx = ["x", "y", "z"]
 coords_2d_idx = ["y", "z"]
-meta_columns = []
-feature_columns = []
+#meta_columns = []
+#feature_columns = []
 
 #########################
 # GENERAL STUFF
@@ -36,20 +37,12 @@ def to_napari(
         path=path,
         read_func=read,
         prepare_napari_func=_prepare_napari,
-        meta_columns=_get_meta_columns(),
-        feature_columns=_get_feature_columns(),
+        meta_columns=[],
+        feature_columns=[],
         valid_extensions=get_valid_extensions(),
     )
 
     return r
-
-
-def _get_meta_columns():
-    return meta_columns
-
-
-def _get_feature_columns():
-    return feature_columns
 
 
 def read(path: os.PathLike) -> pd.DataFrame:
@@ -205,7 +198,7 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
 
     cryolo_data = input_df
 
-    _fill_meta_features_idx(cryolo_data)
+    feature_columns, meta_columns = _fill_meta_features_idx(cryolo_data)
     is_3d = True
     if (
         "_CoordinateZ" not in cryolo_data
@@ -218,7 +211,7 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
         columns.append("x")
 
     output_data: pd.DataFrame = pd.DataFrame(
-        columns=columns + _get_meta_columns()
+        columns=columns + meta_columns
     )
 
     output_data["z"] = np.array(cryolo_data["_CoordinateX"]) + np.array(
@@ -255,7 +248,7 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     return output_data
 
 
-def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
+def _fill_meta_features_idx(input_df: pd.DataFrame) -> typing.Tuple[typing.List[str], typing.List[str]]:
     """
     Fills the meta idx array.
 
@@ -268,8 +261,8 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
     None
 
     """
-    global meta_columns
-    global feature_columns
+    meta_columns = []
+    feature_columns = []
 
     if (
         "_EstWidth" in input_df.columns
@@ -301,6 +294,7 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> None:
         and not input_df["_filamentid"].isnull().values.any()
     ) and "fid" not in feature_columns:
         feature_columns.append("fid")
+    return feature_columns, meta_columns
 
 
 ### Writing ####

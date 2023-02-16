@@ -1,6 +1,10 @@
 Changes
 =======
 
+v0.3.6:
+*******
+ - Fix error that occurs when filament and particle cbox files get loaded together.
+
 v0.3.5:
 *******
  - Fix error that occurs when coordinate layers are deleted and then reloaded.

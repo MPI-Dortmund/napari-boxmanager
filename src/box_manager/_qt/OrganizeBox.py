@@ -326,7 +326,7 @@ class OrganizeBoxWidget(QWidget):
         if create_layer and len(new_data) != 0:
             new_state = {}
             new_meta["matched"] = True
-            new_meta["layer_name"] = layer_image.name
+            new_meta["layer_name"] = [layer_image.name]
             for key, value in old_state.items():
                 if key == "visible":
                     new_state[key] = True

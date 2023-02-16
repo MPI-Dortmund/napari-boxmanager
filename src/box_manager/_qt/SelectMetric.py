@@ -1655,7 +1655,7 @@ class SelectMetricWidget(QWidget):
         for layer in valid_layers:
             self.napari_viewer.layers.selection.add(layer)
             try:
-                image_name = layer.metadata["layer_name"]
+                image_names = layer.metadata["layer_name"]
             except KeyError:
                 show_info(
                     f"Layer {layer.name} does not have an 'layer_name' entry."
@@ -1663,8 +1663,8 @@ class SelectMetricWidget(QWidget):
                 )
                 layer.metadata["layer_name"] = None
             else:
-                if image_name is not None:
-                    valid_images.append(image_name)
+                if image_names is not None:
+                    valid_images.extend(image_names)
 
         if valid_images:
             for layer in self.napari_viewer.layers:

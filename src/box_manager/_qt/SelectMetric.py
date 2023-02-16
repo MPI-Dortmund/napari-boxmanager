@@ -2,6 +2,7 @@ import enum
 import itertools
 import os
 import pathlib
+import sys
 import typing
 
 import napari.layers
@@ -1133,13 +1134,15 @@ class SelectMetricWidget(QWidget):
         full_range = np.arange(
             *self.napari_viewer.dims.range[0], dtype=int
         ).tolist()
+
         if range_list:
+            range_dict = {k:layer.metadata[k] for k in range_list if k in layer.metadata}
             if "ignore_idx" in layer.metadata:
                 ignore_idx = layer.metadata.pop("ignore_idx")
-                label_data = pd.DataFrame(layer.metadata).loc[:, range_list].T
+                label_data = pd.DataFrame(range_dict).loc[:, :].T
                 layer.metadata["ignore_idx"] = ignore_idx
             else:
-                label_data = pd.DataFrame(layer.metadata).loc[:, range_list].T
+                label_data = pd.DataFrame(range_dict).loc[:, :].T
         else:
             label_data = pd.DataFrame()
         range_list.extend(full_range)

@@ -45,12 +45,32 @@ def to_napari(
     return r
 
 
+
+def read_cbox_boxfile_old(path):
+    """
+    Read a box file in EMAN1 box format.
+    :param path: Path to box file
+    :return: List of bounding boxes
+    """
+    boxreader = np.atleast_2d(np.genfromtxt(path))
+    box_dat = {
+        "_CoordinateX": [box[0] for box in boxreader],
+        "_CoordinateY": [box[1] for box in boxreader],
+        "_Width": [box[2] for box in boxreader],
+        "_Height": [box[3] for box in boxreader],
+        "_Confidence": [box[4] for box in boxreader]
+    }
+
+    return pd.DataFrame(box_dat)
+
+
 def read(path: os.PathLike) -> pd.DataFrame:
     try:
         starfile = star.StarFile(path)
         data_dict = starfile["cryolo"]
-    except TypeError:
-        return None
+    except Exception:
+        print("Try to read old cbox format")
+        return read_cbox_boxfile_old(path)
     return pd.DataFrame(data_dict)
 
 

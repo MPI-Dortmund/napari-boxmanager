@@ -69,8 +69,11 @@ def read(path: os.PathLike) -> pd.DataFrame:
         starfile = star.StarFile(path)
         data_dict = starfile["cryolo"]
     except Exception:
-        print("Try to read old cbox format")
-        return read_cbox_boxfile_old(path)
+        try:
+            a =  read_cbox_boxfile_old(path)
+        except Exception:
+            return None
+        return a
     return pd.DataFrame(data_dict)
 
 

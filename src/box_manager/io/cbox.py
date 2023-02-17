@@ -38,7 +38,7 @@ def to_napari(
         read_func=read,
         prepare_napari_func=_prepare_napari,
         meta_columns=["confidence","size","num_boxes"],
-        feature_columns=['fid'],
+        feature_columns=['angle','fid'],
         valid_extensions=get_valid_extensions(),
     )
 
@@ -291,15 +291,10 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> typing.Tuple[typing.List[
     ) and "size" not in meta_columns:
         meta_columns.append("size")
 
-    print("_Confidence" in input_df.columns,
-          not input_df["_Confidence"].isnull().values.any(),
-          "confidence" not in meta_columns)
-
     if (
         "_Confidence" in input_df.columns
         and not input_df["_Confidence"].isnull().values.any()
     ) and "confidence" not in meta_columns:
-        print("ADD META")
         meta_columns.append("confidence")
 
     if (

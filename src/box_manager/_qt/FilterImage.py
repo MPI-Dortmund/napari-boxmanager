@@ -72,13 +72,7 @@ class FilterImageWidget(QWidget):
 
     @staticmethod
     def update_links(target_layer: napari.layers.Layer, link_layer_name: str):
-        if 'linked_image_layers' in target_layer.metadata:
-            if isinstance(target_layer.metadata['linked_image_layers'], list):
-                target_layer.metadata['linked_image_layers'].append(link_layer_name)
-            else:
-                target_layer.metadata['linked_image_layers'] = [link_layer_name]
-        else:
-            target_layer.metadata['linked_image_layers'] = [link_layer_name]
+        target_layer.metadata.setdefault('linked_image_layers', []).append(link_layer_name)
 
     @Slot()
     def _run(self):

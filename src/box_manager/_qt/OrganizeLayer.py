@@ -86,6 +86,14 @@ class OrganizeLayerWidget(QWidget):
         general.get_layer_id(self.napari_viewer, self.napari_viewer.layers[image_name])
         image_id = id(self.napari_viewer.layers[image_name])
         self.napari_viewer.layers[layer_name].metadata.setdefault('linked_image_layers', []).append(image_id)
+
+        for layer in self.napari_viewer.layers:
+            layer.visible = False
+        self.napari_viewer.layers[image_name].visible = True
+        self.napari_viewer.layers[layer_name].visible = True
+
+
+
         show_info("link succesfull")
 
     def _save_ui(self):

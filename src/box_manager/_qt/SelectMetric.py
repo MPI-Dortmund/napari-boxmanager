@@ -1554,7 +1554,7 @@ class SelectMetricWidget(QWidget):
                     f"Layer {layer.name} does not have an 'linked_image_layers' entry."
                     "Use the link layers tool to allow image highlighting in the boxmanager"
                 )
-                layer.metadata["linked_image_layers"] = None
+                layer.metadata["linked_image_layers"] = []
             else:
                 if image_ids is not None:
                     linked_images.update(image_ids)

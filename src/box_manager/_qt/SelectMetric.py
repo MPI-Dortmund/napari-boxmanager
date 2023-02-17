@@ -1543,12 +1543,12 @@ class SelectMetricWidget(QWidget):
 
 
 
-    def _get_linked_image_layer_names(self, layers: typing.List[napari.layers.Layer]) -> typing.List[str]:
+    def _get_linked_image_layer_ids(self, layers: typing.List[napari.layers.Layer]) -> typing.List[int]:
         linked_images = set()
         for layer in layers:
             self.napari_viewer.layers.selection.add(layer)
             try:
-                image_names = layer.metadata["linked_image_layers"]
+                image_ids = layer.metadata["linked_image_layers"]
             except KeyError:
                 show_info(
                     f"Layer {layer.name} does not have an 'linked_image_layers' entry."
@@ -1556,8 +1556,8 @@ class SelectMetricWidget(QWidget):
                 )
                 layer.metadata["linked_image_layers"] = None
             else:
-                if image_names is not None:
-                    linked_images.update(image_names)
+                if image_ids is not None:
+                    linked_images.update(image_ids)
 
         for layer in self.napari_viewer.layers:
             if "linked_image_layers" in layer.metadata:
@@ -1679,13 +1679,13 @@ class SelectMetricWidget(QWidget):
             layer.events.visible.connect(self._update_visible)
 
         self.napari_viewer.layers.selection.clear()
-        valid_images = self._get_linked_image_layer_names(valid_layers)
-
+        valid_images = self._get_linked_image_layer_ids(valid_layers)
+        print(valid_images)
         if valid_images:
             for layer in self.napari_viewer.layers:
                 if not isinstance(layer, napari.layers.Image):
                     continue
-                elif layer.name not in valid_images:
+                elif id(layer) not in valid_images:
                     layer.visible = False
                 else:
                     layer.visible = True

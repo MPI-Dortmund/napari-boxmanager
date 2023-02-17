@@ -82,10 +82,9 @@ class OrganizeLayerWidget(QWidget):
 
         image_name = self.link_layers["image"].currentText()
         layer_name = self.link_layers["layer"].currentText()
-        if self.napari_viewer.layers[layer_name].metadata["linked_image_layers"]:
-            self.napari_viewer.layers[layer_name].metadata["linked_image_layers"].append(image_name)
-        else:
-            self.napari_viewer.layers[layer_name].metadata["linked_image_layers"] = [image_name]
+        image_id = id(self.napari_viewer.layers[image_name])
+        print(f"add {image_name} id: {image_id}")
+        self.napari_viewer.layers[layer_name].metadata.setdefault('linked_image_layers', []).append(image_id)
         show_info("link succesfull")
 
     def _save_ui(self):
@@ -415,9 +414,10 @@ class OrganizeLayerWidget(QWidget):
 
     def _get_metadata(self):
         layer_name = self._layer.currentText()
+        print(f"2 Add {layer_name} id: {id(self._layer)}")
         metadata = {
             "do_activate_on_insert": True,
-            "linked_image_layers": [layer_name],
+            "linked_image_layers": [id(self._layer)],
             "skip_match": None,
         }
         if not layer_name:

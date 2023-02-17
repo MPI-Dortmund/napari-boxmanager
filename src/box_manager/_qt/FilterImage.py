@@ -71,8 +71,8 @@ class FilterImageWidget(QWidget):
         self._update_combo()
 
     @staticmethod
-    def update_links(target_layer: napari.layers.Layer, link_layer_name: str):
-        target_layer.metadata.setdefault('linked_image_layers', []).append(link_layer_name)
+    def update_links(target_layer: napari.layers.Layer, link_layer_id: int):
+        target_layer.metadata.setdefault('linked_image_layers', []).append(link_layer_id)
 
     @Slot()
     def _run(self):
@@ -121,7 +121,7 @@ class FilterImageWidget(QWidget):
         )
 
 
-        FilterImageWidget.update_links( self.layer, image.name)
+        FilterImageWidget.update_links(self.layer, id(image))
 
         image.contrast_limits_range = [
             filtered_image.min(),

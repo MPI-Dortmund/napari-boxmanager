@@ -1,6 +1,11 @@
 Changes
 =======
 
+v0.3.7:
+*******
+ - Linking now allows renaming
+ - Filtered images now get automatically linked
+
 v0.3.6:
 *******
  - Fix error that occurs when filament and particle cbox files get loaded together.

@@ -4,7 +4,7 @@ import os
 import pathlib
 import sys
 import typing
-
+from .._utils import general
 import napari.layers
 import numpy as np
 import pandas as pd
@@ -1680,12 +1680,11 @@ class SelectMetricWidget(QWidget):
 
         self.napari_viewer.layers.selection.clear()
         valid_images = self._get_linked_image_layer_ids(valid_layers)
-        print(valid_images)
         if valid_images:
             for layer in self.napari_viewer.layers:
                 if not isinstance(layer, napari.layers.Image):
                     continue
-                elif id(layer) not in valid_images:
+                elif general.get_layer_id(self.napari_viewer, layer) not in valid_images:
                     layer.visible = False
                 else:
                     layer.visible = True

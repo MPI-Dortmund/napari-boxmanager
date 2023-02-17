@@ -36,3 +36,9 @@ def get_identifier(layer, cur_slice):
         return np.array([entry[0, cur_slice] for entry in layer.data])
     else:
         assert False, (layer, type(layer))
+
+def get_layer_id(napari_viewer: napari.Viewer, layer: napari.layers.Layer) -> int:
+    added_layers = [_ for _ in napari_viewer.layers if layer.name == _.name]
+    if added_layers:
+        return id([_ for _ in napari_viewer.layers if layer.name == _.name][0])
+    return id(layer)

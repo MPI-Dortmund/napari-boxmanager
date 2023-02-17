@@ -2,6 +2,7 @@ import typing
 
 import napari.layers
 import numpy as np
+from .._utils import general
 from napari.utils.notifications import show_info
 from qtpy.QtCore import QRegularExpression, Slot
 from qtpy.QtGui import QRegularExpressionValidator
@@ -121,7 +122,7 @@ class FilterImageWidget(QWidget):
         )
 
 
-        FilterImageWidget.update_links(self.layer, id(image))
+        FilterImageWidget.update_links(self.layer, general.get_layer_id(self.napari_viewer, image))
 
         image.contrast_limits_range = [
             filtered_image.min(),

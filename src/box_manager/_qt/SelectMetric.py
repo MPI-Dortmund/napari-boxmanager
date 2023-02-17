@@ -1548,21 +1548,21 @@ class SelectMetricWidget(QWidget):
         for layer in layers:
             self.napari_viewer.layers.selection.add(layer)
             try:
-                image_names = layer.metadata["layer_name"]
+                image_names = layer.metadata["linked_image_layers"]
             except KeyError:
                 show_info(
-                    f"Layer {layer.name} does not have an 'layer_name' entry."
+                    f"Layer {layer.name} does not have an 'linked_image_layers' entry."
                     "Use the link layers tool to allow image highlighting in the boxmanager"
                 )
-                layer.metadata["layer_name"] = None
+                layer.metadata["linked_image_layers"] = None
             else:
                 if image_names is not None:
                     linked_images.update(image_names)
 
         for layer in self.napari_viewer.layers:
-            if "layer_name" in layer.metadata:
-                if layer.metadata["layer_name"]:
-                    linked_images.update(layer.metadata["layer_name"])
+            if "linked_image_layers" in layer.metadata:
+                if layer.metadata["linked_image_layers"]:
+                    linked_images.update(layer.metadata["linked_image_layers"])
 
         return list(linked_images)
 

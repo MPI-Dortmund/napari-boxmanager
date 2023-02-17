@@ -1,6 +1,10 @@
 Changes
 =======
 
+v0.3.9:
+*******
+ - Fix cbox reading that got broken before.
+
 v0.3.7:
 *******
  - Linking now allows renaming

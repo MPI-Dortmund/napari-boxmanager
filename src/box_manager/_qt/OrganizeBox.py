@@ -1,7 +1,7 @@
 import os
 import typing
 from copy import deepcopy
-
+from .._utils import general
 import napari.layers
 import numpy as np
 from napari.layers.base.base import Layer
@@ -326,7 +326,7 @@ class OrganizeBoxWidget(QWidget):
         if create_layer and len(new_data) != 0:
             new_state = {}
             new_meta["matched"] = True
-            new_meta["layer_name"] = layer_image.name
+            new_meta["linked_image_layers"] = [general.get_layer_id(self.napari_viewer, layer_image)]
             for key, value in old_state.items():
                 if key == "visible":
                     new_state[key] = True

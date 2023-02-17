@@ -2,6 +2,7 @@ import typing
 
 import napari.layers
 import numpy as np
+from .._utils import general
 from napari.utils.notifications import show_info
 from qtpy.QtCore import QRegularExpression, Slot
 from qtpy.QtGui import QRegularExpressionValidator
@@ -70,6 +71,10 @@ class FilterImageWidget(QWidget):
 
         self._update_combo()
 
+    @staticmethod
+    def update_links(target_layer: napari.layers.Layer, link_layer_id: int):
+        target_layer.metadata.setdefault('linked_image_layers', []).append(link_layer_id)
+
     @Slot()
     def _run(self):
         for attr in [
@@ -109,11 +114,16 @@ class FilterImageWidget(QWidget):
                 name=f"MASK LP {int(self.lp_filter_resolution)} HP {int(self.hp_filter_resolution)} AP {self.pixel_size} - {self.layer.name}",
             )
 
+
         image = napari.layers.Image(
             filtered_image,
             name=f"LP {int(self.lp_filter_resolution)} HP {int(self.hp_filter_resolution)} AP {self.pixel_size} LIVE {self.filter_2d}  - {self.layer.name}",
-            metadata=self.layer.metadata,
+            metadata=self.layer.metadata.copy(),
         )
+
+
+        FilterImageWidget.update_links(self.layer, general.get_layer_id(self.napari_viewer, image))
+
         image.contrast_limits_range = [
             filtered_image.min(),
             filtered_image.max(),

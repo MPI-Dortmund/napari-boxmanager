@@ -3,6 +3,7 @@ from pathlib import Path
 
 import napari
 import napari.layers
+from .._utils import general
 import numpy as np
 from napari._qt.qt_resources._svg import QColoredSVGIcon
 from napari.layers.shapes._shapes_constants import Mode
@@ -82,9 +83,17 @@ class OrganizeLayerWidget(QWidget):
 
         image_name = self.link_layers["image"].currentText()
         layer_name = self.link_layers["layer"].currentText()
-        self.napari_viewer.layers[layer_name].metadata[
-            "layer_name"
-        ] = image_name
+        general.get_layer_id(self.napari_viewer, self.napari_viewer.layers[image_name])
+        image_id = id(self.napari_viewer.layers[image_name])
+        self.napari_viewer.layers[layer_name].metadata.setdefault('linked_image_layers', []).append(image_id)
+
+        for layer in self.napari_viewer.layers:
+            layer.visible = False
+        self.napari_viewer.layers[image_name].visible = True
+        self.napari_viewer.layers[layer_name].visible = True
+
+
+
         show_info("link succesfull")
 
     def _save_ui(self):
@@ -414,9 +423,10 @@ class OrganizeLayerWidget(QWidget):
 
     def _get_metadata(self):
         layer_name = self._layer.currentText()
+
         metadata = {
             "do_activate_on_insert": True,
-            "layer_name": layer_name,
+            "linked_image_layers": [general.get_layer_id(self.napari_viewer, self._layer)],
             "skip_match": None,
         }
         if not layer_name:

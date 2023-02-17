@@ -2,8 +2,9 @@ import enum
 import itertools
 import os
 import pathlib
+import sys
 import typing
-
+from .._utils import general
 import napari.layers
 import numpy as np
 import pandas as pd
@@ -1133,13 +1134,15 @@ class SelectMetricWidget(QWidget):
         full_range = np.arange(
             *self.napari_viewer.dims.range[0], dtype=int
         ).tolist()
+
         if range_list:
+            range_dict = {k:layer.metadata[k] for k in range_list if k in layer.metadata}
             if "ignore_idx" in layer.metadata:
                 ignore_idx = layer.metadata.pop("ignore_idx")
-                label_data = pd.DataFrame(layer.metadata).loc[:, range_list].T
+                label_data = pd.DataFrame(range_dict).loc[:, :].T
                 layer.metadata["ignore_idx"] = ignore_idx
             else:
-                label_data = pd.DataFrame(layer.metadata).loc[:, range_list].T
+                label_data = pd.DataFrame(range_dict).loc[:, :].T
         else:
             label_data = pd.DataFrame()
         range_list.extend(full_range)
@@ -1538,6 +1541,31 @@ class SelectMetricWidget(QWidget):
         if do_update_hist:
             self.update_hist()
 
+
+
+    def _get_linked_image_layer_ids(self, layers: typing.List[napari.layers.Layer]) -> typing.List[int]:
+        linked_images = set()
+        for layer in layers:
+            self.napari_viewer.layers.selection.add(layer)
+            try:
+                image_ids = layer.metadata["linked_image_layers"]
+            except KeyError:
+                show_info(
+                    f"Layer {layer.name} does not have an 'linked_image_layers' entry."
+                    "Use the link layers tool to allow image highlighting in the boxmanager"
+                )
+                layer.metadata["linked_image_layers"] = []
+            else:
+                if image_ids is not None:
+                    linked_images.update(image_ids)
+
+        for layer in self.napari_viewer.layers:
+            if "linked_image_layers" in layer.metadata:
+                if layer.metadata["linked_image_layers"]:
+                    linked_images.update(layer.metadata["linked_image_layers"])
+
+        return list(linked_images)
+
     def update_hist(self, *_, change_selection=True):
         rows_candidates_navigate = self.table_widget.get_row_candidates(False)
         rows_candidates = self.table_widget.get_row_candidates(
@@ -1651,26 +1679,12 @@ class SelectMetricWidget(QWidget):
             layer.events.visible.connect(self._update_visible)
 
         self.napari_viewer.layers.selection.clear()
-        valid_images = []
-        for layer in valid_layers:
-            self.napari_viewer.layers.selection.add(layer)
-            try:
-                image_name = layer.metadata["layer_name"]
-            except KeyError:
-                show_info(
-                    f"Layer {layer.name} does not have an 'layer_name' entry."
-                    "Use the link layers tool to allow image highlighting in the boxmanager"
-                )
-                layer.metadata["layer_name"] = None
-            else:
-                if image_name is not None:
-                    valid_images.append(image_name)
-
+        valid_images = self._get_linked_image_layer_ids(valid_layers)
         if valid_images:
             for layer in self.napari_viewer.layers:
                 if not isinstance(layer, napari.layers.Image):
                     continue
-                elif layer.name not in valid_images:
+                elif general.get_layer_id(self.napari_viewer, layer) not in valid_images:
                     layer.visible = False
                 else:
                     layer.visible = True

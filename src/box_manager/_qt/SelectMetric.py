@@ -1541,6 +1541,31 @@ class SelectMetricWidget(QWidget):
         if do_update_hist:
             self.update_hist()
 
+
+
+    def _get_linked_image_layer_names(self, layers: typing.List[napari.layers.Layer]) -> typing.List[str]:
+        linked_images = set()
+        for layer in layers:
+            self.napari_viewer.layers.selection.add(layer)
+            try:
+                image_names = layer.metadata["layer_name"]
+            except KeyError:
+                show_info(
+                    f"Layer {layer.name} does not have an 'layer_name' entry."
+                    "Use the link layers tool to allow image highlighting in the boxmanager"
+                )
+                layer.metadata["layer_name"] = None
+            else:
+                if image_names is not None:
+                    linked_images.update(image_names)
+
+        for layer in self.napari_viewer.layers:
+            if "layer_name" in layer.metadata:
+                if layer.metadata["layer_name"]:
+                    linked_images.update(layer.metadata["layer_name"])
+
+        return list(linked_images)
+
     def update_hist(self, *_, change_selection=True):
         rows_candidates_navigate = self.table_widget.get_row_candidates(False)
         rows_candidates = self.table_widget.get_row_candidates(
@@ -1654,20 +1679,7 @@ class SelectMetricWidget(QWidget):
             layer.events.visible.connect(self._update_visible)
 
         self.napari_viewer.layers.selection.clear()
-        valid_images = []
-        for layer in valid_layers:
-            self.napari_viewer.layers.selection.add(layer)
-            try:
-                image_names = layer.metadata["layer_name"]
-            except KeyError:
-                show_info(
-                    f"Layer {layer.name} does not have an 'layer_name' entry."
-                    "Use the link layers tool to allow image highlighting in the boxmanager"
-                )
-                layer.metadata["layer_name"] = None
-            else:
-                if image_names is not None:
-                    valid_images.extend(image_names)
+        valid_images = self._get_linked_image_layer_names(valid_layers)
 
         if valid_images:
             for layer in self.napari_viewer.layers:

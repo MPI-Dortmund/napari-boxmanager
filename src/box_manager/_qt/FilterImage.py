@@ -70,6 +70,16 @@ class FilterImageWidget(QWidget):
 
         self._update_combo()
 
+    @staticmethod
+    def update_links(target_layer: napari.layers.Layer, link_layer_name: str):
+        if 'layer_name' in target_layer.metadata:
+            if isinstance(target_layer.metadata['layer_name'], list):
+                target_layer.metadata['layer_name'].append(link_layer_name)
+            else:
+                target_layer.metadata['layer_name'] = [link_layer_name]
+        else:
+            target_layer.metadata['layer_name'] = [link_layer_name]
+
     @Slot()
     def _run(self):
         for attr in [
@@ -109,11 +119,16 @@ class FilterImageWidget(QWidget):
                 name=f"MASK LP {int(self.lp_filter_resolution)} HP {int(self.hp_filter_resolution)} AP {self.pixel_size} - {self.layer.name}",
             )
 
+
         image = napari.layers.Image(
             filtered_image,
             name=f"LP {int(self.lp_filter_resolution)} HP {int(self.hp_filter_resolution)} AP {self.pixel_size} LIVE {self.filter_2d}  - {self.layer.name}",
-            metadata=self.layer.metadata,
+            metadata=self.layer.metadata.copy(),
         )
+
+
+        FilterImageWidget.update_links( self.layer, image.name)
+
         image.contrast_limits_range = [
             filtered_image.min(),
             filtered_image.max(),

@@ -37,8 +37,8 @@ def to_napari(
         path=path,
         read_func=read,
         prepare_napari_func=_prepare_napari,
-        meta_columns=[],
-        feature_columns=[],
+        meta_columns=["confidence","size","num_boxes"],
+        feature_columns=['angle','fid'],
         valid_extensions=get_valid_extensions(),
     )
 
@@ -218,7 +218,9 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
 
     cryolo_data = input_df
 
+
     feature_columns, meta_columns = _fill_meta_features_idx(cryolo_data)
+
     is_3d = True
     if (
         "_CoordinateZ" not in cryolo_data
@@ -283,7 +285,6 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> typing.Tuple[typing.List[
     """
     meta_columns = []
     feature_columns = []
-
     if (
         "_EstWidth" in input_df.columns
         and not input_df["_EstWidth"].isnull().values.any()

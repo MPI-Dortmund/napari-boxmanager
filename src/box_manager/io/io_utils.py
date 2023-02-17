@@ -300,6 +300,8 @@ def to_napari_coordinates(
     for entry in feature_columns + meta_columns:
         if metadata["is_filament_layer"]:
             for fil in input_df_list:
+                if entry not in fil:
+                    continue
                 if entry in features:
                     features[entry] = np.concatenate(
                         [features[entry], fil[entry].to_numpy()]

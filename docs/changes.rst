@@ -1,6 +1,10 @@
 Changes
 =======
 
+v0.3.10:
+*******
+ - Fix reading Float16 mrc files.
+
 v0.3.9:
 *******
  - Fix cbox reading that got broken before.

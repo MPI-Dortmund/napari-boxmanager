@@ -47,6 +47,7 @@ class OrganizeLayerWidget(QWidget):
 
         self._apply_icons()
         self.layout().addStretch(True)
+        self.saved_dir_path = os.getcwd()
 
     def _link_ui(self):
         self.napari_viewer.layers.events.inserted.connect(
@@ -238,17 +239,18 @@ class OrganizeLayerWidget(QWidget):
             show_error("Filament format requires Filament spacing")
             return
 
-        dir_path = QFileDialog.getExistingDirectory(
+        self.saved_dir_path = QFileDialog.getExistingDirectory(
             self,
             "Open directory",
-            os.getcwd(),
+            self.saved_dir_path,
             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
         )
-        if not dir_path:
+        if not self.saved_dir_path:
+            self.saved_dir_path = os.getcwd()
             return
 
         napari_get_writer(
-            dir_path,
+            self.saved_dir_path,
             [cur_layer.as_layer_data_tuple()],
             cur_format,
             self.save_layers["suffix"].text() + cur_format,

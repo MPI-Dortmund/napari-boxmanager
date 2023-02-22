@@ -1,6 +1,10 @@
 Changes
 =======
 
+v0.3.11 (upcoming):
+*******
+ - Fix crash when creating new layer (introduced with v0.3.7).
+
 v0.3.10:
 *******
  - Fix crash when creating new layer (introduced with v0.3.7).

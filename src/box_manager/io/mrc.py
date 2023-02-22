@@ -17,6 +17,7 @@ def load_image(path: str) -> np.array:
 
     with mrcfile.mmap(path, "r", permissive=True) as mrc:
         data = mrc.data
+        data = data.astype(np.float32)
     if extension == ".mrci":
         return data.astype(np.int32)
     else:

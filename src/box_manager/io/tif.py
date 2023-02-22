@@ -13,6 +13,7 @@ def load_image(path: str) -> np.ndarray:
 
     with tifffile.TiffFile(path) as tif:
         img = tif.pages[0].asarray()
+        img = img.astype(np.float32)
         if len(img.shape) == 3:
             img = np.flip(img, 1)
         else:

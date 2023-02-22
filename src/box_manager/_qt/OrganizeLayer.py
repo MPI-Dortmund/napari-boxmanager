@@ -426,7 +426,7 @@ class OrganizeLayerWidget(QWidget):
 
         metadata = {
             "do_activate_on_insert": True,
-            "linked_image_layers": [general.get_layer_id(self.napari_viewer, self._layer)],
+            "linked_image_layers": [general.get_layer_id(self.napari_viewer, self.napari_viewer.layers[layer_name])],
             "skip_match": None,
         }
         if not layer_name:

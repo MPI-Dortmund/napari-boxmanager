@@ -1292,9 +1292,9 @@ class SelectMetricWidget(QWidget):
                 ):
                     val = label_data.loc[slice_idx, label_max]
                 else:
-                    val = general.get_max_floor(label_data[label_max])
+                    val = general.get_max_ceil(label_data[label_max])
                     if not np.all(val == label_data[label_max].dropna()):
-                        val = general.get_max_floor(features[col_name])
+                        val = general.get_max_ceil(features[col_name])
                 if not np.isnan(val):
                     output_dict[label_max] = str(val)
                 else:
@@ -1920,7 +1920,7 @@ class HistogramMinMaxView(QWidget):
         else:
             self._label_data = label_data
         val_min = general.get_min_floor(label_data.min())
-        val_max = general.get_max_floor(label_data.max())
+        val_max = general.get_max_ceil(label_data.max())
         val_min = val_min if not np.isnan(val_min) else 0
         val_max = val_max if not np.isnan(val_max) else 0
         self.slider_min.set_range(val_min, val_max)

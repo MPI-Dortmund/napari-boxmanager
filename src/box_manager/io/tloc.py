@@ -125,7 +125,7 @@ def to_napari(
                     f"{entry}_{'min' if 'min' in func.__name__ else 'max'}": func(
                         idx_view_df[entry]
                     )
-                    for func in [general.get_min_floor, general.get_max_floor]
+                    for func in [general.get_min_floor, general.get_max_ceil]
                     for entry in _get_meta_idx()
                 }
             )

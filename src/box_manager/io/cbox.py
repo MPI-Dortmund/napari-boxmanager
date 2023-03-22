@@ -1,5 +1,6 @@
 import copy
 import os
+import sys
 import typing
 
 import numpy as np
@@ -137,6 +138,7 @@ def _make_df_data_filament(
 
     feature_map = {}
     other_interpolation_cols = []
+
     coord_columns = ["_CoordinateX", "_CoordinateY"]
     constant_columns = ["_filamentid", "_Width", "_Height"]
     if is_3d:
@@ -194,8 +196,12 @@ def _make_df_data_filament(
             constant_columns=constant_columns,
             other_interpolation_col=other_interpolation_cols,
         )
-
-    return pd.concat(filaments)
+    result = {
+        'cryolo': pd.concat(filaments),
+        'filament_vertices': pd.DataFrame(coordinates)
+    }
+    print("RAUS DAMIT!!")
+    return result
 
 
 #########################
@@ -323,14 +329,22 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> typing.Tuple[typing.List[
 
 ### Writing ####
 ################
+from typing import Dict
 
+def write_cbox(path: os.PathLike, data: Dict[str,pd.DataFrame], **kwargs):
 
-def write_cbox(path: os.PathLike, df: pd.DataFrame, **kwargs):
+    print(data.keys())
 
     sfile = star.StarFile(path)
-
+    tags = []
     version_df = pd.DataFrame([["1.0"]], columns=["_cbox_format_version"])
     sfile.update("global", version_df, False)
+    tags.append("global")
+    if 'filament_vertices' in data:
+        sfile.update("filament_vertices", data['filament_vertices'], True)
+        tags.append("filament_vertices")
+
+    df = data['cryolo']
     include_slices = []
     if "_CoordinateZ" in df.columns:
         if not df["_CoordinateZ"].isnull().values.any():
@@ -343,14 +357,13 @@ def write_cbox(path: os.PathLike, df: pd.DataFrame, **kwargs):
     if "empty_slices" in kwargs:
         include_slices.extend(kwargs["empty_slices"])
     include_slices.sort()
-
     sfile.update("cryolo", df, True)
-
+    tags.append("cryolo")
     include_df = pd.DataFrame(include_slices, columns=["_slice_index"])
     sfile.update("cryolo_include", include_df, True)
-
+    tags.append("cryolo_include")
     sfile.write_star_file(
-        overwrite=True, tags=["global", "cryolo", "cryolo_include"]
+        overwrite=True, tags=tags
     )
 
 

@@ -6,7 +6,7 @@ import pathlib
 import typing
 import warnings
 from collections.abc import Callable
-from typing import Protocol
+from typing import Protocol, Union, Dict
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -44,7 +44,7 @@ class FormatFunc(Protocol):
         features: pd.DataFrame,
         metadata: dict,
         filament_spacing: int,
-    ) -> pd.DataFrame:
+    ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
         ...
 
 

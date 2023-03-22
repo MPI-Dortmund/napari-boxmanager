@@ -66,16 +66,22 @@ def read_cbox_boxfile_old(path):
 
 
 def read(path: os.PathLike) -> pd.DataFrame:
+    verticis = None
     try:
         starfile = star.StarFile(path)
-        data_dict = starfile["cryolo"]
+        segmented_coords = starfile["cryolo"]
+        if 'filament_vertices' in starfile:
+            verticis = starfile['filament_vertices']
     except Exception:
         try:
             a =  read_cbox_boxfile_old(path)
         except Exception:
             return None
         return a
-    return pd.DataFrame(data_dict)
+    if verticis:
+        segmented_coords.attrs['filament_vertices'] = verticis
+
+    return segmented_coords
 
 
 ### Writing ####

@@ -49,11 +49,21 @@ class FormatFunc(Protocol):
 
 
 def _split_filaments(data: pd.DataFrame) -> typing.List[pd.DataFrame]:
+    vert = None
+    if 'filament_vertices' in data.attrs:
+        vert = data.attrs['filament_vertices']
     filament_ids = np.unique(data["fid"])
     filaments = []
     for id in filament_ids:
         mask = data["fid"] == id
-        filaments.append(data[mask])
+        filament = data[mask]
+
+        if vert:
+            mask = vert["_filamentid"] == id
+            vert_fil = vert[mask]
+            filament.attrs['filament_vertices'] = vert_fil
+
+        filaments.append(filament)
     return filaments
 
 

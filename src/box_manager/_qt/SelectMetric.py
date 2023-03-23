@@ -1935,6 +1935,7 @@ class HistogramMinMaxView(QWidget):
         self.slider_max.set_value(cur_val_max)
 
         if self._mode == "Separate":
+            print("OMG")
             outlier = 0.05
             quantile_upper = np.quantile(label_data, 1 - outlier / 2)
             quantile_lower = np.quantile(label_data, outlier / 2)
@@ -1966,6 +1967,8 @@ class HistogramMinMaxView(QWidget):
             axis_idx = -1
             cum_width = 0
             for idx, entry in enumerate(self.axis_list):
+                print()
+                print(idx, entry)
                 entry["axis"].autoscale()
                 if data_list[idx].empty:
                     entry["axis"].set_position([0, 0, 0, 0])
@@ -2005,14 +2008,18 @@ class HistogramMinMaxView(QWidget):
                     ),
                     3,
                 )
+                print(f"{ticks=}")
                 if np.all(ticks == ticks[0]):
-                    ticks[0] -= 1
-                    ticks[-1] += 1
-                    margin = 1.2
+                    ticks = [ticks[0]]
+                    #ticks[0] -= 0.01
+                    #ticks[-1] += 0.01
+                    margin = 0
                 else:
                     margin = (
                         np.max(data_list[idx]) - np.min(data_list[idx])
                     ) * 0.05
+                print(f"{ticks=}")
+                print(f"{margin=}")
 
                 entry["axis"].set_xticks(ticks)
                 if n_data != 1:
@@ -2044,6 +2051,8 @@ class HistogramMinMaxView(QWidget):
                 else:
                     min_val = np.min(data_list[idx]) - max(margin, 0.002)
                     max_val = np.max(data_list[idx]) + max(margin, 0.002)
+                print(f"{min_val=}")
+                print(f"{max_val=}")
                 entry["axis"].set_xlim(min_val, max_val)
 
                 if n_data != 1:

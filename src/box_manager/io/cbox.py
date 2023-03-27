@@ -78,7 +78,7 @@ def read(path: os.PathLike) -> pd.DataFrame:
         except Exception:
             return None
         return a
-    if verticis:
+    if verticis is not None:
         segmented_coords.attrs['filament_vertices'] = verticis
 
     return segmented_coords

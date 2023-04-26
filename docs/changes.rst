@@ -1,7 +1,12 @@
 Changes
 =======
 
-v0.3.11 (upcoming):
+v0.3.12:
+*******
+ - Fix crash when readining cbox files (Thanks to and Jake D. Johnston and Yasunori Saitoh)
+ - Written CBOX files now also contain the filament verticis.
+
+v0.3.11:
 *******
  - Fix crash when creating new layer (introduced with v0.3.7).
 

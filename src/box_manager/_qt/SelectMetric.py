@@ -2006,9 +2006,10 @@ class HistogramMinMaxView(QWidget):
                     3,
                 )
                 if np.all(ticks == ticks[0]):
-                    ticks[0] -= 1
-                    ticks[-1] += 1
-                    margin = 1.2
+                    ticks = [ticks[0]]
+                    #ticks[0] -= 0.01
+                    #ticks[-1] += 0.01
+                    margin = 0
                 else:
                     margin = (
                         np.max(data_list[idx]) - np.min(data_list[idx])

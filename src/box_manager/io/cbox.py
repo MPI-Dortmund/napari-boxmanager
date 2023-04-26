@@ -75,7 +75,8 @@ def read(path: os.PathLike) -> pd.DataFrame:
     except Exception:
         try:
             a =  read_cbox_boxfile_old(path)
-        except Exception:
+        except Exception as e:
+            print(e)
             return None
         return a
     if verticis is not None:

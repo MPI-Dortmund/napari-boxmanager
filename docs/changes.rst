@@ -1,11 +1,14 @@
 Changes
 =======
 
+v0.3.13 (upcoming):
+*******
+ - Improves plotting in some edge cases
+
 v0.3.12:
 *******
  - Fix crash when readining cbox files (Thanks to and Jake D. Johnston and Yasunori Saitoh)
  - Written CBOX files now also contain the filament verticis.
- - Improves plotting in some edge cases
 
 v0.3.11:
 *******

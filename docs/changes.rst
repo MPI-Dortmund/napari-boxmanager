@@ -3,7 +3,9 @@ Changes
 
 v0.3.13 (upcoming):
 *******
- - Improves plotting in some edge cases
+  - Fix crash when writing box files introduced with 0.3.12 (Thanks to Jake D. Johnston)
+  - Improves plotting in some edge cases
+
 
 v0.3.12:
 *******

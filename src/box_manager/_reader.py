@@ -17,7 +17,6 @@ def get_dir(path):
         files = glob.glob(os.path.join(path, f"*.{file_ext}"))
         if not files:
             continue
-        print("ext", file_ext)
         layers.extend(bm_readers.get_reader(file_ext)(sorted(files)))
     return layers
 

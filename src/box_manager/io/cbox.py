@@ -207,7 +207,6 @@ def _make_df_data_filament(
         'cryolo': pd.concat(filaments),
         'filament_vertices': pd.DataFrame(coordinates)
     }
-    print("RAUS DAMIT!!")
     return result
 
 
@@ -339,9 +338,6 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> typing.Tuple[typing.List[
 from typing import Dict
 
 def write_cbox(path: os.PathLike, data: Dict[str,pd.DataFrame], **kwargs):
-
-    print(data.keys())
-
     sfile = star.StarFile(path)
     tags = []
     version_df = pd.DataFrame([["1.0"]], columns=["_cbox_format_version"])
@@ -438,4 +434,8 @@ def _make_df_data(
         else:
             data["_Angle"].append(np.nan)
 
-    return pd.DataFrame(data)
+    result = {
+        'cryolo': pd.DataFrame(data),
+    }
+
+    return result

@@ -4,6 +4,7 @@ Changes
 v0.3.14:
 *******
   - Fix problem when opening folder of tomograms (https://github.com/MPI-Dortmund/napari-boxmanager/issues/12)
+  - Filament distance renamed to Inter-box distance
 
 v0.3.13:
 *******

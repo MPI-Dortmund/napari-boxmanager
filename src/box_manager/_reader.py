@@ -1,7 +1,9 @@
 import glob
 import os
+import sys
 import typing
 from collections.abc import Callable
+import numpy as np
 
 import pandas as pd
 
@@ -10,14 +12,25 @@ from . import io as bm_readers
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
+def is_tomo(path: str, reader: Callable):
+    img = reader(path)
+    num_dim = np.squeeze(img[0][0]).ndim
+    return num_dim== 3
 
 def get_dir(path):
     layers = []
     for file_ext in bm_readers._VALID_IOS.keys():
         files = glob.glob(os.path.join(path, f"*.{file_ext}"))
+        reader = bm_readers.get_reader(file_ext)
         if not files:
             continue
-        layers.extend(bm_readers.get_reader(file_ext)(sorted(files)))
+
+        is_first_file_tomo=is_tomo(files[0],reader)
+        if is_first_file_tomo:
+            for file in files:
+                layers.extend(reader(file))
+        else:
+            layers.extend(reader(sorted(files)))
     return layers
 
 

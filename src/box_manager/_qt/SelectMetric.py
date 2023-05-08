@@ -1115,7 +1115,6 @@ class SelectMetricWidget(QWidget):
     def _prepare_entries(self, layer, *, name=None) -> list:
         output_list = []
         features_copy = layer.features.copy()
-        print("NDIM IS:", layer.ndim)
         if layer.ndim == 3:
             features_copy["identifier"] = (
                 ""

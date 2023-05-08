@@ -14,7 +14,6 @@ if typing.TYPE_CHECKING:
 def load_image(path: str) -> np.array:
 
     extension = os.path.splitext(path)[1]
-    print("LOAD_IMAGE")
     with mrcfile.mmap(path, "r", permissive=True) as mrc:
         data = mrc.data
         data = data.astype(np.float32)

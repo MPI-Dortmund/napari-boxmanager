@@ -1,3 +1,5 @@
+import typing
+
 import napari
 import numpy as np
 import pandas
@@ -37,8 +39,21 @@ def get_identifier(layer, cur_slice):
     else:
         assert False, (layer, type(layer))
 
-def get_layer_id(napari_viewer: napari.Viewer, layer: napari.layers.Layer) -> int:
+
+def get_layer_id(
+    napari_viewer: napari.Viewer, layer: napari.layers.Layer
+) -> int:
     added_layers = [_ for _ in napari_viewer.layers if layer.name == _.name]
     if added_layers:
         return id([_ for _ in napari_viewer.layers if layer.name == _.name][0])
     return id(layer)
+
+
+def get_layers_from_ids(
+    napari_viewer: napari.Viewer, layer_ids: typing.List[int]
+) -> typing.List[napari.layers.Layer]:
+    """
+    Get a list of layers from a list or set of layer ids created by the python `id` function
+    """
+    added_layers = [_ for _ in napari_viewer.layers if id(_) in layer_ids]
+    return added_layers

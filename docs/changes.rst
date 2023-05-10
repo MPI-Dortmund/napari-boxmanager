@@ -1,6 +1,10 @@
 Changes
 =======
 
+v0.3.16:
+*******
+  - Fix visibility issue when working with filtered images and multiple sets.  (https://github.com/MPI-Dortmund/napari-boxmanager/issues/16)
+
 v0.3.15:
 *******
   - Fix visibility issue when working with multiple tomograms / image sets. Thanks to Sreeparna Biswas (https://github.com/MPI-Dortmund/napari-boxmanager/issues/14)

@@ -1,6 +1,10 @@
 Changes
 =======
 
+v0.3.15:
+*******
+  - Fix visibility issue when working with multiple tomograms / image sets. Thanks to Sreeparna Biswas (https://github.com/MPI-Dortmund/napari-boxmanager/issues/14)
+
 v0.3.14:
 *******
   - Fix problem when opening folder of tomograms (https://github.com/MPI-Dortmund/napari-boxmanager/issues/12)

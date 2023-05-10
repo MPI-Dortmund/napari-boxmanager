@@ -1115,7 +1115,6 @@ class SelectMetricWidget(QWidget):
     def _prepare_entries(self, layer, *, name=None) -> list:
         output_list = []
         features_copy = layer.features.copy()
-        print("NDIM IS:", layer.ndim)
         if layer.ndim == 3:
             features_copy["identifier"] = (
                 ""
@@ -1559,12 +1558,13 @@ class SelectMetricWidget(QWidget):
             else:
                 if image_ids is not None:
                     linked_images.update(image_ids)
-
+        '''
         for layer in self.napari_viewer.layers:
             if "linked_image_layers" in layer.metadata:
+                print("links", layer.metadata["linked_image_layers"])
                 if layer.metadata["linked_image_layers"]:
                     linked_images.update(layer.metadata["linked_image_layers"])
-
+        '''
         return list(linked_images)
 
     def update_hist(self, *_, change_selection=True):

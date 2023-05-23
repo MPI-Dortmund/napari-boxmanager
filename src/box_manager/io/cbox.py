@@ -205,7 +205,7 @@ def _make_df_data_filament(
         )
     result = {
         'cryolo': pd.concat(filaments),
-        'filament_vertices': pd.DataFrame(coordinates)
+        'filament_vertices': pd.DataFrame(coordinates, columns=["_CoordinateX","_CoordinateY","_filamentid"])
     }
     return result
 

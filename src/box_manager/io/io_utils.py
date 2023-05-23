@@ -9,6 +9,7 @@ from collections.abc import Callable
 from typing import Protocol, Union, Dict
 
 import matplotlib.pyplot as plt
+import napari
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -78,8 +79,18 @@ def _prepare_coords_df(
     metadata: dict = {}
     is_3d = True
     is_filament = False
+    make_filament_shape_layer = False
     for idx, entry in enumerate(path):
         input_data = read_func(entry)
+        if idx == 0:
+            if 'filament_vertices' in input_data.attrs:
+                from PyQt5.QtWidgets import QMessageBox
+                qm = QMessageBox()
+                reply = qm.question(None, 'Quit',
+                            'File contains segmented boxes and filament verticis. Continue creating training data?',
+                            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                if reply == qm.Yes:
+                    make_filament_shape_layer = True
 
         box_napari_data = pd.DataFrame(columns=meta_columns)
 
@@ -128,6 +139,7 @@ def _prepare_coords_df(
         except ValueError:
             pass
     metadata["is_filament_layer"] = is_filament
+    metadata["make_filament_shape_layer"] = make_filament_shape_layer
 
     return data_df, metadata, is_3d
 
@@ -165,7 +177,6 @@ def get_layers_name(path: os.PathLike | list[os.PathLike]):
             name = path  # type: ignore
     else:
         name = (os.path.splitext(path[0])[1]).upper()[1:]
-
 
     return name
 

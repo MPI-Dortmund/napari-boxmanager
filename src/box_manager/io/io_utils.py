@@ -156,11 +156,17 @@ def is_filament_layer(
     return is_filament
 
 
-def get_layers_name(path: os.PathLike):
-    if len(path) >= MAX_LAYER_NAME + 3:
-        name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
+def get_layers_name(path: os.PathLike | list[os.PathLike]):
+
+    if not isinstance(path, list):
+        if len(path) >= MAX_LAYER_NAME + 3:
+            name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
+        else:
+            name = path  # type: ignore
     else:
-        name = path  # type: ignore
+        name = (os.path.splitext(path[0])[1]).upper()[1:]
+
+
     return name
 
 
@@ -223,16 +229,15 @@ def to_napari_image(
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
 
     is_2d_stack = isinstance(path, list) or "*" in path
+    name = get_layers_name(path)
 
     if not isinstance(path, list):
         original_path = path
-        name = get_layers_name(path)
         path = sorted(glob.glob(path))  # type: ignore
     else:
         original_path = (
             f"{os.path.dirname(path[0])}/*{os.path.splitext(path[0])[1]}"
         )
-        name = "images"
 
     # arrays = []
     voxel_size = 1
@@ -274,6 +279,7 @@ def to_napari_image(
     return [(data, add_kwargs, layer_type)]
 
 
+
 def to_napari_coordinates(
     path: os.PathLike | list[os.PathLike],
     read_func: Callable[[os.PathLike], pd.DataFrame],
@@ -289,10 +295,9 @@ def to_napari_coordinates(
     is_2d_stack = isinstance(path, list) or "*" in path
     orgbox_meta = orgbox.get_metadata(path)
 
-    if not isinstance(path, list):
-        layer_name = get_layers_name(path)
-    else:
-        layer_name = (os.path.splitext(path[0])[1]).upper()[1:]
+
+    layer_name = get_layers_name(path)
+
 
     if not isinstance(path, list):
         path = sorted(glob.glob(path))  # type: ignore

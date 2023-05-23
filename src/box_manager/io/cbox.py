@@ -95,6 +95,7 @@ def from_napari(
     suffix: str,
     filament_spacing: int,
 ):
+
     is_filament = coordsio.is_filament_layer(layer_data)
 
     if is_filament:

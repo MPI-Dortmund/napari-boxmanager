@@ -80,6 +80,9 @@ def read(path: os.PathLike) -> pd.DataFrame:
             return None
         return a
     if verticis is not None:
+        print("VERT")
+        print(verticis)
+        print("-------")
         segmented_coords.attrs['filament_vertices'] = verticis
 
     return segmented_coords
@@ -204,9 +207,12 @@ def _make_df_data_filament(
             constant_columns=constant_columns,
             other_interpolation_col=other_interpolation_cols,
         )
+    verts = pd.DataFrame(coordinates, columns=["_CoordinateX","_CoordinateY","_filamentid"])
+    verts['_Width'] = box_size
+    verts['_Height'] = box_size
     result = {
         'cryolo': pd.concat(filaments),
-        'filament_vertices': pd.DataFrame(coordinates, columns=["_CoordinateX","_CoordinateY","_filamentid"])
+        'filament_vertices': verts
     }
     return result
 

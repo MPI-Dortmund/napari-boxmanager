@@ -90,7 +90,12 @@ def _prepare_coords_df(
                             'File contains segmented boxes and filament verticis. Continue creating training data?',
                             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                 if reply == qm.Yes:
+                    print("MAKE IT TRUE")
                     make_filament_shape_layer = True
+
+        if make_filament_shape_layer:
+            input_data = input_data.attrs['filament_vertices']
+
 
         box_napari_data = pd.DataFrame(columns=meta_columns)
 
@@ -326,6 +331,7 @@ def to_napari_coordinates(
     for entry in feature_columns + meta_columns:
         if metadata["is_filament_layer"]:
             for fil in input_df_list:
+                print(fil.attrs)
                 if entry not in fil:
                     continue
                 if entry in features:

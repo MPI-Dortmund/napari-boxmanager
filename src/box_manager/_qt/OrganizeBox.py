@@ -356,7 +356,12 @@ class OrganizeBoxWidget(QWidget):
                     new_state[key] = value
 
             layer_coord.visible = False
+            if 'edge_width' in new_state and len(np.unique(new_state['edge_width']))==1:
+                # Otherwise, the edge_width will be 1 in case of a list of edge_widths
+                new_state['edge_width'] = new_state['edge_width'][0]
+
             new = Layer.create(new_data, new_state, old_type_str)
+
             self.napari_viewer.layers.events.inserted.disconnect(
                 self._update_combo
             )

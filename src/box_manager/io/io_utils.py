@@ -218,24 +218,13 @@ def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns, is_3d):
     return dat, kwargs, layer_type
 
 def _to_napari_filament_shapes(input_df: list[pd.DataFrame], coord_columns, is_3d):
-    # boxsize_ = [np.mean(fil['boxsize']) for fil in input_df]
-
-    color = []
-    boxsize = []
-    total = 0
-
-    for fil in input_df:
-        bs = np.mean(fil["boxsize"])
-        total += len(fil)
-        color.append("red")
-        boxsize.append(bs)
+    boxsize = np.median([np.mean(fil["boxsize"]) for fil in input_df])
     input_df = np.array([fil[coord_columns].to_numpy() for fil in input_df])
-    color = [(r, g, b, 255) for r, g, b in color]
 
     kwargs = {
-        "edge_color": ["red", "red"],
+        "edge_color": ["red"],
         "face_color": "transparent",
-        "edge_width": boxsize[0],
+        "edge_width": boxsize,
         "opacity": 0.4,
         "shape_type": "path",
     }

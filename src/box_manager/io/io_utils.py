@@ -217,6 +217,34 @@ def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns, is_3d):
 
     return dat, kwargs, layer_type
 
+def _to_napari_filament_shapes(input_df: list[pd.DataFrame], coord_columns, is_3d):
+    # boxsize_ = [np.mean(fil['boxsize']) for fil in input_df]
+
+    color = []
+    boxsize = []
+    total = 0
+
+    for fil in input_df:
+        bs = np.mean(fil["boxsize"])
+        c = np.random.choice(range(256), size=3)
+        total += len(fil)
+        color.extend([c] * len(fil))
+        boxsize.extend([bs] * len(fil))
+    input_df = pd.concat([fil[coord_columns] for fil in input_df])
+    color = [(r, g, b, 255) for r, g, b in color]
+
+    kwargs = {
+        "edge_color": color,
+        "face_color": "transparent",
+        "edge_width": boxsize,
+        "opacity": 0.4,
+        "shape_type": "path",
+    }
+    dat = input_df
+    layer_type = "shapes"
+
+    return dat, kwargs, layer_type
+
 
 def _to_napari_particle(input_df, coord_columns, is_3d):
     input_df = pd.concat(input_df, ignore_index=True)
@@ -357,7 +385,7 @@ def to_napari_coordinates(
             make_filament_shape = metadata["make_filament_shape_layer"]
         if make_filament_shape:
             # The following call needs to be replaced by a function creating a shape layers with filaments
-            dat, kwargs, layer_type = _to_napari_filament(
+            dat, kwargs, layer_type = _to_napari_filament_shapes(
                 input_df_list, coord_columns, is_3d
             )
         else:

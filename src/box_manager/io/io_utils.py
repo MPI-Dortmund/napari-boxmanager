@@ -90,7 +90,6 @@ def _prepare_coords_df(
                             'File contains segmented boxes and filament verticis. Continue creating training data?',
                             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                 if reply == qm.Yes:
-                    print("MAKE IT TRUE")
                     make_filament_shape_layer = True
 
         if make_filament_shape_layer:

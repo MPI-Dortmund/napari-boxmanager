@@ -249,7 +249,6 @@ class OrganizeBoxWidget(QWidget):
         old_data, old_state, old_type_str = layer_coord.as_layer_data_tuple()
         new_data = deepcopy(old_data)
         ident_data = general.get_identifier(layer_coord, 0)
-
         new_meta = {
             key: value
             for key, value in layer_coord.metadata.items()
@@ -297,7 +296,14 @@ class OrganizeBoxWidget(QWidget):
 
             slice_mask = np.round(ident_data, 0) == coord_idx
             total_mask = total_mask | slice_mask
-            new_data[slice_mask, 0] = image_idx
+            try:
+                # new data is an numpy array
+                new_data[slice_mask, 0] = image_idx
+            except TypeError:
+                # In this case it is shape layer and new_data is list of arrays
+                for slice_index, do_change in enumerate(slice_mask):
+                    if do_change:
+                        new_data[slice_index][:,0] = image_idx
 
         try:
             new_data = new_data[total_mask, :]

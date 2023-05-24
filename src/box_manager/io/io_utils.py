@@ -87,7 +87,7 @@ def _prepare_coords_df(
                 from PyQt5.QtWidgets import QMessageBox
                 qm = QMessageBox()
                 reply = qm.question(None, 'Quit',
-                            'File contains segmented boxes and filament verticis. Continue creating training data?',
+                            'File contains segmented boxes and filament verticis from training. Continue creating training data?',
                             QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
                 if reply == qm.Yes:
                     make_filament_shape_layer = True

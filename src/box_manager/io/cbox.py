@@ -237,6 +237,9 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
 
     feature_columns, meta_columns = _fill_meta_features_idx(cryolo_data)
 
+    # Filament verticis are already centered coords
+    centered_coords = "is_centered_coords" in cryolo_data.attrs and cryolo_data.attrs["is_centered_coords"]==True
+
     is_3d = True
     if (
         "_CoordinateZ" not in cryolo_data
@@ -250,12 +253,12 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
 
     output_data: pd.DataFrame = pd.DataFrame(columns=columns + meta_columns)
 
-    output_data["z"] = np.array(cryolo_data["_CoordinateX"]) + np.array(
-        cryolo_data["_Width"] / 2
-    )
-    output_data["y"] = np.array(cryolo_data["_CoordinateY"]) + np.array(
-        cryolo_data["_Height"] / 2
-    )
+    output_data["z"] = np.array(cryolo_data["_CoordinateX"])
+    output_data["y"] = np.array(cryolo_data["_CoordinateY"])
+
+    if not centered_coords:
+        output_data["z"] = output_data["z"] + np.array(cryolo_data["_Width"] / 2)
+        output_data["y"] = output_data["y"] + np.array(cryolo_data["_Height"] / 2)
     if is_3d:
         output_data["x"] = cryolo_data["_CoordinateZ"]
 

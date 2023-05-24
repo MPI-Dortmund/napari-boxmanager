@@ -95,6 +95,7 @@ def _prepare_coords_df(
 
         if make_filament_shape_layer:
             input_data = input_data.attrs['filament_vertices']
+            input_data.attrs["is_centered_coords"] = True
 
 
         box_napari_data = pd.DataFrame(columns=meta_columns)

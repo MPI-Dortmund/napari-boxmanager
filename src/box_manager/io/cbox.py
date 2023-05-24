@@ -78,9 +78,9 @@ def read(path: os.PathLike) -> pd.DataFrame:
             return None
         return a
     if verticis is not None:
-        print("VERT")
-        print(verticis)
-        print("-------")
+        temp = copy.deepcopy(verticis['_CoordinateX'])
+        verticis['_CoordinateX'] = verticis['_CoordinateY']
+        verticis['_CoordinateY'] = temp
         segmented_coords.attrs["filament_vertices"] = verticis
 
     return segmented_coords

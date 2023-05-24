@@ -226,17 +226,16 @@ def _to_napari_filament_shapes(input_df: list[pd.DataFrame], coord_columns, is_3
 
     for fil in input_df:
         bs = np.mean(fil["boxsize"])
-        c = np.random.choice(range(256), size=3)
         total += len(fil)
-        color.extend([c] * len(fil))
-        boxsize.extend([bs] * len(fil))
-    input_df = pd.concat([fil[coord_columns] for fil in input_df])
+        color.append("red")
+        boxsize.append(bs)
+    input_df = np.array([fil[coord_columns].to_numpy() for fil in input_df])
     color = [(r, g, b, 255) for r, g, b in color]
 
     kwargs = {
-        "edge_color": color,
+        "edge_color": ["red", "red"],
         "face_color": "transparent",
-        "edge_width": boxsize,
+        "edge_width": boxsize[0],
         "opacity": 0.4,
         "shape_type": "path",
     }
@@ -355,19 +354,27 @@ def to_napari_coordinates(
     metadata.update(orgbox_meta)
     metadata["is_2d_stack"] = is_2d_stack
     metadata["ignore_idx"] = feature_columns
+
+    make_filament_shape_layer = False
+    if "make_filament_shape_layer" in metadata: # this metadata entry has to be set by _prepare_coords_df
+        make_filament_shape_layer = metadata["make_filament_shape_layer"]
+
     features = {}
     for entry in feature_columns + meta_columns:
         if metadata["is_filament_layer"]:
             for fil in input_df_list:
-                print(fil.attrs)
                 if entry not in fil:
                     continue
+                entry_data = fil[entry].to_numpy()
+                if make_filament_shape_layer:
+                    # instead per filament box, in case of shapes layer it is per shape
+                    entry_data = np.unique(entry_data)
                 if entry in features:
                     features[entry] = np.concatenate(
-                        [features[entry], fil[entry].to_numpy()]
+                        [features[entry], entry_data]
                     )
                 else:
-                    features[entry] = fil[entry].to_numpy()
+                    features[entry] = entry_data
         else:
             all = pd.concat(input_df_list)
             if entry in all:
@@ -380,10 +387,7 @@ def to_napari_coordinates(
         coord_columns = ["y", "z"]
 
     if metadata["is_filament_layer"]:
-        make_filament_shape = False
-        if "make_filament_shape_layer" in metadata: # this metadata entry has to be set by _prepare_coords_df
-            make_filament_shape = metadata["make_filament_shape_layer"]
-        if make_filament_shape:
+        if make_filament_shape_layer:
             # The following call needs to be replaced by a function creating a shape layers with filaments
             dat, kwargs, layer_type = _to_napari_filament_shapes(
                 input_df_list, coord_columns, is_3d

@@ -378,7 +378,6 @@ def to_napari_coordinates(
 
     if metadata["is_filament_layer"]:
         if make_filament_shape_layer:
-            # The following call needs to be replaced by a function creating a shape layers with filaments
             dat, kwargs, layer_type = _to_napari_filament_shapes(
                 input_df_list, coord_columns, is_3d
             )

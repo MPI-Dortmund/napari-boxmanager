@@ -15,6 +15,8 @@ import numpy.typing as npt
 import pandas as pd
 
 from .._qt import OrganizeBox as orgbox
+from PyQt5.QtWidgets import QMessageBox
+
 from .interface import NapariLayerData, NapariMetaData
 
 
@@ -84,7 +86,6 @@ def _prepare_coords_df(
         input_data = read_func(entry)
         if idx == 0:
             if 'filament_vertices' in input_data.attrs:
-                from PyQt5.QtWidgets import QMessageBox
                 qm = QMessageBox()
                 reply = qm.question(None, 'Quit',
                             'File contains segmented boxes and filament verticis from training. Continue creating training data?',

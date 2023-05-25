@@ -7,6 +7,7 @@ import numpy as np
 from napari.layers.base.base import Layer
 from napari.utils.events.event import Event
 from napari.utils.notifications import show_error, show_info
+from napari.layers.shapes._shapes_constants import Mode
 from qtpy.QtCore import Qt, Signal, Slot
 from qtpy.QtWidgets import (
     QComboBox,
@@ -369,6 +370,9 @@ class OrganizeBoxWidget(QWidget):
                 # self.napari_viewer.layers.index(layer_coord) + 1, new
                 new
             )
+            if old_type_str == "shapes":
+                self.napari_viewer.layers[-1].mode = Mode.ADD_PATH
+
             self.napari_viewer.layers.events.inserted.connect(
                 self._update_combo
             )

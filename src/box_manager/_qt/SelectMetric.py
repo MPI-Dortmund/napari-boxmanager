@@ -723,6 +723,9 @@ class SelectMetricWidget(QWidget):
         if "set_lock" in layer.metadata and layer.metadata["set_lock"]:
             layer.editable = False
 
+        if len(np.unique(get_size(layer))) == 1:
+            set_size(layer, np.ones(len(layer.data), dtype=bool), np.atleast_1d(get_size(layer)[0])[0])
+            layer.refresh()
         layer.events.set_data.connect(self._update_on_data)
         layer.events.editable.connect(self._update_editable)
         layer.events.name.connect(self._update_name)

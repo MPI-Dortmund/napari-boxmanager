@@ -21,6 +21,7 @@ from qtpy.QtWidgets import (
 )
 
 from .._utils import general
+from .SelectMetric import set_size, get_size
 
 if typing.TYPE_CHECKING:
     import napari
@@ -359,6 +360,8 @@ class OrganizeBoxWidget(QWidget):
             layer_coord.visible = False
 
             new = Layer.create(new_data, new_state, old_type_str)
+            set_size(new, np.ones(len(new.data), dtype=bool), np.atleast_1d(get_size(new)[0])[0])
+            new.refresh()
 
             self.napari_viewer.layers.events.inserted.disconnect(
                 self._update_combo

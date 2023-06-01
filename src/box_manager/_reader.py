@@ -17,6 +17,8 @@ def is_tomo(path: str, reader: Callable):
     num_dim = np.squeeze(img[0][0]).ndim
     return num_dim== 3
 
+def get_point_or_shape_reader():
+    pass
 def get_dir(path):
     layers = []
     for file_ext in bm_readers._VALID_IOS.keys():

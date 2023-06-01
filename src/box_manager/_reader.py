@@ -5,6 +5,8 @@ import typing
 from collections.abc import Callable
 import numpy as np
 
+from qtpy.QtWidgets import QMessageBox
+
 import pandas as pd
 
 from . import io as bm_readers
@@ -17,15 +19,33 @@ def is_tomo(path: str, reader: Callable):
     num_dim = np.squeeze(img[0][0]).ndim
     return num_dim== 3
 
+def select_reader(path: os.PathLike) -> Callable:
+    file_ext =  os.path.splitext(path)[1][1:]
+    has_shapes = bm_readers.file_has_shape(file_ext, path)
+    use_shapes = False
+    if has_shapes:
+        qm = QMessageBox()
+        reply = qm.question(None, 'Continue training?',
+                            'File contains segmented boxes and filament verticis from training. Continue creating training data?',
+                            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == qm.Yes:
+            use_shapes = True
+
+    if use_shapes:
+        reader = bm_readers.get_reader_shapes(file_ext)
+    else:
+        reader = bm_readers.get_reader(file_ext)
+    return reader
+
 def get_dir(path):
     layers = []
     for file_ext in bm_readers._VALID_IOS.keys():
         files = glob.glob(os.path.join(path, f"*.{file_ext}"))
-        reader = bm_readers.get_reader(file_ext)
         if not files:
             continue
 
         is_first_file_tomo=is_tomo(files[0],reader)
+        reader = select_reader(files[0])
         if is_first_file_tomo:
             for file in files:
                 layers.extend(reader(file))
@@ -35,7 +55,7 @@ def get_dir(path):
 
 
 def napari_get_reader(
-    path: os.PathLike | list[os.PathLike],
+    path: os.PathLike | list[os.PathLike]
 ) -> "Callable[[os.PathLike | list[os.PathLike] | pd.DataFrame], list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]] | None":
     """A basic implementation of a Reader contribution.
 
@@ -58,7 +78,5 @@ def napari_get_reader(
 
     if os.path.isdir(path):
         return get_dir
-    else:
-        load_type = os.path.splitext(path)[-1][1:]
 
-    return bm_readers.get_reader(load_type)
+    return select_reader(path)

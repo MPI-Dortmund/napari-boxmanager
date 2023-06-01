@@ -8,6 +8,8 @@ from .io_utils import to_napari_image
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
+def has_shapes(path: os.PathLike) -> bool:
+    return False
 
 def load_image(path: str) -> np.ndarray:
 

@@ -7,7 +7,8 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 from pyStarDB import sp_pystardb as star
 
 from . import io_utils as coordsio
@@ -16,8 +17,8 @@ from .interface import NapariLayerData
 valid_extensions = ["cbox"]
 coords_3d_idx = ["x", "y", "z"]
 coords_2d_idx = ["y", "z"]
-#meta_columns = []
-#feature_columns = []
+# meta_columns = []
+# feature_columns = []
 
 #########################
 # GENERAL STUFF
@@ -31,20 +32,32 @@ def get_valid_extensions() -> list[str]:
     return valid_extensions
 
 
+def to_napari_shape(path: os.PathLike | list[os.PathLike]):
+    return to_napari(path, True)
+
+
 def to_napari(
-    path: os.PathLike | list[os.PathLike],
+    path: os.PathLike | list[os.PathLike], make_filament_shape_layer: bool = False,
 ) -> "list[NapariLayerData]":
     r = coordsio.to_napari_coordinates(
         path=path,
-        read_func=read,
-        prepare_napari_func=_prepare_napari,
-        meta_columns=["confidence","size","num_boxes"],
-        feature_columns=['angle','fid'],
+        read_func=read if not make_filament_shape_layer else read_filament_shapes,
+        prepare_napari_func=_prepare_napari if not make_filament_shape_layer else _prepare_napari_filament_shapes,
+        meta_columns=["confidence", "size", "num_boxes"],
+        feature_columns=["angle", "fid"],
         valid_extensions=get_valid_extensions(),
+        make_filament_shape_layer=make_filament_shape_layer,
     )
-
     return r
 
+
+def has_shapes(path: os.PathLike) -> bool:
+    try:
+        read_filament_shapes(path)
+    except KeyError:
+        return False
+    else:
+        return True
 
 
 def read_cbox_boxfile_old(path):
@@ -59,30 +72,29 @@ def read_cbox_boxfile_old(path):
         "_CoordinateY": [box[1] for box in boxreader],
         "_Width": [box[2] for box in boxreader],
         "_Height": [box[3] for box in boxreader],
-        "_Confidence": [box[4] for box in boxreader]
+        "_Confidence": [box[4] for box in boxreader],
     }
 
     return pd.DataFrame(box_dat)
 
 
 def read(path: os.PathLike) -> pd.DataFrame:
-    verticis = None
     try:
-        starfile = star.StarFile(path)
-        segmented_coords = starfile["cryolo"]
-        if 'filament_vertices' in starfile:
-            verticis = starfile['filament_vertices']
+        return star.StarFile(path)["cryolo"]
     except Exception:
         try:
-            a =  read_cbox_boxfile_old(path)
+            return read_cbox_boxfile_old(path)
         except Exception as e:
             print(e)
             return None
-        return a
-    if verticis is not None:
-        segmented_coords.attrs['filament_vertices'] = verticis
 
-    return segmented_coords
+
+def read_filament_shapes(path: os.PathLike) -> pd.DataFrame:
+    try:
+        return star.StarFile(path)["filament_vertices"]
+    except Exception as e:
+        print(e)
+        return None
 
 
 ### Writing ####
@@ -128,7 +140,6 @@ def _make_df_data_filament(
     filament_spacing: int,
     **kwargs,
 ) -> pd.DataFrame:
-
     is_3d = coordinates.shape[1] == 4
     data = {}
     data["_CoordinateX"] = []
@@ -203,10 +214,12 @@ def _make_df_data_filament(
             constant_columns=constant_columns,
             other_interpolation_col=other_interpolation_cols,
         )
-    result = {
-        'cryolo': pd.concat(filaments),
-        'filament_vertices': pd.DataFrame(coordinates, columns=["_CoordinateX","_CoordinateY","_filamentid"])
-    }
+    verts = pd.DataFrame(
+        coordinates, columns=["_CoordinateY", "_CoordinateX", "_filamentid"]
+    )
+    verts["_Width"] = box_size
+    verts["_Height"] = box_size
+    result = {"cryolo": pd.concat(filaments), "filament_vertices": verts}
     return result
 
 
@@ -218,7 +231,11 @@ def _make_df_data_filament(
 ################
 
 
-def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
+def _prepare_napari_filament_shapes(input_df: pd.DataFrame) -> pd.DataFrame:
+    return _prepare_napari(input_df, centered_coords=True)
+
+
+def _prepare_napari(input_df: pd.DataFrame, centered_coords: bool = False) -> pd.DataFrame:
     """
 
     Parameters
@@ -233,7 +250,6 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
 
     cryolo_data = input_df
 
-
     feature_columns, meta_columns = _fill_meta_features_idx(cryolo_data)
 
     is_3d = True
@@ -247,16 +263,14 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     if is_3d:
         columns.append("x")
 
-    output_data: pd.DataFrame = pd.DataFrame(
-        columns=columns + meta_columns
-    )
+    output_data: pd.DataFrame = pd.DataFrame(columns=columns + meta_columns)
 
-    output_data["z"] = np.array(cryolo_data["_CoordinateX"]) + np.array(
-        cryolo_data["_Width"] / 2
-    )
-    output_data["y"] = np.array(cryolo_data["_CoordinateY"]) + np.array(
-        cryolo_data["_Height"] / 2
-    )
+    output_data["z"] = np.array(cryolo_data["_CoordinateX"])
+    output_data["y"] = np.array(cryolo_data["_CoordinateY"])
+
+    if not centered_coords:
+        output_data["z"] = output_data["z"] + np.array(cryolo_data["_Width"] / 2)
+        output_data["y"] = output_data["y"] + np.array(cryolo_data["_Height"] / 2)
     if is_3d:
         output_data["x"] = cryolo_data["_CoordinateZ"]
 
@@ -285,7 +299,9 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     return output_data
 
 
-def _fill_meta_features_idx(input_df: pd.DataFrame) -> typing.Tuple[typing.List[str], typing.List[str]]:
+def _fill_meta_features_idx(
+    input_df: pd.DataFrame,
+) -> typing.Tuple[typing.List[str], typing.List[str]]:
     """
     Fills the meta idx array.
 
@@ -337,17 +353,18 @@ def _fill_meta_features_idx(input_df: pd.DataFrame) -> typing.Tuple[typing.List[
 ################
 from typing import Dict
 
-def write_cbox(path: os.PathLike, data: Dict[str,pd.DataFrame], **kwargs):
+
+def write_cbox(path: os.PathLike, data: Dict[str, pd.DataFrame], **kwargs):
     sfile = star.StarFile(path)
     tags = []
     version_df = pd.DataFrame([["1.0"]], columns=["_cbox_format_version"])
     sfile.update("global", version_df, False)
     tags.append("global")
-    if 'filament_vertices' in data:
-        sfile.update("filament_vertices", data['filament_vertices'], True)
+    if "filament_vertices" in data:
+        sfile.update("filament_vertices", data["filament_vertices"], True)
         tags.append("filament_vertices")
 
-    df = data['cryolo']
+    df = data["cryolo"]
     include_slices = []
     if "_CoordinateZ" in df.columns:
         if not df["_CoordinateZ"].isnull().values.any():
@@ -365,9 +382,7 @@ def write_cbox(path: os.PathLike, data: Dict[str,pd.DataFrame], **kwargs):
     include_df = pd.DataFrame(include_slices, columns=["_slice_index"])
     sfile.update("cryolo_include", include_df, True)
     tags.append("cryolo_include")
-    sfile.write_star_file(
-        overwrite=True, tags=tags
-    )
+    sfile.write_star_file(overwrite=True, tags=tags)
 
 
 def _make_df_data(
@@ -435,7 +450,7 @@ def _make_df_data(
             data["_Angle"].append(np.nan)
 
     result = {
-        'cryolo': pd.DataFrame(data),
+        "cryolo": pd.DataFrame(data),
     }
 
     return result

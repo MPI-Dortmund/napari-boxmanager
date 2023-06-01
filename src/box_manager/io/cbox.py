@@ -32,18 +32,33 @@ def get_valid_extensions() -> list[str]:
     return valid_extensions
 
 
+def to_napari_shape(path: os.PathLike | list[os.PathLike]):
+    return to_napari(path, True)
+
+
 def to_napari(
-    path: os.PathLike | list[os.PathLike],
+    path: os.PathLike | list[os.PathLike], make_filament_shape_layer: bool = False,
 ) -> "list[NapariLayerData]":
     r = coordsio.to_napari_coordinates(
         path=path,
-        read_func=read,
-        prepare_napari_func=_prepare_napari,
+        read_func=read if not make_filament_shape_layer else read_filament_shapes,
+        prepare_napari_func=_prepare_napari if not make_filament_shape_layer else _prepare_napari_filament_shapes,
         meta_columns=["confidence", "size", "num_boxes"],
         feature_columns=["angle", "fid"],
         valid_extensions=get_valid_extensions(),
+        make_filament_shape_layer=make_filament_shape_layer,
     )
     return r
+
+
+def has_shapes(path: os.PathLike) -> bool:
+    try:
+        read_filament_shapes(path)
+    except KeyError:
+        return False
+    else:
+        return True
+
 
 def read_cbox_boxfile_old(path):
     """
@@ -64,23 +79,22 @@ def read_cbox_boxfile_old(path):
 
 
 def read(path: os.PathLike) -> pd.DataFrame:
-    verticis = None
     try:
-        starfile = star.StarFile(path)
-        segmented_coords = starfile["cryolo"]
-        if "filament_vertices" in starfile:
-            verticis = starfile["filament_vertices"]
+        return star.StarFile(path)["cryolo"]
     except Exception:
         try:
-            a = read_cbox_boxfile_old(path)
+            return read_cbox_boxfile_old(path)
         except Exception as e:
             print(e)
             return None
-        return a
-    if verticis is not None:
-        segmented_coords.attrs["filament_vertices"] = verticis
 
-    return segmented_coords
+
+def read_filament_shapes(path: os.PathLike) -> pd.DataFrame:
+    try:
+        return star.StarFile(path)["filament_vertices"]
+    except Exception as e:
+        print(e)
+        return None
 
 
 ### Writing ####
@@ -217,7 +231,11 @@ def _make_df_data_filament(
 ################
 
 
-def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
+def _prepare_napari_filament_shapes(input_df: pd.DataFrame) -> pd.DataFrame:
+    return _prepare_napari(input_df, centered_coords=True)
+
+
+def _prepare_napari(input_df: pd.DataFrame, centered_coords: bool = False) -> pd.DataFrame:
     """
 
     Parameters
@@ -233,9 +251,6 @@ def _prepare_napari(input_df: pd.DataFrame) -> pd.DataFrame:
     cryolo_data = input_df
 
     feature_columns, meta_columns = _fill_meta_features_idx(cryolo_data)
-
-    # Filament verticis are already centered coords
-    centered_coords = "is_centered_coords" in cryolo_data.attrs and cryolo_data.attrs["is_centered_coords"]==True
 
     is_3d = True
     if (

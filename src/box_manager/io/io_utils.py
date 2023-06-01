@@ -15,7 +15,6 @@ import numpy.typing as npt
 import pandas as pd
 
 from .._qt import OrganizeBox as orgbox
-from PyQt5.QtWidgets import QMessageBox
 
 from .interface import NapariLayerData, NapariMetaData
 
@@ -81,22 +80,8 @@ def _prepare_coords_df(
     metadata: dict = {}
     is_3d = True
     is_filament = False
-    make_filament_shape_layer = False
     for idx, entry in enumerate(path):
         input_data = read_func(entry)
-        if idx == 0:
-            if 'filament_vertices' in input_data.attrs:
-                qm = QMessageBox()
-                reply = qm.question(None, 'Quit',
-                            'File contains segmented boxes and filament verticis from training. Continue creating training data?',
-                            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-                if reply == qm.Yes:
-                    make_filament_shape_layer = True
-
-        if make_filament_shape_layer:
-            input_data = input_data.attrs['filament_vertices']
-            input_data.attrs["is_centered_coords"] = True
-
 
         box_napari_data = pd.DataFrame(columns=meta_columns)
 
@@ -145,7 +130,6 @@ def _prepare_coords_df(
         except ValueError:
             pass
     metadata["is_filament_layer"] = is_filament
-    metadata["make_filament_shape_layer"] = make_filament_shape_layer
 
     return data_df, metadata, is_3d
 
@@ -320,6 +304,7 @@ def to_napari_coordinates(
     meta_columns: typing.List[str] = [],
     feature_columns: typing.List[str] = [],
     valid_extensions: typing.List[str] = [],
+    make_filament_shape_layer: bool = False,
 ) -> "list[NapariLayerData]":
 
     input_df_list: list[pd.DataFrame]
@@ -344,10 +329,6 @@ def to_napari_coordinates(
     metadata.update(orgbox_meta)
     metadata["is_2d_stack"] = is_2d_stack
     metadata["ignore_idx"] = feature_columns
-
-    make_filament_shape_layer = False
-    if "make_filament_shape_layer" in metadata: # this metadata entry has to be set by _prepare_coords_df
-        make_filament_shape_layer = metadata["make_filament_shape_layer"]
 
     features = {}
     for entry in feature_columns + meta_columns:

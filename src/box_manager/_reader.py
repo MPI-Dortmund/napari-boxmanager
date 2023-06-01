@@ -17,8 +17,24 @@ def is_tomo(path: str, reader: Callable):
     num_dim = np.squeeze(img[0][0]).ndim
     return num_dim== 3
 
-def get_point_or_shape_reader():
-    pass
+def select_reader(path: os.PathLike) -> Callable:
+    file_ext =  os.path.splitext(path)[1][1:]
+    has_shapes = bm_readers.file_has_shape(file_ext, path)
+    use_shapes = False
+    if has_shapes:
+        qm = QMessageBox()
+        reply = qm.question(None, 'Continue training?',
+                            'File contains segmented boxes and filament verticis from training. Continue creating training data?',
+                            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == qm.Yes:
+            use_shapes = True
+
+    if use_shapes:
+        reader = bm_readers.get_reader_shapes(file_ext)
+    else:
+        reader = bm_readers.get_reader(file_ext)
+    return reader
+
 def get_dir(path):
     layers = []
     for file_ext in bm_readers._VALID_IOS.keys():

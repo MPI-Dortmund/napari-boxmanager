@@ -78,9 +78,6 @@ def read(path: os.PathLike) -> pd.DataFrame:
             return None
         return a
     if verticis is not None:
-        temp = copy.deepcopy(verticis['_CoordinateX'])
-        verticis['_CoordinateX'] = verticis['_CoordinateY']
-        verticis['_CoordinateY'] = temp
         segmented_coords.attrs["filament_vertices"] = verticis
 
     return segmented_coords
@@ -204,7 +201,7 @@ def _make_df_data_filament(
             other_interpolation_col=other_interpolation_cols,
         )
     verts = pd.DataFrame(
-        coordinates, columns=["_CoordinateX", "_CoordinateY", "_filamentid"]
+        coordinates, columns=["_CoordinateY", "_CoordinateX", "_filamentid"]
     )
     verts["_Width"] = box_size
     verts["_Height"] = box_size

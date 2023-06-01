@@ -129,6 +129,8 @@ def read_helicon_boxfile(path: "os.PathLike") -> pd.DataFrame:
 
     return None
 
+def has_shapes(path: os.PathLike) -> bool:
+    return False
 
 def write_eman1_helicon(path: str, filaments: list[pd.DataFrame], **kwargs):
 

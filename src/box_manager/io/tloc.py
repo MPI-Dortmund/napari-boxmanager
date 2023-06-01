@@ -51,6 +51,8 @@ def _get_meta_idx():
 def _get_feature_idx():
     return ["grp_idx"]
 
+def has_shapes(path: os.PathLike) -> bool:
+    return False
 
 def to_napari(
     path: os.PathLike | list[os.PathLike],

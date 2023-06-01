@@ -1,9 +1,24 @@
 Changes
 =======
 
-v0.3.13 (upcoming):
+v0.3.16:
 *******
- - Improves plotting in some edge cases
+  - Fix visibility issue when working with filtered images and multiple sets.  (https://github.com/MPI-Dortmund/napari-boxmanager/issues/16)
+
+v0.3.15:
+*******
+  - Fix visibility issue when working with multiple tomograms / image sets. Thanks to Sreeparna Biswas (https://github.com/MPI-Dortmund/napari-boxmanager/issues/14)
+
+v0.3.14:
+*******
+  - Fix problem when opening folder of tomograms (https://github.com/MPI-Dortmund/napari-boxmanager/issues/12)
+  - Filament distance renamed to Inter-box distance
+
+v0.3.13:
+*******
+  - Fix crash when writing box files introduced with 0.3.12 (Thanks to Jake D. Johnston)
+  - Improves plotting in some edge cases
+
 
 v0.3.12:
 *******

@@ -21,6 +21,8 @@ def get_valid_extensions():
 # READ FUNCTIONS
 ###################
 
+def has_shapes(path: os.PathLike) -> bool:
+    return False
 
 def read(path: "os.PathLike") -> pd.DataFrame:
     sfile = star.StarFile(path)

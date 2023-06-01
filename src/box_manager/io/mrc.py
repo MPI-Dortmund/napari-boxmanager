@@ -14,7 +14,6 @@ if typing.TYPE_CHECKING:
 def load_image(path: str) -> np.array:
 
     extension = os.path.splitext(path)[1]
-
     with mrcfile.mmap(path, "r", permissive=True) as mrc:
         data = mrc.data
         data = data.astype(np.float32)
@@ -30,6 +29,8 @@ def get_pixel_size(path: str) -> float:
 
     return 1
 
+def has_shapes(path: os.PathLike) -> bool:
+    return False
 
 def to_napari(
     path: os.PathLike | list[os.PathLike],

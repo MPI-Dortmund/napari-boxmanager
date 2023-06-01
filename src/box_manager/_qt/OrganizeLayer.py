@@ -121,7 +121,7 @@ class OrganizeLayerWidget(QWidget):
             "dimension": QComboBox(self),
             "type": QComboBox(self),
             "format": QComboBox(self),
-            "filament spacing": QLineEdit(self),
+            "inter-box distance": QLineEdit(self),
             "dummyf": QLabel(self),
             "suffix": QLineEdit(self),
         }
@@ -129,16 +129,16 @@ class OrganizeLayerWidget(QWidget):
         self.save_layers["dimension"].addItems(["", "2D", "3D"])
         self.save_layers["type"].addItems(["", "Particles", "Filaments"])
         self.save_layers["suffix"].setPlaceholderText("e.g., _suffix")
-        self.save_layers["filament spacing"].setPlaceholderText(
+        self.save_layers["inter-box distance"].setPlaceholderText(
             "spacing in pixel"
         )
 
         int_validator = QIntValidator()
         int_validator.setBottom(0)
-        self.save_layers["filament spacing"].setValidator(int_validator)
-        self.save_layers["filament spacing"].setText("0")
-        self.save_layers["filament spacing"].setToolTip(
-            "If 0, an overlap of 80% is used."
+        self.save_layers["inter-box distance"].setValidator(int_validator)
+        self.save_layers["inter-box distance"].setText("0")
+        self.save_layers["inter-box distance"].setToolTip(
+            "Inter-box distance in pixel. If 0, an overlap of 80% of box-size is used."
         )
 
         self.formats = {
@@ -233,10 +233,10 @@ class OrganizeLayerWidget(QWidget):
             self.save_layers["layer"].currentText()
         ]
 
-        cur_spacing = self.save_layers["filament spacing"].text()
+        cur_spacing = self.save_layers["inter-box distance"].text()
         cur_type = self.save_layers["type"].currentText()
         if cur_type == "Filaments" and not cur_spacing:
-            show_error("Filament format requires Filament spacing")
+            show_error("Filament format requires inter-box distance")
             return
 
         self.saved_dir_path = QFileDialog.getExistingDirectory(
@@ -353,7 +353,7 @@ class OrganizeLayerWidget(QWidget):
 
         type_field_d = self.save_layers["dummyf"]
         type_label_d = self._save_form_layout.labelForField(type_field_d)
-        type_field = self.save_layers["filament spacing"]
+        type_field = self.save_layers["inter-box distance"]
         type_label = self._save_form_layout.labelForField(type_field)
         if self.save_layers["type"].currentText() == "Filaments":
             type_field.show()

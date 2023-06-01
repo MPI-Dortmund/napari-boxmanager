@@ -22,6 +22,8 @@ def get_valid_extensions():
 
     return ["coords"]
 
+def has_shapes(path: os.PathLike) -> bool:
+    return False
 
 def read(path: os.PathLike) -> pd.DataFrame:
 

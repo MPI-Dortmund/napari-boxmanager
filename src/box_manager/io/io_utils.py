@@ -6,14 +6,16 @@ import pathlib
 import typing
 import warnings
 from collections.abc import Callable
-from typing import Protocol
+from typing import Protocol, Union, Dict
 
 import matplotlib.pyplot as plt
+import napari
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
 from .._qt import OrganizeBox as orgbox
+
 from .interface import NapariLayerData, NapariMetaData
 
 
@@ -44,16 +46,26 @@ class FormatFunc(Protocol):
         features: pd.DataFrame,
         metadata: dict,
         filament_spacing: int,
-    ) -> pd.DataFrame:
+    ) -> Union[pd.DataFrame, Dict[str, pd.DataFrame]]:
         ...
 
 
 def _split_filaments(data: pd.DataFrame) -> typing.List[pd.DataFrame]:
+    vert = None
+    if 'filament_vertices' in data.attrs:
+        vert = data.attrs['filament_vertices']
     filament_ids = np.unique(data["fid"])
     filaments = []
     for id in filament_ids:
         mask = data["fid"] == id
-        filaments.append(data[mask])
+        filament = data[mask]
+
+        if vert:
+            mask = vert["_filamentid"] == id
+            vert_fil = vert[mask]
+            filament.attrs['filament_vertices'] = vert_fil
+
+        filaments.append(filament)
     return filaments
 
 
@@ -146,11 +158,16 @@ def is_filament_layer(
     return is_filament
 
 
-def get_layers_name(path: os.PathLike):
-    if len(path) >= MAX_LAYER_NAME + 3:
-        name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
+def get_layers_name(path: os.PathLike | list[os.PathLike]):
+
+    if not isinstance(path, list):
+        if len(path) >= MAX_LAYER_NAME + 3:
+            name = f"...{path[-MAX_LAYER_NAME:]}"  # type: ignore
+        else:
+            name = path  # type: ignore
     else:
-        name = path  # type: ignore
+        name = (os.path.splitext(path[0])[1]).upper()[1:]
+
     return name
 
 
@@ -185,6 +202,22 @@ def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns, is_3d):
 
     return dat, kwargs, layer_type
 
+def _to_napari_filament_shapes(input_df: list[pd.DataFrame], coord_columns, is_3d):
+    boxsize = np.median([np.mean(fil["boxsize"]) for fil in input_df])
+    input_df = np.array([fil[coord_columns].to_numpy() for fil in input_df])
+
+    kwargs = {
+        "edge_color": ["red"],
+        "face_color": "transparent",
+        "edge_width": boxsize,
+        "opacity": 0.4,
+        "shape_type": "path",
+    }
+    dat = input_df
+    layer_type = "shapes"
+
+    return dat, kwargs, layer_type
+
 
 def _to_napari_particle(input_df, coord_columns, is_3d):
     input_df = pd.concat(input_df, ignore_index=True)
@@ -213,16 +246,15 @@ def to_napari_image(
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
 
     is_2d_stack = isinstance(path, list) or "*" in path
+    name = get_layers_name(path)
 
     if not isinstance(path, list):
         original_path = path
-        name = get_layers_name(path)
         path = sorted(glob.glob(path))  # type: ignore
     else:
         original_path = (
             f"{os.path.dirname(path[0])}/*{os.path.splitext(path[0])[1]}"
         )
-        name = "images"
 
     # arrays = []
     voxel_size = 1
@@ -264,6 +296,7 @@ def to_napari_image(
     return [(data, add_kwargs, layer_type)]
 
 
+
 def to_napari_coordinates(
     path: os.PathLike | list[os.PathLike],
     read_func: Callable[[os.PathLike], pd.DataFrame],
@@ -271,6 +304,7 @@ def to_napari_coordinates(
     meta_columns: typing.List[str] = [],
     feature_columns: typing.List[str] = [],
     valid_extensions: typing.List[str] = [],
+    make_filament_shape_layer: bool = False,
 ) -> "list[NapariLayerData]":
 
     input_df_list: list[pd.DataFrame]
@@ -279,10 +313,9 @@ def to_napari_coordinates(
     is_2d_stack = isinstance(path, list) or "*" in path
     orgbox_meta = orgbox.get_metadata(path)
 
-    if not isinstance(path, list):
-        layer_name = get_layers_name(path)
-    else:
-        layer_name = (os.path.splitext(path[0])[1]).upper()[1:]
+
+    layer_name = get_layers_name(path)
+
 
     if not isinstance(path, list):
         path = sorted(glob.glob(path))  # type: ignore
@@ -296,18 +329,23 @@ def to_napari_coordinates(
     metadata.update(orgbox_meta)
     metadata["is_2d_stack"] = is_2d_stack
     metadata["ignore_idx"] = feature_columns
+
     features = {}
     for entry in feature_columns + meta_columns:
         if metadata["is_filament_layer"]:
             for fil in input_df_list:
                 if entry not in fil:
                     continue
+                entry_data = fil[entry].to_numpy()
+                if make_filament_shape_layer:
+                    # instead per filament box, in case of shapes layer it is per shape
+                    entry_data = np.unique(entry_data)
                 if entry in features:
                     features[entry] = np.concatenate(
-                        [features[entry], fil[entry].to_numpy()]
+                        [features[entry], entry_data]
                     )
                 else:
-                    features[entry] = fil[entry].to_numpy()
+                    features[entry] = entry_data
         else:
             all = pd.concat(input_df_list)
             if entry in all:
@@ -320,9 +358,14 @@ def to_napari_coordinates(
         coord_columns = ["y", "z"]
 
     if metadata["is_filament_layer"]:
-        dat, kwargs, layer_type = _to_napari_filament(
-            input_df_list, coord_columns, is_3d
-        )
+        if make_filament_shape_layer:
+            dat, kwargs, layer_type = _to_napari_filament_shapes(
+                input_df_list, coord_columns, is_3d
+            )
+        else:
+            dat, kwargs, layer_type = _to_napari_filament(
+                input_df_list, coord_columns, is_3d
+            )
     else:
         dat, kwargs, layer_type = _to_napari_particle(
             input_df_list, coord_columns, is_3d

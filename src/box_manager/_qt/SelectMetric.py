@@ -2,9 +2,8 @@ import enum
 import itertools
 import os
 import pathlib
-import sys
 import typing
-from .._utils import general
+
 import napari.layers
 import numpy as np
 import pandas as pd
@@ -724,6 +723,9 @@ class SelectMetricWidget(QWidget):
         if "set_lock" in layer.metadata and layer.metadata["set_lock"]:
             layer.editable = False
 
+        if len(np.unique(get_size(layer))) == 1:
+            set_size(layer, np.ones(len(layer.data), dtype=bool), np.atleast_1d(get_size(layer)[0])[0])
+            layer.refresh()
         layer.events.set_data.connect(self._update_on_data)
         layer.events.editable.connect(self._update_editable)
         layer.events.name.connect(self._update_name)
@@ -1136,7 +1138,9 @@ class SelectMetricWidget(QWidget):
         ).tolist()
 
         if range_list:
-            range_dict = {k:layer.metadata[k] for k in range_list if k in layer.metadata}
+            range_dict = {
+                k: layer.metadata[k] for k in range_list if k in layer.metadata
+            }
             if "ignore_idx" in layer.metadata:
                 ignore_idx = layer.metadata.pop("ignore_idx")
                 label_data = pd.DataFrame(range_dict).loc[:, :].T
@@ -1541,12 +1545,31 @@ class SelectMetricWidget(QWidget):
         if do_update_hist:
             self.update_hist()
 
+    def _get_linked_image_layer_ids(
+        self,
+        layers: typing.List[napari.layers.Layer],
+        *,
+        done: typing.Set[int] = None,
+    ) -> typing.Set[int]:
+        """
+        Get linked layer ids of the provided layers.
+        Do a recursive search to cover nested linking, e.g., for filtered images.
+        Only on the very first run select the provided layers.
+        Do avoid infinite recursion problems, keep track of already covered
+        layers via the `done` variable.
+        Stop the recursion if no new linked images are identified.
 
+        layers - List of napari layers
+        done - Set of already covered layers
 
-    def _get_linked_image_layer_ids(self, layers: typing.List[napari.layers.Layer]) -> typing.List[int]:
+        Returns:
+        Set of linked layers
+        """
+        if done is None:
+            done = set()
+
         linked_images = set()
         for layer in layers:
-            self.napari_viewer.layers.selection.add(layer)
             try:
                 image_ids = layer.metadata["linked_image_layers"]
             except KeyError:
@@ -1558,13 +1581,17 @@ class SelectMetricWidget(QWidget):
             else:
                 if image_ids is not None:
                     linked_images.update(image_ids)
+        image_layer_ids = general.get_layers_from_ids(
+            self.napari_viewer, linked_images - done
+        )
+        done.update(linked_images)
 
-        for layer in self.napari_viewer.layers:
-            if "linked_image_layers" in layer.metadata:
-                if layer.metadata["linked_image_layers"]:
-                    linked_images.update(layer.metadata["linked_image_layers"])
+        if image_layer_ids:
+            linked_images.update(
+                self._get_linked_image_layer_ids(image_layer_ids, done=done)
+            )
 
-        return list(linked_images)
+        return linked_images
 
     def update_hist(self, *_, change_selection=True):
         rows_candidates_navigate = self.table_widget.get_row_candidates(False)
@@ -1679,12 +1706,18 @@ class SelectMetricWidget(QWidget):
             layer.events.visible.connect(self._update_visible)
 
         self.napari_viewer.layers.selection.clear()
-        valid_images = self._get_linked_image_layer_ids(valid_layers)
+        for layer in valid_layers:
+            self.napari_viewer.layers.selection.add(layer)
+        valid_images = list(self._get_linked_image_layer_ids(valid_layers))
         if valid_images:
+
             for layer in self.napari_viewer.layers:
                 if not isinstance(layer, napari.layers.Image):
                     continue
-                elif general.get_layer_id(self.napari_viewer, layer) not in valid_images:
+                elif (
+                    general.get_layer_id(self.napari_viewer, layer)
+                    not in valid_images
+                ):
                     layer.visible = False
                 else:
                     layer.visible = True
@@ -2006,9 +2039,10 @@ class HistogramMinMaxView(QWidget):
                     3,
                 )
                 if np.all(ticks == ticks[0]):
-                    ticks[0] -= 1
-                    ticks[-1] += 1
-                    margin = 1.2
+                    ticks = [ticks[0]]
+                    # ticks[0] -= 0.01
+                    # ticks[-1] += 0.01
+                    margin = 0
                 else:
                     margin = (
                         np.max(data_list[idx]) - np.min(data_list[idx])

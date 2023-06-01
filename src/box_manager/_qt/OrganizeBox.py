@@ -7,6 +7,7 @@ import numpy as np
 from napari.layers.base.base import Layer
 from napari.utils.events.event import Event
 from napari.utils.notifications import show_error, show_info
+from napari.layers.shapes._shapes_constants import Mode
 from qtpy.QtCore import Qt, Signal, Slot
 from qtpy.QtWidgets import (
     QComboBox,
@@ -20,6 +21,7 @@ from qtpy.QtWidgets import (
 )
 
 from .._utils import general
+from .SelectMetric import set_size, get_size
 
 if typing.TYPE_CHECKING:
     import napari
@@ -249,7 +251,6 @@ class OrganizeBoxWidget(QWidget):
         old_data, old_state, old_type_str = layer_coord.as_layer_data_tuple()
         new_data = deepcopy(old_data)
         ident_data = general.get_identifier(layer_coord, 0)
-
         new_meta = {
             key: value
             for key, value in layer_coord.metadata.items()
@@ -297,7 +298,14 @@ class OrganizeBoxWidget(QWidget):
 
             slice_mask = np.round(ident_data, 0) == coord_idx
             total_mask = total_mask | slice_mask
-            new_data[slice_mask, 0] = image_idx
+            try:
+                # new data is an numpy array
+                new_data[slice_mask, 0] = image_idx
+            except TypeError:
+                # In this case it is shape layer and new_data is list of arrays
+                for slice_index, do_change in enumerate(slice_mask):
+                    if do_change:
+                        new_data[slice_index][:,0] = image_idx
 
         try:
             new_data = new_data[total_mask, :]
@@ -350,7 +358,11 @@ class OrganizeBoxWidget(QWidget):
                     new_state[key] = value
 
             layer_coord.visible = False
+
             new = Layer.create(new_data, new_state, old_type_str)
+            set_size(new, np.ones(len(new.data), dtype=bool), np.atleast_1d(get_size(new)[0])[0])
+            new.refresh()
+
             self.napari_viewer.layers.events.inserted.disconnect(
                 self._update_combo
             )
@@ -358,6 +370,9 @@ class OrganizeBoxWidget(QWidget):
                 # self.napari_viewer.layers.index(layer_coord) + 1, new
                 new
             )
+            if old_type_str == "shapes":
+                self.napari_viewer.layers[-1].mode = Mode.ADD_PATH
+
             self.napari_viewer.layers.events.inserted.connect(
                 self._update_combo
             )

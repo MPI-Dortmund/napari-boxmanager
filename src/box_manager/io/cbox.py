@@ -90,11 +90,8 @@ def read(path: os.PathLike) -> pd.DataFrame:
 
 
 def read_filament_shapes(path: os.PathLike) -> pd.DataFrame:
-    try:
-        return star.StarFile(path)["filament_vertices"]
-    except Exception as e:
-        print(e)
-        return None
+    return star.StarFile(path)["filament_vertices"]
+
 
 
 ### Writing ####

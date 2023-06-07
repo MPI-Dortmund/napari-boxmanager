@@ -2,7 +2,6 @@ import enum
 import itertools
 import os
 import pathlib
-import sys
 import typing
 
 import napari.layers
@@ -725,7 +724,11 @@ class SelectMetricWidget(QWidget):
             layer.editable = False
 
         if len(np.unique(get_size(layer))) == 1:
-            set_size(layer, np.ones(len(layer.data), dtype=bool), np.atleast_1d(get_size(layer)[0])[0])
+            set_size(
+                layer,
+                np.ones(len(layer.data), dtype=bool),
+                np.atleast_1d(get_size(layer)[0])[0],
+            )
             layer.refresh()
         layer.events.set_data.connect(self._update_on_data)
         layer.events.editable.connect(self._update_editable)
@@ -1076,21 +1079,28 @@ class SelectMetricWidget(QWidget):
                 return
 
             if not check_equal(layer, self.prev_valid_layers[layer.name][1]):
+                """
+                We need to identify which coordinates have actually changed.
+                For this we use two sets and identify the old and new indices.
+                New indices are getting their feaures filled.
+                """
                 old_data = self.prev_valid_layers[layer.name][1]
 
-                if self.napari_viewer.dims.ndim == 3:
-                    set_old = {tuple(row.ravel().tolist()) for row in old_data}
-                    set_new = {
+                if self.napari_viewer.dims.ndim == 3 and layer.ndim == 3:
+                    set_old_coordinates = {
+                        tuple(row.ravel().tolist()) for row in old_data
+                    }
+                    set_new_coordinates = {
                         tuple(row.ravel().tolist()) for row in layer.data
                     }
                     z_coord_index = self.napari_viewer.dims.order[0]
                     indices_old = {
                         row[z_coord_index]
-                        for row in set_old - set_new
+                        for row in set_old_coordinates - set_new_coordinates
                     }
                     indices_new = {
                         row[z_coord_index]
-                        for row in set_new - set_old
+                        for row in set_new_coordinates - set_old_coordinates
                     }
                     current_slices = list(indices_new | indices_old)
                     if indices_new:
@@ -1100,6 +1110,8 @@ class SelectMetricWidget(QWidget):
                                 .sort_values()
                                 .iloc[layer.features.shape[0] // 2]
                             )
+                elif self.napari_viewer.dims.ndim == 3 and layer.ndim == 2:
+                    current_slices = [0]
                 elif self.napari_viewer.dims.ndim == 2:
                     current_slices = [0]
                 else:

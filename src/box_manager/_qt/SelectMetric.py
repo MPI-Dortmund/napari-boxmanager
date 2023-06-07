@@ -2,6 +2,7 @@ import enum
 import itertools
 import os
 import pathlib
+import sys
 import typing
 
 import napari.layers
@@ -1061,6 +1062,9 @@ class SelectMetricWidget(QWidget):
 
     @Slot(object)
     def _update_on_data(self, event):
+        '''
+        Is triggered when data is change in one layer.
+        '''
         if not self._plugin_view_update:
             layer = event.source
             try:

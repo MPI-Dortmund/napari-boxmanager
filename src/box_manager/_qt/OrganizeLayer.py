@@ -3,7 +3,6 @@ from pathlib import Path
 
 import napari
 import napari.layers
-from .._utils import general
 import numpy as np
 from napari._qt.qt_resources._svg import QColoredSVGIcon
 from napari.layers.shapes._shapes_constants import Mode
@@ -21,6 +20,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
+from .._utils import general
 from .._writer import napari_get_writer
 
 ICON_DIR = f"{os.path.dirname(napari.__file__)}/resources/icons"
@@ -76,6 +76,8 @@ class OrganizeLayerWidget(QWidget):
         inner_layout.addLayout(layout)
         inner_layout.addWidget(self.link_run_btn)
 
+        self._update_link_combo()
+
     @Slot()
     def _link_layers(self):
         inner_layout = QVBoxLayout()
@@ -84,16 +86,17 @@ class OrganizeLayerWidget(QWidget):
 
         image_name = self.link_layers["image"].currentText()
         layer_name = self.link_layers["layer"].currentText()
-        general.get_layer_id(self.napari_viewer, self.napari_viewer.layers[image_name])
-        image_id = id(self.napari_viewer.layers[image_name])
-        self.napari_viewer.layers[layer_name].metadata.setdefault('linked_image_layers', []).append(image_id)
+        image_id = general.get_layer_id(
+            self.napari_viewer, self.napari_viewer.layers[image_name]
+        )
+        self.napari_viewer.layers[layer_name].metadata.setdefault(
+            "linked_image_layers", []
+        ).append(image_id)
 
         for layer in self.napari_viewer.layers:
             layer.visible = False
         self.napari_viewer.layers[image_name].visible = True
         self.napari_viewer.layers[layer_name].visible = True
-
-
 
         show_info("link succesfull")
 
@@ -428,7 +431,11 @@ class OrganizeLayerWidget(QWidget):
 
         metadata = {
             "do_activate_on_insert": True,
-            "linked_image_layers": [general.get_layer_id(self.napari_viewer, self.napari_viewer.layers[layer_name])],
+            "linked_image_layers": [
+                general.get_layer_id(
+                    self.napari_viewer, self.napari_viewer.layers[layer_name]
+                )
+            ],
             "skip_match": None,
         }
         if not layer_name:

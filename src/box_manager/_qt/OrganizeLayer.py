@@ -86,10 +86,8 @@ class OrganizeLayerWidget(QWidget):
 
         image_name = self.link_layers["image"].currentText()
         layer_name = self.link_layers["layer"].currentText()
-        image_id = id(
-            general.get_layer_id(
-                self.napari_viewer, self.napari_viewer.layers[image_name]
-            )
+        image_id = general.get_layer_id(
+            self.napari_viewer, self.napari_viewer.layers[image_name]
         )
         self.napari_viewer.layers[layer_name].metadata.setdefault(
             "linked_image_layers", []

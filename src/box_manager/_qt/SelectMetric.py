@@ -1083,12 +1083,13 @@ class SelectMetricWidget(QWidget):
                     set_new = {
                         tuple(row.ravel().tolist()) for row in layer.data
                     }
+                    z_coord_index = self.napari_viewer.dims.order[0]
                     indices_old = {
-                        row[self.napari_viewer.dims.order[0]]
+                        row[z_coord_index]
                         for row in set_old - set_new
                     }
                     indices_new = {
-                        row[self.napari_viewer.dims.order[0]]
+                        row[z_coord_index]
                         for row in set_new - set_old
                     }
                     current_slices = list(indices_new | indices_old)

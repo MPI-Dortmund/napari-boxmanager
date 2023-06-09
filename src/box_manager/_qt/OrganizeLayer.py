@@ -11,11 +11,14 @@ from qtpy.QtCore import Slot
 from qtpy.QtGui import QIntValidator
 from qtpy.QtWidgets import (
     QComboBox,
+    QDialog,
     QFileDialog,
     QFormLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -24,6 +27,39 @@ from .._utils import general
 from .._writer import napari_get_writer
 
 ICON_DIR = f"{os.path.dirname(napari.__file__)}/resources/icons"
+
+
+class VerifyDialog(QDialog):
+    def __init__(self, entries: list[tuple[str, str]]):
+        super().__init__()
+
+        self.setLayout(QVBoxLayout())
+
+        widget = QWidget(self)
+        widget.setMinimumSize(500, 500)
+
+        widget.setLayout(QVBoxLayout())
+
+        b1 = QPushButton("Accept", self)
+        b1.clicked.connect(self.accept)
+        b2 = QPushButton("Reject", self)
+        b2.clicked.connect(self.reject)
+
+        tmp_layout = QHBoxLayout()
+        tmp_layout.addWidget(b1)
+        tmp_layout.addWidget(b2)
+        self.layout().addLayout(tmp_layout)
+
+        area = QScrollArea(self)
+
+        for l1, l2 in entries:
+            tmp_layout = QHBoxLayout()
+            tmp_layout.addWidget(QLabel(l1, self))
+            tmp_layout.addWidget(QLabel(l2, self))
+            widget.layout().addLayout(tmp_layout)
+
+        area.setWidget(widget)
+        self.layout().addWidget(area)
 
 
 class OrganizeLayerWidget(QWidget):
@@ -44,10 +80,67 @@ class OrganizeLayerWidget(QWidget):
         self._save_ui()
         self._add_seperator()
         self._link_ui()
+        self._add_seperator()
+        self._link_auto_ui()
 
         self._apply_icons()
         self.layout().addStretch(True)
         self.saved_dir_path = os.getcwd()
+
+    def _link_auto_ui(self):
+        inner_layout = QVBoxLayout()
+        inner_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.link_auto_layers = {
+            "prefix": QLineEdit(self),
+            "suffix": QLineEdit(self),
+        }
+        self.link_run_auto_btn = QPushButton("Link", self)
+        layout = QFormLayout()
+        for name, widget in self.link_auto_layers.items():
+            layout.addRow(name + "(optional)", widget)
+
+        self.link_run_auto_btn.clicked.connect(self._link_auto_layers)
+
+        inner_layout.addWidget(QLabel("Automatic layer linking", self))
+        inner_layout.addLayout(layout)
+        inner_layout.addWidget(self.link_run_auto_btn)
+        self.layout().addLayout(inner_layout)
+
+    @Slot()
+    def _link_auto_layers(self):
+        prefix = self.link_auto_layers["prefix"].text()
+        suffix = self.link_auto_layers["suffix"].text()
+
+        def get_unique(path: str):
+            return (
+                os.path.splitext(os.path.basename(path))[0]
+                .removeprefix(prefix)
+                .removesuffix(suffix)
+            )
+
+        image_layers = {
+            get_unique(_.name): _.name
+            for _ in self.napari_viewer.layers
+            if isinstance(_, napari.layers.Image)
+        }
+        layer_layers = {
+            get_unique(_.name): _.name
+            for _ in self.napari_viewer.layers
+            if not isinstance(_, napari.layers.Image)
+        }
+
+        data = []
+        for abbreviation, name in image_layers.items():
+            try:
+                data.append((name, layer_layers[abbreviation]))
+            except KeyError:
+                pass
+        a = VerifyDialog(data)
+        result = a.exec()
+        if result == QDialog.Accepted:
+            for image_name, layer_name in data:
+                self._link_layers(image_name, layer_name)
 
     def _link_ui(self):
         self.napari_viewer.layers.events.inserted.connect(
@@ -59,7 +152,7 @@ class OrganizeLayerWidget(QWidget):
 
         self.link_layers = {"image": QComboBox(self), "layer": QComboBox(self)}
 
-        self.link_run_btn = QPushButton("Link layers", self)
+        self.link_run_btn = QPushButton("Link", self)
         self.link_run_btn.clicked.connect(self._link_layers)
 
         layout = QFormLayout()
@@ -72,20 +165,19 @@ class OrganizeLayerWidget(QWidget):
         inner_layout.setContentsMargins(0, 0, 0, 0)
         self.layout().addLayout(inner_layout)
 
-        inner_layout.addWidget(QLabel("Link layers", self))
+        inner_layout.addWidget(QLabel("Manual layer Linking", self))
         inner_layout.addLayout(layout)
         inner_layout.addWidget(self.link_run_btn)
 
         self._update_link_combo()
 
     @Slot()
-    def _link_layers(self):
-        inner_layout = QVBoxLayout()
-        inner_layout.setContentsMargins(0, 0, 0, 0)
-        self.layout().addLayout(inner_layout)
+    def _link_layers(self, image_name=None, layer_name=None):
 
-        image_name = self.link_layers["image"].currentText()
-        layer_name = self.link_layers["layer"].currentText()
+        if image_name is None:
+            image_name = self.link_layers["image"].currentText()
+        if layer_name is None:
+            layer_name = self.link_layers["layer"].currentText()
         image_id = general.get_layer_id(
             self.napari_viewer, self.napari_viewer.layers[image_name]
         )

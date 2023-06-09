@@ -44,8 +44,9 @@ def get_dir(path):
         if not files:
             continue
 
-        is_first_file_tomo=is_tomo(files[0],reader)
         reader = select_reader(files[0])
+        is_first_file_tomo=is_tomo(files[0],reader)
+
         if is_first_file_tomo:
             for file in files:
                 layers.extend(reader(file))

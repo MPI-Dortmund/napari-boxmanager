@@ -95,14 +95,14 @@ class OrganizeLayerWidget(QWidget):
             "prefix": QLineEdit(self),
             "suffix": QLineEdit(self),
         }
-        self.link_run_auto_btn = QPushButton("Link all layers", self)
+        self.link_run_auto_btn = QPushButton("Link", self)
         layout = QFormLayout()
         for name, widget in self.link_auto_layers.items():
-            layout.addRow(name, widget)
+            layout.addRow(name + "(optional)", widget)
 
         self.link_run_auto_btn.clicked.connect(self._link_auto_layers)
 
-        inner_layout.addWidget(QLabel("Link all layers", self))
+        inner_layout.addWidget(QLabel("Automatic layer linking", self))
         inner_layout.addLayout(layout)
         inner_layout.addWidget(self.link_run_auto_btn)
         self.layout().addLayout(inner_layout)
@@ -152,7 +152,7 @@ class OrganizeLayerWidget(QWidget):
 
         self.link_layers = {"image": QComboBox(self), "layer": QComboBox(self)}
 
-        self.link_run_btn = QPushButton("Link layers", self)
+        self.link_run_btn = QPushButton("Link", self)
         self.link_run_btn.clicked.connect(self._link_layers)
 
         layout = QFormLayout()
@@ -165,7 +165,7 @@ class OrganizeLayerWidget(QWidget):
         inner_layout.setContentsMargins(0, 0, 0, 0)
         self.layout().addLayout(inner_layout)
 
-        inner_layout.addWidget(QLabel("Link layers", self))
+        inner_layout.addWidget(QLabel("Manual layer Linking", self))
         inner_layout.addLayout(layout)
         inner_layout.addWidget(self.link_run_btn)
 

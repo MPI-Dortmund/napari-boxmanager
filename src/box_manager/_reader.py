@@ -15,9 +15,15 @@ if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
 def is_tomo(path: str, reader: Callable):
-    img = reader(path)
-    num_dim = np.squeeze(img[0][0]).ndim
-    return num_dim== 3
+
+    layer_data = reader(path)[0][0]
+
+    if type(layer_data) == np.ndarray:
+        num_dim = np.squeeze(layer_data).ndim
+        return num_dim== 3
+    elif type(layer_data) == pd.DataFrame:
+        return 'x' in layer_data.columns and 'y' in layer_data.columns and 'y' in layer_data.columns
+
 
 def select_reader(path: os.PathLike) -> Callable:
     file_ext =  os.path.splitext(path)[1][1:]
@@ -46,7 +52,8 @@ def get_dir(path):
 
         reader = select_reader(files[0])
         is_first_file_tomo=is_tomo(files[0],reader)
-
+        print("IS FIRST TOMO?", is_first_file_tomo)
+        print(files)
         if is_first_file_tomo:
             for file in files:
                 layers.extend(reader(file))

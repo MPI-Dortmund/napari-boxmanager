@@ -46,6 +46,7 @@ class VerifyDialog(QDialog):
         b2.clicked.connect(self.reject)
 
         tmp_layout = QHBoxLayout()
+        tmp_layout.setContentsMargins(0, 0, 0, 0)
         tmp_layout.addWidget(b1)
         tmp_layout.addWidget(b2)
         self.layout().addLayout(tmp_layout)
@@ -54,9 +55,12 @@ class VerifyDialog(QDialog):
 
         for l1, l2 in entries:
             tmp_layout = QHBoxLayout()
+            tmp_layout.setContentsMargins(0, 0, 0, 0)
             tmp_layout.addWidget(QLabel(l1, self))
             tmp_layout.addWidget(QLabel(l2, self))
             widget.layout().addLayout(tmp_layout)
+
+        widget.layout().addStretch(1)
 
         area.setWidget(widget)
         self.layout().addWidget(area)
@@ -92,8 +96,10 @@ class OrganizeLayerWidget(QWidget):
         inner_layout.setContentsMargins(0, 0, 0, 0)
 
         self.link_auto_layers = {
-            "prefix": QLineEdit(self),
-            "suffix": QLineEdit(self),
+            "prefix image": QLineEdit(self),
+            "suffix image": QLineEdit(self),
+            "prefix layer": QLineEdit(self),
+            "suffix layer": QLineEdit(self),
         }
         self.link_run_auto_btn = QPushButton("Link", self)
         layout = QFormLayout()
@@ -109,10 +115,12 @@ class OrganizeLayerWidget(QWidget):
 
     @Slot()
     def _link_auto_layers(self):
-        prefix = self.link_auto_layers["prefix"].text()
-        suffix = self.link_auto_layers["suffix"].text()
+        prefix_image = self.link_auto_layers["prefix image"].text()
+        suffix_image = self.link_auto_layers["suffix image"].text()
+        prefix_layer = self.link_auto_layers["prefix layer"].text()
+        suffix_layer = self.link_auto_layers["suffix layer"].text()
 
-        def get_unique(path: str):
+        def get_unique(path: str, prefix: str, suffix: str):
             return (
                 os.path.splitext(os.path.basename(path))[0]
                 .removeprefix(prefix)
@@ -120,12 +128,12 @@ class OrganizeLayerWidget(QWidget):
             )
 
         image_layers = {
-            get_unique(_.name): _.name
+            get_unique(_.name, prefix_image, suffix_image): _.name
             for _ in self.napari_viewer.layers
             if isinstance(_, napari.layers.Image)
         }
         layer_layers = {
-            get_unique(_.name): _.name
+            get_unique(_.name, prefix_layer, suffix_layer): _.name
             for _ in self.napari_viewer.layers
             if not isinstance(_, napari.layers.Image)
         }

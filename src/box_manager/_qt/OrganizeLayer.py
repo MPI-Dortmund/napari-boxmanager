@@ -120,20 +120,22 @@ class OrganizeLayerWidget(QWidget):
         prefix_layer = self.link_auto_layers["prefix layer"].text()
         suffix_layer = self.link_auto_layers["suffix layer"].text()
 
-        def get_unique(path: str, prefix: str, suffix: str):
+        def get_unique(layer: napari.layers.Layer, prefix: str, suffix: str):
             return (
-                os.path.splitext(os.path.basename(path))[0]
+                os.path.splitext(
+                    os.path.basename(layer.metadata["original_path"])
+                )[0]
                 .removeprefix(prefix)
                 .removesuffix(suffix)
             )
 
         image_layers = {
-            get_unique(_.name, prefix_image, suffix_image): _.name
+            get_unique(_, prefix_image, suffix_image): _.name
             for _ in self.napari_viewer.layers
             if isinstance(_, napari.layers.Image)
         }
         layer_layers = {
-            get_unique(_.name, prefix_layer, suffix_layer): _.name
+            get_unique(_, prefix_layer, suffix_layer): _.name
             for _ in self.napari_viewer.layers
             if not isinstance(_, napari.layers.Image)
         }

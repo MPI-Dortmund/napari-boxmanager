@@ -26,7 +26,7 @@ class IOInterface(typing.Protocol):
     def get_valid_extensions(self) -> list[str]:
         ...
 
-    def has_shapes(path: os.PathLike) -> bool:
+    def has_shapes(self, path: os.PathLike) -> bool:
         ...
 
     def from_napari(

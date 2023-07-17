@@ -8,6 +8,9 @@ dependencies:
   - pyqt
   - tifffile
   - numpy
-  - pip
+  - matplotlib
+  - pip:
+      - pystardb>=0.4.2
+  - scipy
   - tqdm
   - pandas[version='>=2']

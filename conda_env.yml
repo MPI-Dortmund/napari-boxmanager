@@ -9,6 +9,7 @@ dependencies:
   - tifffile
   - numpy
   - matplotlib
+  - pip
   - pip:
       - pystardb>=0.4.2
   - scipy

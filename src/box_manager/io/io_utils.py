@@ -472,7 +472,9 @@ def _write_particle_data(
     coordinates = data[mask]
 
     if "size" in meta:
-        boxsize = meta["size"][mask][:, 0]
+        print(meta["size"][mask])
+        print(meta["size"][mask].shape)
+        boxsize = meta["size"][mask]
     else:
         # For filaments
         boxsize = np.array(meta["edge_width"])[mask]

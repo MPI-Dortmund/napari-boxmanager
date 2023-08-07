@@ -26,4 +26,4 @@ class Test__run_save:
         fila = [[77, 50, 50], [77, 100, 100], [77, 200, 200]]
         assert len(napari_viewer.layers) == 2
         napari_viewer.layers[1]._add_shapes(fila, shape_type='path', edge_width=100)
-        organize_layer_widget._run_save()
+        organize_layer_widget_tomo._run_save()

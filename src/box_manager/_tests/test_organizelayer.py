@@ -1,7 +1,11 @@
-import pytest
-import napari
 from unittest.mock import MagicMock, patch
 
+import napari
+import numpy as np
+import pytest
+
+import mrcfile
+import tempfile
 
 @pytest.fixture(scope="function")
 def napari_viewer():
@@ -9,11 +13,16 @@ def napari_viewer():
 
 @pytest.fixture(scope="function")
 def organize_layer_widget_tomo(napari_viewer):
-    napari_viewer.open(plugin='napari-boxmanager',
-                path='/mnt/data/twagner/Projects/TomoTwin/results/202208_YenT_step3/tomo_a15/d01t15_a15.mrc')
-    widget, _ = napari_viewer.window.add_plugin_dock_widget('napari-boxmanager', widget_name='organize_layer', tabify=True)
-    widget.widget()._new_shapes()
-    yield widget.widget()
+    rand_vol = np.random.randn(500,500,500).astype(np.float32)
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        with mrcfile.new(f"{tmpdirname}/tmp.mrc") as mrc:
+            mrc.set_data(rand_vol)
+        napari_viewer.open(plugin='napari-boxmanager',
+                    path=f"{tmpdirname}/tmp.mrc")
+        widget, _ = napari_viewer.window.add_plugin_dock_widget('napari-boxmanager', widget_name='organize_layer', tabify=True)
+        widget.widget()._new_shapes()
+        yield widget.widget()
 @patch(
         "qtpy.QtWidgets.QFileDialog.getExistingDirectory",
         MagicMock(

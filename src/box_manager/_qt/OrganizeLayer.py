@@ -332,7 +332,7 @@ class OrganizeLayerWidget(QWidget):
         self._update_add_combo()
 
     @Slot()
-    def _run_save(self):
+    def _run_save(self,path=None):
         cur_format = self.save_layers["format"].currentText().split(" ", 1)[0]
         cur_layer = self.napari_viewer.layers[
             self.save_layers["layer"].currentText()
@@ -344,12 +344,14 @@ class OrganizeLayerWidget(QWidget):
             show_error("Filament format requires inter-box distance")
             return
 
+
         self.saved_dir_path = QFileDialog.getExistingDirectory(
             self,
             "Open directory",
             self.saved_dir_path,
             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,
         )
+
         if not self.saved_dir_path:
             self.saved_dir_path = os.getcwd()
             return

@@ -212,7 +212,7 @@ def _make_df_data_filament(
             other_interpolation_col=other_interpolation_cols,
         )
     verts = pd.DataFrame(
-        coordinates, columns=["_CoordinateY", "_CoordinateX", "_filamentid"]
+        coordinates, columns=coord_columns+["_filamentid"]
     )
     verts["_Width"] = box_size
     verts["_Height"] = box_size

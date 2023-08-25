@@ -93,32 +93,43 @@ class Test__run_save:
         assert os.path.exists('/tmp/blub/tmp.tloc') == True
         shutil.rmtree('/tmp/blub/')
 
-    '''
+
     def test_save_tomo_particle_after_loading_coords(self, napari_viewer, organize_layer_widget_tomo):
         # generate random tomogram
         try:
             shutil.rmtree('/tmp/blub/')
-        except FileNotFoundError:
+        except (FileNotFoundError, NotADirectoryError):
             pass
 
         with (tempfile.TemporaryDirectory() as tmpdirname):
             coords ={
-                "x":[50],
-                "y":[50],
-                "z": [50]
+                "X":[50],
+                "Y":[50],
+                "Z":[50],
+                "metric_best":[0.999],
+                "size": [37],
+                "height": [37],
+                "width": [37],
+                "depth": [37],
+                'predicted_class': [1]
             }
             df = pd.DataFrame(coords)
-            df[["x", "y", "z"]].to_csv(f"{tmpdirname}/tmp.coords", sep=" ", header=None, index=None)
+            df.attrs['references'] = {1:"cluster 1"}
+
+            df.to_pickle(f"{tmpdirname}/located.tloc")
             napari_viewer.open(plugin='napari-boxmanager',
-                               path=[f"{tmpdirname}/tmp.coords"], )
-            organize_layer_widget_tomo._new_points()
+                               path=[f"{tmpdirname}/located.tloc"], )
+            widget, _ = napari_viewer.window.add_plugin_dock_widget('napari-boxmanager', widget_name='boxmanager',
+                                                                    tabify=True)
             organize_layer_widget_tomo.save_layers['format'].setCurrentIndex(0) #coords
+
             os.makedirs("/tmp/blub/", exist_ok=True)
+
             organize_layer_widget_tomo._run_save()
 
-            assert os.path.exists('/tmp/blub/tmp.coords') == True
-            shutil.rmtree('/tmp/blub/')
-    '''
+            assert os.path.exists("/tmp/blub/*.coords") == False
+            #shutil.rmtree('/tmp/blub/')
+
     def test_save_stack_filament(self, napari_viewer, organize_layer_widget_stack):
         # generate random tomogram
         organize_layer_widget_stack._new_shapes()

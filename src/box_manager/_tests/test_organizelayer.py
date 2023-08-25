@@ -114,7 +114,7 @@ class Test__run_save:
                 'predicted_class': [1]
             }
             df = pd.DataFrame(coords)
-            df.attrs['references'] = {1:"cluster 1"}
+            df.attrs['references'] = {1:"cluster1"}
 
             df.to_pickle(f"{tmpdirname}/located.tloc")
             napari_viewer.open(plugin='napari-boxmanager',
@@ -128,7 +128,8 @@ class Test__run_save:
             organize_layer_widget_tomo._run_save()
 
             assert os.path.exists("/tmp/blub/*.coords") == False
-            #shutil.rmtree('/tmp/blub/')
+            assert os.path.exists("/tmp/blub/cluster1.coords") == True
+            shutil.rmtree('/tmp/blub/')
 
     def test_save_stack_filament(self, napari_viewer, organize_layer_widget_stack):
         # generate random tomogram

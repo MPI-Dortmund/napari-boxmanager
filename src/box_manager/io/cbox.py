@@ -56,6 +56,9 @@ def has_shapes(path: os.PathLike) -> bool:
         read_filament_shapes(path)
     except KeyError:
         return False
+    except TypeError:
+        # In that case, probably an old cbox format was loaded.
+        return False
     else:
         return True
 

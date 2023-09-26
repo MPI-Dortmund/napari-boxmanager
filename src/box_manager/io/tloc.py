@@ -115,7 +115,8 @@ def to_napari(
 
     for cidx, (data, kwargs, _) in enumerate(output_dfs):
         metadata = kwargs["metadata"]
-        for idx in range(int(data[["x", "y", "z"]].max().max().round(0)) + 1):
+
+        for idx in range(int(round(data[["x", "y", "z"]].max().max(),0)) + 1):
             idx_view_df = kwargs["features"].loc[data["x"].round(0) == idx, :]
             metadata[idx] = {
                 "path": kwargs["metadata"]["original_path"],

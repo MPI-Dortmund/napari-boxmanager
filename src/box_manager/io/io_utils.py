@@ -244,18 +244,23 @@ def to_napari_image(
     get_pixel_size: typing.Callable[[str], float],
     do_normalize: bool = True,
 ) -> "list[tuple[npt.ArrayLike, dict[str, typing.Any], str]]":
-
     is_2d_stack = isinstance(path, list) or "*" in path
     name = get_layers_name(path)
 
     if not isinstance(path, list):
         original_path = path
         path = sorted(glob.glob(path))  # type: ignore
+
+        if not os.path.exists(original_path):
+            raise FileNotFoundError(original_path)
+
     else:
         original_path = (
             f"{os.path.dirname(path[0])}/*{os.path.splitext(path[0])[1]}"
         )
-
+    for p in path:
+        if not os.path.exists(p):
+            raise FileNotFoundError(p)
     # arrays = []
     voxel_size = 1
     metadata: dict = {

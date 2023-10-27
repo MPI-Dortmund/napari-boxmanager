@@ -256,6 +256,11 @@ def to_napari_image(
             f"{os.path.dirname(path[0])}/*{os.path.splitext(path[0])[1]}"
         )
 
+    if not os.path.exists(original_path):
+        raise FileNotFoundError(original_path)
+    for p in path:
+        if not os.path.exists(p):
+            raise FileNotFoundError(p)
     # arrays = []
     voxel_size = 1
     metadata: dict = {

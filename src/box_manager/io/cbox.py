@@ -214,6 +214,7 @@ def _make_df_data_filament(
             constant_columns=constant_columns,
             other_interpolation_col=other_interpolation_cols,
         )
+    coordinates[:, [0, 1]] = coordinates[:, [1, 0]]
     verts = pd.DataFrame(
         coordinates, columns=coord_columns+["_filamentid"]
     )

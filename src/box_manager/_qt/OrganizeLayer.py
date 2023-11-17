@@ -230,7 +230,7 @@ class OrganizeLayerWidget(QWidget):
             "dummyf": QLabel(self),
             "suffix": QLineEdit(self),
         }
-        self.save_layers["layer"].addItems([""])
+        self.save_layers["layer"].addItems(["Selected"])
         self.save_layers["dimension"].addItems(["", "2D", "3D"])
         self.save_layers["type"].addItems(["", "Particles", "Filaments"])
         self.save_layers["suffix"].setPlaceholderText("e.g., _suffix")
@@ -393,7 +393,7 @@ class OrganizeLayerWidget(QWidget):
             if isinstance(entry, (napari.layers.Shapes, napari.layers.Points))
         ]
         self.save_layers["layer"].clear()
-        self.save_layers["layer"].addItems([""] + names)
+        self.save_layers["layer"].addItems(["Selected"] + names)
         try:
             self.save_layers["layer"].setCurrentText(
                 self.napari_viewer.layers.selection.active.name
@@ -412,6 +412,9 @@ class OrganizeLayerWidget(QWidget):
     @Slot(str)
     def _update_format(self, _=None, is_layer=False):
         cur_layer = self.save_layers["layer"].currentText()
+
+        if cur_layer == "Selected":
+            return
 
         if not cur_layer:
             self.save_run_btn.setEnabled(False)

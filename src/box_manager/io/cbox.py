@@ -214,6 +214,12 @@ def _make_df_data_filament(
             constant_columns=constant_columns,
             other_interpolation_col=other_interpolation_cols,
         )
+
+    if is_3d:
+        coordinates[:, [0, 1, 2]] = coordinates[:, [2, 1, 0]]
+    else:
+        coordinates[:, [0, 1]] = coordinates[:, [1, 0]]
+
     verts = pd.DataFrame(
         coordinates, columns=coord_columns+["_filamentid"]
     )

@@ -84,7 +84,13 @@ def napari_get_reader(
         # so we are only going to look at the first file.
         path = path[0]
 
+    if "*" in os.path.basename(path):
+        path = glob.glob(path)[0]
+
     if os.path.isdir(path):
         return get_dir
 
+
     return select_reader(path)
+
+

@@ -251,7 +251,7 @@ def to_napari_image(
         original_path = path
         path = sorted(glob.glob(path))  # type: ignore
 
-        if not os.path.exists(original_path):
+        if not os.path.exists(original_path) and is_2d_stack==False:
             raise FileNotFoundError(original_path)
 
     else:
@@ -272,6 +272,7 @@ def to_napari_image(
     file_size = (
         sum(os.stat(file_name).st_size for file_name in path) / 1024**3
     )
+
     if len(path) > 1 and file_size > PROXY_THRESHOLD_GB:
         data = LoaderProxy(path, load_image, do_normalize)
     else:

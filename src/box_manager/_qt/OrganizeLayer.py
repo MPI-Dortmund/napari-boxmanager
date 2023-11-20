@@ -359,6 +359,8 @@ class OrganizeLayerWidget(QWidget):
         layers_to_write = []
         if sel_layer == "Selected":
             for cur_layer in self.napari_viewer.layers.selection:
+                if len(cur_layer.data) == 0:
+                    continue
                 layers_to_write.append(cur_layer)
         else:
             cur_layer = self.napari_viewer.layers[sel_layer]

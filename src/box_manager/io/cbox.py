@@ -172,6 +172,9 @@ def _make_df_data_filament(
         feature_map["angle"] = "_Angle"
         other_interpolation_cols.append("_Angle")
 
+    if coordinates.size == 0:
+        return {"cryolo": pd.DataFrame(columns=coord_columns), "filament_vertices": pd.DataFrame(columns=coord_columns)}
+
     empty_data = copy.deepcopy(data)
     filaments = []
     entry = 0
@@ -220,12 +223,15 @@ def _make_df_data_filament(
     else:
         coordinates[:, [0, 1]] = coordinates[:, [1, 0]]
 
+
     verts = pd.DataFrame(
         coordinates, columns=coord_columns+["_filamentid"]
     )
     verts["_Width"] = box_size
     verts["_Height"] = box_size
+
     result = {"cryolo": pd.concat(filaments), "filament_vertices": verts}
+
     return result
 
 

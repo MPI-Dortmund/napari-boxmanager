@@ -230,7 +230,7 @@ class OrganizeLayerWidget(QWidget):
             "dummyf": QLabel(self),
             "suffix": QLineEdit(self),
         }
-        self.save_layers["layer"].addItems([""])
+        self.save_layers["layer"].addItems(["Selected"])
         self.save_layers["dimension"].addItems(["", "2D", "3D"])
         self.save_layers["type"].addItems(["", "Particles", "Filaments"])
         self.save_layers["suffix"].setPlaceholderText("e.g., _suffix")
@@ -333,10 +333,7 @@ class OrganizeLayerWidget(QWidget):
 
     @Slot()
     def _run_save(self,path=None):
-        cur_format = self.save_layers["format"].currentText().split(" ", 1)[0]
-        cur_layer = self.napari_viewer.layers[
-            self.save_layers["layer"].currentText()
-        ]
+
 
         cur_spacing = self.save_layers["inter-box distance"].text()
         cur_type = self.save_layers["type"].currentText()
@@ -356,13 +353,28 @@ class OrganizeLayerWidget(QWidget):
             self.saved_dir_path = os.getcwd()
             return
 
-        napari_get_writer(
-            self.saved_dir_path,
-            [cur_layer.as_layer_data_tuple()],
-            cur_format,
-            self.save_layers["suffix"].text() + cur_format,
-            cur_spacing=int(cur_spacing),
-        )
+
+        cur_format = self.save_layers["format"].currentText().split(" ", 1)[0]
+        sel_layer = self.save_layers["layer"].currentText()
+        layers_to_write = []
+        if sel_layer == "Selected":
+            for cur_layer in self.napari_viewer.layers.selection:
+                if len(cur_layer.data) == 0:
+                    continue
+                layers_to_write.append(cur_layer)
+        else:
+            cur_layer = self.napari_viewer.layers[sel_layer]
+            layers_to_write.append(cur_layer)
+
+        for cur_layer in layers_to_write:
+            napari_get_writer(
+                self.saved_dir_path,
+                [cur_layer.as_layer_data_tuple()],
+                cur_format,
+                self.save_layers["suffix"].text() + cur_format,
+                cur_spacing=int(cur_spacing),
+            )
+
 
     @Slot(object)
     def _update_link_combo(self, *_):
@@ -393,7 +405,7 @@ class OrganizeLayerWidget(QWidget):
             if isinstance(entry, (napari.layers.Shapes, napari.layers.Points))
         ]
         self.save_layers["layer"].clear()
-        self.save_layers["layer"].addItems([""] + names)
+        self.save_layers["layer"].addItems(["Selected"] + names)
         try:
             self.save_layers["layer"].setCurrentText(
                 self.napari_viewer.layers.selection.active.name
@@ -412,6 +424,9 @@ class OrganizeLayerWidget(QWidget):
     @Slot(str)
     def _update_format(self, _=None, is_layer=False):
         cur_layer = self.save_layers["layer"].currentText()
+
+        if cur_layer == "Selected":
+            return
 
         if not cur_layer:
             self.save_run_btn.setEnabled(False)

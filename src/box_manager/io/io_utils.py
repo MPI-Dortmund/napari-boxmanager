@@ -571,8 +571,10 @@ def convert_shape_filament_layer_to_boxlayer(
             [[filid] * len(d) for filid, d in enumerate(data)]
         )
     )
-
-    data = np.concatenate(data)
+    if len(data) > 0:
+        data = np.concatenate(data)
+    else:
+        data = np.empty((0,0))
 
     return data, meta
 

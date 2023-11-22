@@ -140,6 +140,8 @@ def _make_df_data_filament(
     filament_spacing: int,
     **kwargs,
 ) -> pd.DataFrame:
+    if coordinates.size == 0:
+        return {"cryolo": pd.DataFrame(), "filament_vertices": pd.DataFrame()}
     is_3d = coordinates.shape[1] == 4
     data = {}
     data["_CoordinateX"] = []
@@ -220,12 +222,15 @@ def _make_df_data_filament(
     else:
         coordinates[:, [0, 1]] = coordinates[:, [1, 0]]
 
+
     verts = pd.DataFrame(
         coordinates, columns=coord_columns+["_filamentid"]
     )
     verts["_Width"] = box_size
     verts["_Height"] = box_size
+
     result = {"cryolo": pd.concat(filaments), "filament_vertices": verts}
+
     return result
 
 

@@ -140,8 +140,6 @@ def _make_df_data_filament(
     filament_spacing: int,
     **kwargs,
 ) -> pd.DataFrame:
-    if coordinates.size == 0:
-        return {"cryolo": pd.DataFrame(), "filament_vertices": pd.DataFrame()}
     is_3d = coordinates.shape[1] == 4
     data = {}
     data["_CoordinateX"] = []
@@ -173,6 +171,9 @@ def _make_df_data_filament(
         data["_Angle"] = []
         feature_map["angle"] = "_Angle"
         other_interpolation_cols.append("_Angle")
+
+    if coordinates.size == 0:
+        return {"cryolo": pd.DataFrame(columns=coord_columns), "filament_vertices": pd.DataFrame(columns=coord_columns)}
 
     empty_data = copy.deepcopy(data)
     filaments = []

@@ -358,7 +358,14 @@ class OrganizeLayerWidget(QWidget):
         sel_layer = self.save_layers["layer"].currentText()
         layers_to_write = []
         if sel_layer == "Selected":
-            for cur_layer in self.napari_viewer.layers.selection:
+            target_type = napari.layers.Points
+            if cur_type == "Filaments":
+                target_type = napari.layers.Shapes
+            relevant_layers = [x for x in self.napari_viewer.layers.selection if isinstance(x, target_type)]
+            if len(relevant_layers)==0:
+                show_error("No coordinate layers selected")
+                return
+            for cur_layer in relevant_layers:
                 if len(cur_layer.data) == 0:
                     continue
                 layers_to_write.append(cur_layer)

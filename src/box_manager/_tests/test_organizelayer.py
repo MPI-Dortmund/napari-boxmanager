@@ -81,6 +81,17 @@ class Test__run_save:
         assert os.path.exists('/tmp/blub/tmp.coords') == True
         shutil.rmtree('/tmp/blub/')
 
+    def test_save_tomo_particle_tloc(self, napari_viewer, organize_layer_widget_tomo):
+        # generate random tomogram
+        organize_layer_widget_tomo._new_points()
+        organize_layer_widget_tomo.save_layers['format'].setCurrentIndex(1)  # tloc
+        os.makedirs("/tmp/blub/", exist_ok=True)
+        points = [[77, 0, 0], [77, 100, 100], [77, 200, 200]]
+        napari_viewer.layers[1].add(points)
+        organize_layer_widget_tomo._run_save()
+        assert os.path.exists('/tmp/blub/tmp.tloc') == True
+        shutil.rmtree('/tmp/blub/')
+
     def test_save_stack_filament(self, napari_viewer, organize_layer_widget_stack):
         # generate random tomogram
         organize_layer_widget_stack._new_shapes()

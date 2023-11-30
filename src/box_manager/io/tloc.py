@@ -255,14 +255,20 @@ def _format_tloc(
     data_df["Y"] = coordinates[..., 1]
     data_df["Z"] = coordinates[..., 0]
 
-    data_df["size"] = features["size"].to_numpy()
-    data_df["metric_best"] = features["metric"].to_numpy()
+    if "size" in features:
+        data_df["size"] = features["size"].to_numpy()
 
-    data_df["predicted_class"] = metadata["predicted_class"]
+    if "metric_best" in features:
+        data_df["metric_best"] = features["metric"].to_numpy()
+
+    if "predicted_class" in metadata:
+        data_df["predicted_class"] = metadata["predicted_class"]
     data_df["width"] = box_size
     data_df["height"] = box_size
     data_df["depth"] = box_size
-    data_df.attrs = metadata["references"]
+
+    if "references" in metadata:
+        data_df.attrs = metadata["references"]
 
     return data_df
 

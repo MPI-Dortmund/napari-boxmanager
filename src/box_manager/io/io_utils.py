@@ -334,6 +334,7 @@ def to_napari_coordinates(
     )
     metadata.update(orgbox_meta)
     metadata["is_2d_stack"] = is_2d_stack
+    metadata["is_3d"] = is_3d
     metadata["ignore_idx"] = feature_columns
 
     features = {}
@@ -489,6 +490,12 @@ def _write_particle_data(
     except KeyError:
         is_2d_stacked = False
 
+    try:
+        is_3d = meta["metadata"]["is_3d"]
+    except KeyError:
+        is_3d = False
+
+
     if is_2d_stacked:
         for z in meta["metadata"]:
             if not isinstance(z, int) or meta["metadata"][z]["write"] is False:
@@ -528,6 +535,8 @@ def _write_particle_data(
             if z in slices_with_coords:
                 continue
             empty_slices.append(z)
+        if not is_3d:
+            coordinates = coordinates[:,1:]
 
         export_data[output_file] = (
             format_func(

@@ -579,7 +579,7 @@ class OrganizeLayerWidget(QWidget):
                 metadata[key]["image_name"] = value["name"]
                 metadata[key]["real"] = False
                 metadata[key]["write"] = None
-            elif key in ("original_path", "is_2d_stack"):
+            elif key in ("original_path", "is_2d_stack", "is_3d"):
                 metadata[key] = value
         return metadata
 

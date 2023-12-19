@@ -477,6 +477,7 @@ def _write_particle_data(
         mask = np.ones(len(data), dtype=int) == 1
 
     coordinates = data[mask]
+    features = meta["features"].loc[mask, :]
 
     if "size" in meta:
         boxsize = meta["size"][mask]
@@ -513,7 +514,7 @@ def _write_particle_data(
             d = format_func(
                 coordinates=coordinates[mask, 1:],
                 box_size=boxsize[mask],
-                features=meta["features"].loc[mask, :],
+                features=features.loc[mask, :],
                 metadata=meta["metadata"],
                 filament_spacing=filament_spacing,
             )
@@ -542,7 +543,7 @@ def _write_particle_data(
             format_func(
                 coordinates=coordinates,
                 box_size=boxsize,
-                features=meta["features"].loc[mask, :],
+                features=features.loc[mask, :],
                 metadata=meta["metadata"],
                 filament_spacing=filament_spacing,
             ),

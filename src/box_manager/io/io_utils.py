@@ -334,6 +334,7 @@ def to_napari_coordinates(
     )
     metadata.update(orgbox_meta)
     metadata["is_2d_stack"] = is_2d_stack
+    metadata["is_3d"] = is_3d
     metadata["ignore_idx"] = feature_columns
 
     features = {}
@@ -476,6 +477,7 @@ def _write_particle_data(
         mask = np.ones(len(data), dtype=int) == 1
 
     coordinates = data[mask]
+    features = meta["features"].loc[mask, :]
 
     if "size" in meta:
         boxsize = meta["size"][mask]
@@ -488,6 +490,12 @@ def _write_particle_data(
         is_2d_stacked = meta["metadata"]["is_2d_stack"]
     except KeyError:
         is_2d_stacked = False
+
+    try:
+        is_3d = meta["metadata"]["is_3d"]
+    except KeyError:
+        is_3d = False
+
 
     if is_2d_stacked:
         for z in meta["metadata"]:
@@ -506,7 +514,7 @@ def _write_particle_data(
             d = format_func(
                 coordinates=coordinates[mask, 1:],
                 box_size=boxsize[mask],
-                features=meta["features"].loc[mask, :],
+                features=features.loc[mask, :],
                 metadata=meta["metadata"],
                 filament_spacing=filament_spacing,
             )
@@ -528,12 +536,14 @@ def _write_particle_data(
             if z in slices_with_coords:
                 continue
             empty_slices.append(z)
+        if not is_3d:
+            coordinates = coordinates[:,1:]
 
         export_data[output_file] = (
             format_func(
                 coordinates=coordinates,
                 box_size=boxsize,
-                features=meta["features"].loc[mask, :],
+                features=features.loc[mask, :],
                 metadata=meta["metadata"],
                 filament_spacing=filament_spacing,
             ),

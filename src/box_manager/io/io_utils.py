@@ -481,7 +481,8 @@ def _write_particle_data(
 
     if "size" in meta:
         boxsize = meta["size"][mask]
-        boxsize = np.median(boxsize, axis=1)
+        if len(boxsize.shape)>1:
+            boxsize = np.median(boxsize, axis=1)
     else:
         # For filaments
         boxsize = np.array(meta["edge_width"])[mask]

@@ -2,6 +2,7 @@ import glob
 import os
 import typing
 
+import matplotlib
 import matplotlib.cm as mcm
 import numpy as np
 import numpy.typing as npt
@@ -109,8 +110,12 @@ def to_napari(
                     napari_type,
                 )
             )
+    try:
+        colors = mcm.get_cmap("gist_rainbow")
+    except AttributeError:
+        # for matplotlib > 3.9
+        colors = matplotlib.colormaps["gist_rainbow"]
 
-    colors = mcm.get_cmap("gist_rainbow")
     n_layers = np.maximum(len(output_dfs), 2)  # Avoid zero division
 
     for cidx, (data, kwargs, _) in enumerate(output_dfs):

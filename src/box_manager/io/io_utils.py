@@ -527,22 +527,35 @@ def _write_particle_data(
             orignal_filename=filename, output_path=path, suffix=suffix
         )
         empty_slices = []
+
+        # Generating mask
+        mask = np.ones(len(coordinates), dtype=bool)
+        for z in meta["metadata"]:
+            if not isinstance(z, int):
+                continue
+            if meta["metadata"][z]["write"] is False:
+                mask[coordinates[:, 0] == z] = False
+
         slices_with_coords = np.unique(coordinates[:, 0]).tolist()
         for z in meta["metadata"]:
+            print('z',z)
+            if isinstance(z,int):
+                print(meta["metadata"][z]["write"] )
             if (
                 not isinstance(z, int)
                 or meta["metadata"][z]["write"] is not True
             ):
                 continue
-            if z in slices_with_coords:
+
+            if z in slices_with_coords and meta["metadata"][z]["write"] is not False:
                 continue
             empty_slices.append(z)
         if not is_3d:
             coordinates = coordinates[:,1:]
-
+        print(empty_slices)
         export_data[output_file] = (
             format_func(
-                coordinates=coordinates,
+                coordinates=coordinates[mask],
                 box_size=boxsize,
                 features=features,
                 metadata=meta["metadata"],

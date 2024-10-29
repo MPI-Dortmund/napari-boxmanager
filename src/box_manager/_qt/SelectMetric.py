@@ -33,6 +33,7 @@ from qtpy.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QPushButton,
     QSlider,
     QStyle,
     QStyledItemDelegate,
@@ -167,7 +168,7 @@ class GroupModel(QStandardItemModel):
                 parent_item = self.item(parent_idx, 0)
                 change_children = False
 
-            for row_idx in rows_idx:
+            for row_idx in set(rows_idx):
                 child_item = parent_item.child(row_idx, col_idx)
                 child_item.setText(str(value))
                 if change_children:
@@ -427,9 +428,11 @@ class GroupView(QTreeView):
 
     def get_row_selection(self):
         prev_selection = {
-            self.model.get_value(-1, entry[1], "name")
-            if entry[0] == -1
-            else self.model.get_value(-1, entry[0], "name")
+            (
+                self.model.get_value(-1, entry[1], "name")
+                if entry[0] == -1
+                else self.model.get_value(-1, entry[0], "name")
+            )
             for entry in self.get_row_candidates(False)
         }
         return prev_selection
@@ -542,9 +545,11 @@ class GroupView(QTreeView):
             parent_only = self.parent_only
         if parent_only:
             return {
-                (-1, entry.parent().row())
-                if entry.parent().row() != -1
-                else (entry.parent().row(), entry.row())
+                (
+                    (-1, entry.parent().row())
+                    if entry.parent().row() != -1
+                    else (entry.parent().row(), entry.row())
+                )
                 for entry in self.selectedIndexes()
             }
         else:
@@ -642,6 +647,14 @@ class SelectMetricWidget(QWidget):
         )
         self.metric_area = QVBoxLayout()
 
+        self.option_area2 = QHBoxLayout()
+        btn = QPushButton('"Write" all selected')
+        btn.clicked.connect(lambda: self._update_all_check_state(True))
+        self.option_area2.addWidget(btn)
+        btn = QPushButton('Un-"Write" all selected')
+        btn.clicked.connect(lambda: self._update_all_check_state(False))
+        self.option_area2.addWidget(btn)
+
         self.option_area = QHBoxLayout()
         self.global_checkbox = QCheckBox(
             "Apply on layers, not on slices", self
@@ -684,6 +697,7 @@ class SelectMetricWidget(QWidget):
         self.setLayout(QVBoxLayout())
         self.layout().addLayout(self.settings_area, stretch=0)  # type: ignore
         self.layout().addWidget(self.table_widget, stretch=1)
+        self.layout().addLayout(self.option_area2, stretch=0)  # type: ignore
         self.layout().addLayout(self.option_area, stretch=0)  # type: ignore
         self.layout().addLayout(self.metric_area, stretch=0)  # type: ignore
 
@@ -770,6 +784,24 @@ class SelectMetricWidget(QWidget):
         self.napari_viewer.layers[layer_name].metadata[slice_idx][
             attr_name
         ] = value
+
+    @Slot(bool)
+    def _update_all_check_state(self, new_value):
+        cur_selection = self.table_widget.get_row_candidates(False)
+        layer_dict = {}
+        for parent_idx, row_idx in cur_selection:
+            if parent_idx == -1:
+                parent_item = self.table_widget.model.item(row_idx, 0)
+                rows = list(range(parent_item.rowCount()))
+                layer_dict.setdefault(row_idx, []).extend(rows)
+            else:
+                layer_dict.setdefault(parent_idx, []).append(row_idx)
+
+        for parent_idx, rows in layer_dict.items():
+            for row in set(rows):
+                self.table_widget.model.set_checkstate(
+                    parent_idx, row, "write", new_value
+                )
 
     def _set_color(self):
         if self.napari_viewer.theme == "dark":
@@ -1065,9 +1097,9 @@ class SelectMetricWidget(QWidget):
 
     @Slot(object)
     def _update_on_data(self, event):
-        '''
+        """
         Is triggered when data is change in one layer.
-        '''
+        """
         if not self._plugin_view_update:
             layer = event.source
             try:

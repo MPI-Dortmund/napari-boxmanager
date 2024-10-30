@@ -59,6 +59,9 @@ ICON_DIR = pathlib.Path(os.path.dirname(__file__), "_icons")
 #     return inner
 
 
+EMPTY_NAME = "-"
+
+
 def check_equal(layer, compare_data):
     if isinstance(layer, napari.layers.Points):
         return np.array_equal(layer.data, compare_data)
@@ -357,7 +360,7 @@ class GroupModel(QStandardItemModel):
             else:
                 text = columns[cur_label] if cur_label in columns else "-"
                 col_item = QStandardItem(text)
-                if isinstance(text, bool):
+                if isinstance(text, (bool, np.bool_)):
                     combo_items.append((col_item, cur_label))
                     col_item.setEditable(True)
                     col_item.setCheckable(True)
@@ -783,6 +786,7 @@ class SelectMetricWidget(QWidget):
 
     @Slot(bool)
     def _update_all_check_state(self):
+        prev_status = self.table_widget.blockSignals(True)
         cur_selection = self.table_widget.get_row_candidates(False)
         layer_dict = {}
         for parent_idx, row_idx in cur_selection:
@@ -802,11 +806,19 @@ class SelectMetricWidget(QWidget):
                 )
             )
 
+        check_state = not all(item_values)
         for parent_idx, rows in layer_dict.items():
+            layer_name = self.table_widget.model.get_value(
+                -1, parent_idx, "name"
+            )
             for row in rows:
                 self.table_widget.model.set_checkstate(
-                    parent_idx, row, "write", not all(item_values)
+                    parent_idx, row, "write", check_state
                 )
+                self.napari_viewer.layers[layer_name].metadata[row][
+                    "write"
+                ] = check_state
+        self.table_widget.blockSignals(prev_status)
 
     def _set_color(self):
         if self.napari_viewer.theme == "dark":
@@ -1238,6 +1250,15 @@ class SelectMetricWidget(QWidget):
         }
 
         try:
+            is_3d = layer.metadata["is_3d"]
+        except KeyError:
+            is_3d = False
+
+        empty_name = None
+        if name is None and is_3d:
+            empty_name = EMPTY_NAME
+
+        try:
             max_slice = max(loop_var)
         except ValueError:
             max_slice = 0
@@ -1246,10 +1267,13 @@ class SelectMetricWidget(QWidget):
                 ident_df = slice_dict[identifier]
             except KeyError:
                 ident_df = pd.DataFrame(columns=features_copy.columns)
+
             try:
-                cur_name = name or layer.metadata[identifier]["name"]
+                cur_name = name or (
+                    empty_name or layer.metadata[identifier]["name"]
+                )
             except KeyError:
-                cur_name = "Manual"
+                cur_name = EMPTY_NAME
             output_list.append(
                 self._prepare_columns(
                     pd.DataFrame(get_size(layer), dtype=float),
@@ -1266,9 +1290,11 @@ class SelectMetricWidget(QWidget):
         if not output_list and name is not None:
             identifier = "" if name is not None else 0
             try:
-                cur_name = name or layer.metadata[identifier]["name"]
+                cur_name = name or (
+                    empty_name or layer.metadata[identifier]["name"]
+                )
             except KeyError:
-                cur_name = "Manual"
+                cur_name = EMPTY_NAME
             features = pd.DataFrame(columns=["shown"])
             output_list.append(
                 self._prepare_columns(
@@ -1314,14 +1340,15 @@ class SelectMetricWidget(QWidget):
             if is_main_group:
                 output_dict["write"] = "-"
             else:
+                # Cast explicitely as bool here, because it can be np.bool_
                 try:
                     write_val = label_data.loc[slice_idx, "write"]
                     if write_val is not None and not np.isnan(write_val):
-                        output_dict["write"] = write_val
+                        output_dict["write"] = bool(write_val)
                     else:
-                        output_dict["write"] = not features.empty
+                        output_dict["write"] = bool(not features.empty)
                 except KeyError:
-                    output_dict["write"] = not features.empty
+                    output_dict["write"] = bool(not features.empty)
 
             for col_name in features.columns:
                 if col_name in self.ignore_idx:
@@ -1447,10 +1474,19 @@ class SelectMetricWidget(QWidget):
             else:
                 label_data = pd.DataFrame()
             range_list.extend(full_range)
+
             try:
-                name = layer.metadata[current_slice]["name"]
+                is_3d = layer.metadata["is_3d"]
             except KeyError:
-                name = "Manual"
+                is_3d = False
+
+            empty_name = None
+            if is_3d:
+                empty_name = EMPTY_NAME
+            try:
+                name = empty_name or layer.metadata[current_slice]["name"]
+            except KeyError:
+                name = EMPTY_NAME
             new_col_entry = self._prepare_columns(
                 pd.DataFrame(get_size(layer), dtype=float),
                 pd.DataFrame(columns=list(layer.features.columns) + ["shown"]),
@@ -1470,7 +1506,9 @@ class SelectMetricWidget(QWidget):
         write_val = layer.metadata.setdefault(current_slice, {}).setdefault(
             "write", None
         )
-        check_value = write_val if write_val is not None else bool(selected)
+        check_value = (
+            bool(write_val) if write_val is not None else bool(selected)
+        )
         if check_value != self.table_model.get_checkstate(
             parent_idx, child_idx, "write"
         ):

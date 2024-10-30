@@ -33,6 +33,7 @@ from qtpy.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QPushButton,
     QSlider,
     QStyle,
     QStyledItemDelegate,
@@ -56,6 +57,9 @@ ICON_DIR = pathlib.Path(os.path.dirname(__file__), "_icons")
 #         print(func.__name__)
 #         return func(*args, **kwargs)
 #     return inner
+
+
+EMPTY_NAME = "-"
 
 
 def check_equal(layer, compare_data):
@@ -167,7 +171,7 @@ class GroupModel(QStandardItemModel):
                 parent_item = self.item(parent_idx, 0)
                 change_children = False
 
-            for row_idx in rows_idx:
+            for row_idx in set(rows_idx):
                 child_item = parent_item.child(row_idx, col_idx)
                 child_item.setText(str(value))
                 if change_children:
@@ -356,7 +360,7 @@ class GroupModel(QStandardItemModel):
             else:
                 text = columns[cur_label] if cur_label in columns else "-"
                 col_item = QStandardItem(text)
-                if isinstance(text, bool):
+                if isinstance(text, (bool, np.bool_)):
                     combo_items.append((col_item, cur_label))
                     col_item.setEditable(True)
                     col_item.setCheckable(True)
@@ -427,9 +431,11 @@ class GroupView(QTreeView):
 
     def get_row_selection(self):
         prev_selection = {
-            self.model.get_value(-1, entry[1], "name")
-            if entry[0] == -1
-            else self.model.get_value(-1, entry[0], "name")
+            (
+                self.model.get_value(-1, entry[1], "name")
+                if entry[0] == -1
+                else self.model.get_value(-1, entry[0], "name")
+            )
             for entry in self.get_row_candidates(False)
         }
         return prev_selection
@@ -542,9 +548,11 @@ class GroupView(QTreeView):
             parent_only = self.parent_only
         if parent_only:
             return {
-                (-1, entry.parent().row())
-                if entry.parent().row() != -1
-                else (entry.parent().row(), entry.row())
+                (
+                    (-1, entry.parent().row())
+                    if entry.parent().row() != -1
+                    else (entry.parent().row(), entry.row())
+                )
                 for entry in self.selectedIndexes()
             }
         else:
@@ -643,6 +651,8 @@ class SelectMetricWidget(QWidget):
         self.metric_area = QVBoxLayout()
 
         self.option_area = QHBoxLayout()
+        ###
+        ###
         self.global_checkbox = QCheckBox(
             "Apply on layers, not on slices", self
         )
@@ -680,6 +690,9 @@ class SelectMetricWidget(QWidget):
         self.settings_area.addWidget(self.hide_dim, stretch=1)
         self.settings_area.addWidget(QLabel("Slices:", self))
         self.settings_area.addWidget(self.show_mode, stretch=1)
+        btn = QPushButton('Toggle "Write"')
+        btn.clicked.connect(self._update_all_check_state)
+        self.settings_area.addWidget(btn)
 
         self.setLayout(QVBoxLayout())
         self.layout().addLayout(self.settings_area, stretch=0)  # type: ignore
@@ -770,6 +783,42 @@ class SelectMetricWidget(QWidget):
         self.napari_viewer.layers[layer_name].metadata[slice_idx][
             attr_name
         ] = value
+
+    @Slot(bool)
+    def _update_all_check_state(self):
+        prev_status = self.table_widget.blockSignals(True)
+        cur_selection = self.table_widget.get_row_candidates(False)
+        layer_dict = {}
+        for parent_idx, row_idx in cur_selection:
+            if parent_idx == -1:
+                parent_item = self.table_widget.model.item(row_idx, 0)
+                parent_idx = row_idx
+                rows = set(range(parent_item.rowCount()))
+            else:
+                rows = {row_idx}
+            layer_dict.setdefault(parent_idx, set()).update(rows)
+
+        item_values = []
+        for parent_idx, rows in layer_dict.items():
+            item_values.extend(
+                self.table_widget.model.get_checkstates(
+                    parent_idx, rows, "write"
+                )
+            )
+
+        check_state = not all(item_values)
+        for parent_idx, rows in layer_dict.items():
+            layer_name = self.table_widget.model.get_value(
+                -1, parent_idx, "name"
+            )
+            for row in rows:
+                self.table_widget.model.set_checkstate(
+                    parent_idx, row, "write", check_state
+                )
+                self.napari_viewer.layers[layer_name].metadata[row][
+                    "write"
+                ] = check_state
+        self.table_widget.blockSignals(prev_status)
 
     def _set_color(self):
         if self.napari_viewer.theme == "dark":
@@ -1065,9 +1114,9 @@ class SelectMetricWidget(QWidget):
 
     @Slot(object)
     def _update_on_data(self, event):
-        '''
+        """
         Is triggered when data is change in one layer.
-        '''
+        """
         if not self._plugin_view_update:
             layer = event.source
             try:
@@ -1201,6 +1250,15 @@ class SelectMetricWidget(QWidget):
         }
 
         try:
+            is_3d = layer.metadata["is_3d"]
+        except KeyError:
+            is_3d = False
+
+        empty_name = None
+        if name is None and is_3d:
+            empty_name = EMPTY_NAME
+
+        try:
             max_slice = max(loop_var)
         except ValueError:
             max_slice = 0
@@ -1209,10 +1267,13 @@ class SelectMetricWidget(QWidget):
                 ident_df = slice_dict[identifier]
             except KeyError:
                 ident_df = pd.DataFrame(columns=features_copy.columns)
+
             try:
-                cur_name = name or layer.metadata[identifier]["name"]
+                cur_name = name or (
+                    empty_name or layer.metadata[identifier]["name"]
+                )
             except KeyError:
-                cur_name = "Manual"
+                cur_name = EMPTY_NAME
             output_list.append(
                 self._prepare_columns(
                     pd.DataFrame(get_size(layer), dtype=float),
@@ -1229,9 +1290,11 @@ class SelectMetricWidget(QWidget):
         if not output_list and name is not None:
             identifier = "" if name is not None else 0
             try:
-                cur_name = name or layer.metadata[identifier]["name"]
+                cur_name = name or (
+                    empty_name or layer.metadata[identifier]["name"]
+                )
             except KeyError:
-                cur_name = "Manual"
+                cur_name = EMPTY_NAME
             features = pd.DataFrame(columns=["shown"])
             output_list.append(
                 self._prepare_columns(
@@ -1277,14 +1340,15 @@ class SelectMetricWidget(QWidget):
             if is_main_group:
                 output_dict["write"] = "-"
             else:
+                # Cast explicitely as bool here, because it can be np.bool_
                 try:
                     write_val = label_data.loc[slice_idx, "write"]
                     if write_val is not None and not np.isnan(write_val):
-                        output_dict["write"] = write_val
+                        output_dict["write"] = bool(write_val)
                     else:
-                        output_dict["write"] = not features.empty
+                        output_dict["write"] = bool(not features.empty)
                 except KeyError:
-                    output_dict["write"] = not features.empty
+                    output_dict["write"] = bool(not features.empty)
 
             for col_name in features.columns:
                 if col_name in self.ignore_idx:
@@ -1410,10 +1474,19 @@ class SelectMetricWidget(QWidget):
             else:
                 label_data = pd.DataFrame()
             range_list.extend(full_range)
+
             try:
-                name = layer.metadata[current_slice]["name"]
+                is_3d = layer.metadata["is_3d"]
             except KeyError:
-                name = "Manual"
+                is_3d = False
+
+            empty_name = None
+            if is_3d:
+                empty_name = EMPTY_NAME
+            try:
+                name = empty_name or layer.metadata[current_slice]["name"]
+            except KeyError:
+                name = EMPTY_NAME
             new_col_entry = self._prepare_columns(
                 pd.DataFrame(get_size(layer), dtype=float),
                 pd.DataFrame(columns=list(layer.features.columns) + ["shown"]),
@@ -1433,7 +1506,9 @@ class SelectMetricWidget(QWidget):
         write_val = layer.metadata.setdefault(current_slice, {}).setdefault(
             "write", None
         )
-        check_value = write_val if write_val is not None else bool(selected)
+        check_value = (
+            bool(write_val) if write_val is not None else bool(selected)
+        )
         if check_value != self.table_model.get_checkstate(
             parent_idx, child_idx, "write"
         ):

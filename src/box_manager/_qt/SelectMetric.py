@@ -647,15 +647,9 @@ class SelectMetricWidget(QWidget):
         )
         self.metric_area = QVBoxLayout()
 
-        self.option_area2 = QHBoxLayout()
-        btn = QPushButton('"Write" all selected')
-        btn.clicked.connect(lambda: self._update_all_check_state(True))
-        self.option_area2.addWidget(btn)
-        btn = QPushButton('Un-"Write" all selected')
-        btn.clicked.connect(lambda: self._update_all_check_state(False))
-        self.option_area2.addWidget(btn)
-
         self.option_area = QHBoxLayout()
+        ###
+        ###
         self.global_checkbox = QCheckBox(
             "Apply on layers, not on slices", self
         )
@@ -693,11 +687,13 @@ class SelectMetricWidget(QWidget):
         self.settings_area.addWidget(self.hide_dim, stretch=1)
         self.settings_area.addWidget(QLabel("Slices:", self))
         self.settings_area.addWidget(self.show_mode, stretch=1)
+        btn = QPushButton('Toggle "Write"')
+        btn.clicked.connect(self._update_all_check_state)
+        self.settings_area.addWidget(btn)
 
         self.setLayout(QVBoxLayout())
         self.layout().addLayout(self.settings_area, stretch=0)  # type: ignore
         self.layout().addWidget(self.table_widget, stretch=1)
-        self.layout().addLayout(self.option_area2, stretch=0)  # type: ignore
         self.layout().addLayout(self.option_area, stretch=0)  # type: ignore
         self.layout().addLayout(self.metric_area, stretch=0)  # type: ignore
 
@@ -786,21 +782,30 @@ class SelectMetricWidget(QWidget):
         ] = value
 
     @Slot(bool)
-    def _update_all_check_state(self, new_value):
+    def _update_all_check_state(self):
         cur_selection = self.table_widget.get_row_candidates(False)
         layer_dict = {}
         for parent_idx, row_idx in cur_selection:
             if parent_idx == -1:
                 parent_item = self.table_widget.model.item(row_idx, 0)
-                rows = list(range(parent_item.rowCount()))
-                layer_dict.setdefault(row_idx, []).extend(rows)
+                parent_idx = row_idx
+                rows = set(range(parent_item.rowCount()))
             else:
-                layer_dict.setdefault(parent_idx, []).append(row_idx)
+                rows = {row_idx}
+            layer_dict.setdefault(parent_idx, set()).update(rows)
+
+        item_values = []
+        for parent_idx, rows in layer_dict.items():
+            item_values.extend(
+                self.table_widget.model.get_checkstates(
+                    parent_idx, rows, "write"
+                )
+            )
 
         for parent_idx, rows in layer_dict.items():
-            for row in set(rows):
+            for row in rows:
                 self.table_widget.model.set_checkstate(
-                    parent_idx, row, "write", new_value
+                    parent_idx, row, "write", not all(item_values)
                 )
 
     def _set_color(self):

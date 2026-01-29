@@ -344,8 +344,10 @@ class OrganizeBoxWidget(QWidget):
                     new_state[key] = new_meta
                 elif key in (
                     "edge_width",
+                    "border_width",
                     "face_color",
                     "edge_color",
+                    "border_color",
                     "size",
                     "features",
                     "shown",

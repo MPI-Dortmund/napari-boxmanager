@@ -188,11 +188,11 @@ def _to_napari_filament(input_df: list[pd.DataFrame], coord_columns, is_3d):
     color = [(r, g, b, 255) for r, g, b in color]
 
     kwargs: NapariMetaData = {
-        "edge_color": color,
+        "border_color": color,
         "face_color": "transparent",
         "symbol": "disc",
-        "edge_width": 0.05,
-        "edge_width_is_relative": True,
+        "border_width": 0.05,
+        "border_width_is_relative": True,
         "size": np.average(boxsize),
         "out_of_slice_display": True if is_3d else False,
         "opacity": 0.8,
@@ -223,11 +223,11 @@ def _to_napari_particle(input_df, coord_columns, is_3d):
     input_df = pd.concat(input_df, ignore_index=True)
 
     kwargs: NapariMetaData = {
-        "edge_color": "red",
+        "border_color": "red",
         "face_color": "transparent",
         "symbol": "disc",
-        "edge_width": 0.05,
-        "edge_width_is_relative": True,
+        "border_width": 0.05,
+        "border_width_is_relative": True,
         "size": np.average(input_df["boxsize"]),
         "out_of_slice_display": True if is_3d else False,
         "opacity": 0.8,

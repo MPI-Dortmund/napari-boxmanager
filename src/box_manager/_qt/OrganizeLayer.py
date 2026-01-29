@@ -600,11 +600,11 @@ class OrganizeLayerWidget(QWidget):
 
         metadata = self._get_metadata()
         kwargs = {
-            "edge_color": "red",
+            "border_color": "red",
             "face_color": "transparent",
             "symbol": "disc",
-            "edge_width": 0.05,
-            "edge_width_is_relative": True,
+            "border_width": 0.05,
+            "border_width_is_relative": True,
             "size": 128,
             "name": f"coordinates ({Path(*Path(metadata['original_path']).parts[-2:])})",
             "out_of_slice_display": self._get_out_of_slice_display(),

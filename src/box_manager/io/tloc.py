@@ -139,7 +139,7 @@ def to_napari(
             )
 
         cur_color = colors(cidx / (n_layers - 1))
-        kwargs["edge_color"] = [cur_color]
+        kwargs["border_color"] = [cur_color]
 
     return output_dfs
 
